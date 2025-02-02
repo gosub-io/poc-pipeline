@@ -3,6 +3,10 @@ name = "poc-pipeline"
 version = "0.1.0"
 edition = "2021"
 
+[[bin]]
+name = "taffy"
+path = "src/taffy.rs"
+
 [dependencies]
 taffy = "0.7.5"
 gtk4 = "0.9.5"
