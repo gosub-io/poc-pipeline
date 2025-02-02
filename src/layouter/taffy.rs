@@ -1,3 +1,4 @@
+use taffy::Dimension::Length;
 use crate::render_tree::{RenderNode, RenderTree};
 use taffy::prelude::*;
 use crate::document::node::NodeType;
@@ -5,7 +6,7 @@ use crate::document::style::{StyleValue, Unit};
 use crate::layouter::text::measure_text_height;
 use crate::layouter::ViewportSize;
 
-pub fn generate_taffy_tree(render_tree: &RenderTree, viewport: ViewportSize) -> TaffyTree {
+pub fn generate_taffy_tree(render_tree: &RenderTree, viewport: ViewportSize) -> (TaffyTree, NodeId) {
     let mut tree: TaffyTree<()> = TaffyTree::new();
 
     let root_id = generate_node(&mut tree, &render_tree, &render_tree.root);
@@ -14,10 +15,9 @@ pub fn generate_taffy_tree(render_tree: &RenderTree, viewport: ViewportSize) -> 
     }
 
     // let size = taffy::geometry::Size::new(viewport.width as f32, viewport.height as f32);
-    tree.compute_layout(root_id.unwrap(), taffy::geometry::Size::MAX_CONTENT).unwrap();
-    tree.print_tree(root_id.unwrap());
+    tree.compute_layout(root_id.unwrap(), Size::MAX_CONTENT).unwrap();
 
-    tree
+    (tree, root_id.unwrap())
 }
 
 fn generate_node(tree: &mut TaffyTree<()>, render_tree: &RenderTree, render_node: &RenderNode) -> Option<NodeId> {
@@ -108,7 +108,7 @@ fn generate_node(tree: &mut TaffyTree<()>, render_tree: &RenderTree, render_node
                 }
             }
             // --- Padding ---
-            if let Some(padding_block_start) = data.get_style("padding-block-start") {
+            if let Some(padding_block_start) = data.get_style("padding-top") {
                 match padding_block_start {
                     StyleValue::Unit(value, unit) => {
                         match unit {
@@ -120,7 +120,7 @@ fn generate_node(tree: &mut TaffyTree<()>, render_tree: &RenderTree, render_node
                     _ => {}
                 }
             }
-            if let Some(padding_block_end) = data.get_style("padding-block-end") {
+            if let Some(padding_block_end) = data.get_style("padding-bottom") {
                 match padding_block_end {
                     StyleValue::Unit(value, unit) => {
                         match unit {
@@ -132,7 +132,7 @@ fn generate_node(tree: &mut TaffyTree<()>, render_tree: &RenderTree, render_node
                     _ => {}
                 }
             }
-            if let Some(padding_inline_start) = data.get_style("padding-inline-start") {
+            if let Some(padding_inline_start) = data.get_style("padding-left") {
                 match padding_inline_start {
                     StyleValue::Unit(value, unit) => {
                         match unit {
@@ -144,7 +144,7 @@ fn generate_node(tree: &mut TaffyTree<()>, render_tree: &RenderTree, render_node
                     _ => {}
                 }
             }
-            if let Some(padding_inline_end) = data.get_style("padding-inline-end") {
+            if let Some(padding_inline_end) = data.get_style("padding-right") {
                 match padding_inline_end {
                     StyleValue::Unit(value, unit) => {
                         match unit {
@@ -156,7 +156,55 @@ fn generate_node(tree: &mut TaffyTree<()>, render_tree: &RenderTree, render_node
                     _ => {}
                 }
             }
-
+            // --- Border ---
+            if let Some(border_top_width) = data.get_style("border-top-width") {
+                match border_top_width {
+                    StyleValue::Unit(value, unit) => {
+                        match unit {
+                            Unit::Px => style.border.top = LengthPercentage::Length(*value),
+                            Unit::Percent => style.border.top = LengthPercentage::Percent(*value),
+                            _ => {}
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            if let Some(border_bottom_width) = data.get_style("border-bottom-width") {
+                match border_bottom_width {
+                    StyleValue::Unit(value, unit) => {
+                        match unit {
+                            Unit::Px => style.border.bottom = LengthPercentage::Length(*value),
+                            Unit::Percent => style.border.bottom = LengthPercentage::Percent(*value),
+                            _ => {}
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            if let Some(border_left_width) = data.get_style("border-left-width") {
+                match border_left_width {
+                    StyleValue::Unit(value, unit) => {
+                        match unit {
+                            Unit::Px => style.border.left = LengthPercentage::Length(*value),
+                            Unit::Percent => style.border.left = LengthPercentage::Percent(*value),
+                            _ => {}
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            if let Some(border_right_width) = data.get_style("border-right-width") {
+                match border_right_width {
+                    StyleValue::Unit(value, unit) => {
+                        match unit {
+                            Unit::Px => style.border.right = LengthPercentage::Length(*value),
+                            Unit::Percent => style.border.right = LengthPercentage::Percent(*value),
+                            _ => {}
+                        }
+                    }
+                    _ => {}
+                }
+            }
         }
         NodeType::Text(text) => {
             let font_size = 16.0;
@@ -167,6 +215,8 @@ fn generate_node(tree: &mut TaffyTree<()>, render_tree: &RenderTree, render_node
 
         }
     }
+
+    dbg!(&style);
 
     if dom_node.children.is_empty() {
         match tree.new_leaf(style) {

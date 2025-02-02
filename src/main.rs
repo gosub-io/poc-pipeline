@@ -1,8 +1,11 @@
+use std::cell::RefCell;
+use std::rc::Rc;
+use gtk4::{Application, ApplicationWindow, DrawingArea, ScrolledWindow};
+use gtk4::cairo::Context;
+use gtk4::prelude::{ApplicationExt, ApplicationExtManual, DrawingAreaExtManual, GtkWindowExt, WidgetExt};
+use taffy::{NodeId as TaffyNodeId, Rect};
 use render_tree::RenderTree;
-use crate::document::document::Document;
-use crate::document::node::{AttrMap, Node};
-use crate::document::style::{Color, Display, StylePropertyList, StyleValue, Unit, FontWeight};
-use crate::layouter::{Layouter, ViewportSize};
+use crate::layouter::{generate_layout, LayoutTree, ViewportSize};
 
 #[allow(unused)]
 mod document;
@@ -13,12 +16,14 @@ mod layouter;
 
 fn main() {
     // --------------------------------------------------------------------
-    let doc = create_document();
+    // Generate a DOM tree
+    let doc = document::create_document();
     let mut output = String::new();
     doc.print_tree(&mut output).unwrap();
     println!("{}", output);
 
     // --------------------------------------------------------------------
+    // Convert the DOM tree into a render-tree that has all the non-visible elements removed
     let mut render_tree = RenderTree::new(doc);
     render_tree.parse();
     render_tree.print();
@@ -29,83 +34,121 @@ fn main() {
     println!("{:.2}% of the dom elements removed", (1.0 - (render_tree_element_count as f64 / doc_element_count as f64)) * 100.0);
 
     // --------------------------------------------------------------------
-    let mut layouter = Layouter::new(render_tree);
-    layouter.generate(ViewportSize { width: 800.0, height: 600.0 });
+    // Layout the render-tree into a layout-tree
+    let mut layout_tree = generate_layout(render_tree, ViewportSize { width: 800.0, height: 600.0 });
+    layout_tree.taffy_tree.print_tree(layout_tree.taffy_root_id);
+
+    let layout_tree = Rc::new(RefCell::new(layout_tree));
+
+    // --------------------------------------------------------------------
+    // Render the layout-tree into a GTK window
+    let app = Application::builder()
+        .application_id("io.gosub.renderer")
+        .build();
+    let layout_tree_clone = layout_tree.clone();
+    {
+        app.connect_activate(move |app| {
+            build_ui(app, layout_tree_clone.clone());
+        });
+    }
+    app.run();
 }
 
+fn build_ui(app: &Application, layout_tree: Rc<RefCell<LayoutTree>>) {
+    let window = ApplicationWindow::builder()
+        .application(app)
+        .title("Renderer")
+        .default_width(800)
+        .default_height(600)
+        .build();
 
-fn create_document() -> Document {
-    let mut doc = Document::new();
+    let layout_tree_for_draw = layout_tree.clone();
 
-    // --------------
-    let mut style = StylePropertyList::new();
-    style.set_property("width", StyleValue::Unit(150.0, Unit::Px));
-    style.set_property("height", StyleValue::Unit(100.0, Unit::Px));
+    let area = DrawingArea::new();
+    area.set_vexpand(true);
+    area.set_hexpand(true);
+    area.set_draw_func(move |_area, cr, width, height| {
+        let layout_tree = layout_tree_for_draw.borrow();
 
-    let mut attrs = AttrMap::new();
-    attrs.set("src", "image.jpg");
-    attrs.set("alt", "image");
+        // white background
+        cr.set_source_rgb(1.0, 1.0, 1.0);
+        cr.paint();
 
-    let img_node = Node::new_element(&doc, "img".to_string(), Some(attrs), true, Some(style));
+        fn draw_node(cr: &Context, taffy: &taffy::TaffyTree<()>, taffy_node_id: TaffyNodeId) {
+            let layout_node = taffy.layout(taffy_node_id).unwrap();
 
-    // --------------
-    let mut style = StylePropertyList::new();
-    style.set_property("color", StyleValue::Color(Color::Named("red".to_string())));
-    style.set_property("display", StyleValue::None);
-    style.set_property("font-weight", StyleValue::FontWeight(FontWeight::Bolder));
+            let content = layout_node.content_box_size();
+            let padding = layout_node.padding;
+            let border = layout_node.border;
+            let margin = layout_node.margin;
 
-    let mut strong_node = Node::new_element(&doc, "strong".to_string(), None, false, Some(style));
-    strong_node.children.push(Node::new_text(&doc, "strong".to_string()));
+            let margin_rect = Rect::new(
+                layout_node.location.x - margin.left,
+                layout_node.location.y - margin.top,
+                content.width + margin.left + margin.right,
+                content.height + margin.top + margin.bottom,
+            );
 
-    // --------------
-    let mut style = StylePropertyList::new();
-    style.set_property("display", StyleValue::Display(Display::Block));
-    style.set_property("margin-block-start", StyleValue::Unit(1.0, Unit::Em));
-    style.set_property("margin-block-end", StyleValue::Unit(1.0, Unit::Em));
+            let border_rect = Rect::new(
+                layout_node.location.x - margin.left - border.left,
+                layout_node.location.y - margin.top - border.top,
+                content.width + margin.left + margin.right + border.left + border.right,
+                content.height + margin.top + margin.bottom + border.top + border.bottom,
+            );
 
-    let mut attrs = AttrMap::new();
-    attrs.set("class", "paragraph");
+            let padding_rect = Rect::new(
+                layout_node.location.x - margin.left - border.left - padding.left,
+                layout_node.location.y - margin.top - border.top - padding.top,
+                content.width + margin.left + margin.right + border.left + border.right + padding.left + padding.right,
+                content.height + margin.top + margin.bottom + border.top + border.bottom + padding.top + padding.bottom,
+            );
 
-    let mut p_node = Node::new_element(&doc, "p".to_string(), Some(attrs), false, None);
-    p_node.children.push(Node::new_text(&doc, "paragraph".to_string()));
-    p_node.children.push(strong_node);
-    p_node.children.push(img_node);
+            let content_rect = Rect::new(
+                layout_node.location.x - margin.left - border.left - padding.left,
+                layout_node.location.y - margin.top - border.top - padding.top,
+                content.width + padding.left + padding.right,
+                content.height + padding.top + padding.bottom,
+            );
 
+            // dbg!(content_rect);
+            // dbg!(padding_rect);
+            // dbg!(border_rect);
+            // dbg!(margin_rect);
 
-    // --------------
-    let mut style = StylePropertyList::new();
-    style.set_property("display", StyleValue::Display(Display::Block));
-    style.set_property("font-size", StyleValue::Unit(2.0, Unit::Em));
-    style.set_property("font-weight", StyleValue::FontWeight(FontWeight::Bold));
-    style.set_property("margin-block", StyleValue::Unit(0.67, Unit::Em));
+            // // Margin
+            // cr.set_source_rgb(0.0, 1.0, 1.0);
+            // cr.rectangle(
+            //     margin_rect.x as f64,
+            //     margin_rect.y as f64,
+            //     margin_rect.width as f64,
+            //     margin_rect.height as f64,
+            // );
+            // cr.fill();
+            //
+            // // Border
+            // cr.set_source_rgb(0.0, 0.0, 0.0);
+            // cr.rectangle(
+            //     border_rect.x as f64,
+            //     border_rect.y as f64,
+            //     border_rect.width as f64,
+            //     border_rect.height as f64,
+            // );
 
-    let mut attrs = AttrMap::new();
-    attrs.set("class", "title");
-    attrs.set("data-alpine", "x-wrap");
+            for child_id in taffy.children(taffy_node_id).unwrap() {
+                draw_node(cr, taffy, child_id);
+            }
+        }
 
-    let mut h1_node = Node::new_element(&doc, "h1".to_string(), Some(attrs), false, None);
-    h1_node.children.push(Node::new_text(&doc, "header".to_string()));
+        draw_node(cr, &layout_tree.taffy_tree, layout_tree.taffy_root_id);
+    });
 
-    // --------------
-    let mut attrs = AttrMap::new();
-    attrs.set("src", "script.js");
-    attrs.set("type", "text/javascript");
-    attrs.set("async", "true");
-    let script_node = Node::new_element(&doc, "script".to_string(), Some(attrs), true, None);
+    let scroll = ScrolledWindow::builder()
+        .hscrollbar_policy(gtk4::PolicyType::Automatic)
+        .vscrollbar_policy(gtk4::PolicyType::Automatic)
+        .child(&area)
+        .build();
+    window.set_child(Some(&scroll));
 
-    // --------------
-    let mut body_node = Node::new_element(&doc, "body".to_string(), None, false, None);
-    body_node.children.push(h1_node);
-    body_node.children.push(script_node);
-    body_node.children.push(p_node);
-
-    // --------------
-    let mut attrs = AttrMap::new();
-    attrs.set("lang", "en");
-    let mut html_node = Node::new_element(&doc, "html".to_string(), Some(attrs), false, None);
-    html_node.children.push(body_node);
-
-
-    doc.set_root(html_node);
-    doc
+    window.set_default_size(800, 600);
+    window.show();
 }
