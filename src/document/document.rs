@@ -1,7 +1,7 @@
 use std::cell::RefCell;
-use std::os::unix::fs::lchown;
+use std::collections::HashMap;
 use std::rc::Rc;
-use crate::document::node::{Node, NodeType};
+use crate::document::node::{Node, NodeType, NodeId};
 
 pub struct Document {
     pub root: Option<Node>,
@@ -9,6 +9,29 @@ pub struct Document {
 }
 
 impl Document {
+
+    pub fn get_node_by_id(&self, node_id: NodeId) -> Option<&Node> {
+        fn get_node_by_id_helper(node: &Node, node_id: NodeId) -> Option<&Node> {
+            if node.node_id == node_id {
+                return Some(node);
+            }
+
+            for child in &node.children {
+                let result = get_node_by_id_helper(child, node_id);
+                if result.is_some() {
+                    return result;
+                }
+            }
+
+            None
+        }
+
+        match &self.root {
+            None => None,
+            Some(root) => get_node_by_id_helper(root, node_id),
+        }
+    }
+
     pub fn set_root(&mut self, root: Node) {
         self.root = Some(root);
     }
@@ -20,13 +43,13 @@ impl Document {
         }
     }
 
-    pub fn next_node_id(&self) -> usize {
+    pub fn next_node_id(&self) -> NodeId {
         let id = self.next_node_id.borrow().clone();
 
         let mut nid = self.next_node_id.borrow_mut();
         *nid += 1;
 
-        id
+        NodeId::from(id)
     }
 }
 

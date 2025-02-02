@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use crate::document::document::Document;
-use crate::document::style::StylePropertyList;
+use crate::document::style::{StylePropertyList, StyleValue};
 
 pub struct AttrMap {
     attributes: HashMap<String, String>,
@@ -63,7 +63,7 @@ impl ElementData {
         }
     }
 
-    pub fn get_style(&self, key: &str) -> Option<&String> {
+    pub fn get_style(&self, key: &str) -> Option<&StyleValue> {
         self.styles.properties.get(key)
     }
 
@@ -87,8 +87,30 @@ pub enum NodeType {
     Element(ElementData),
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct NodeId(usize);
+
+impl std::fmt::Display for NodeId {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl From<usize> for NodeId {
+    fn from(num: usize) -> Self {
+        NodeId(num)
+    }
+}
+
+impl From<NodeId> for usize {
+    fn from(node_id: NodeId) -> Self {
+        node_id.0
+    }
+}
+
+
 pub struct Node {
-    pub node_id: usize,
+    pub node_id: NodeId,
     pub children: Vec<Node>,
     pub node_type: NodeType,
 }

@@ -1,8 +1,9 @@
 use crate::document::document::Document;
-use crate::document::node::{Node, NodeType};
+use crate::document::node::{Node, NodeType, NodeId};
+use crate::document::style::StyleValue;
 
 pub struct RenderNode {
-    pub node_id: usize,
+    pub node_id: NodeId,
     pub children: Vec<RenderNode>,
 }
 
@@ -47,7 +48,7 @@ impl RenderTree {
     pub(crate) fn new(doc: Document) -> Self {
         RenderTree {
             doc,
-            root: RenderNode { node_id: 0, children: vec![] },
+            root: RenderNode { node_id: NodeId::from(0), children: vec![] },
         }
     }
 
@@ -79,7 +80,7 @@ impl RenderTree {
                     }
                 }
 
-                if element.get_style("display") == Some(&"none".to_string()) {
+                if element.get_style("display") == Some(&StyleValue::None) {
                     return false;
                 }
 

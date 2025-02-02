@@ -1,7 +1,48 @@
 use std::collections::HashMap;
 
+#[derive(Clone, Debug, PartialEq)]
+pub enum Unit {
+    Px,
+    Em,
+    Rem,
+    Percent,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum Color {
+    Rgb(u8, u8, u8),
+    Rgba(u8, u8, u8, f32),
+    Named(String),
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum Display {
+    Block,
+    Inline,
+    None,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum FontWeight {
+    Normal,
+    Bold,
+    Bolder,
+    Lighter,
+    Number(f32),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum StyleValue {
+    Keyword(String),
+    Unit(f32, Unit),
+    Color(Color),
+    None,
+    Display(Display),
+    FontWeight(FontWeight),
+}
+
 pub struct StylePropertyList {
-    pub properties: HashMap<String, String>,
+    pub properties: HashMap<String, StyleValue>,
 }
 
 impl StylePropertyList {
@@ -11,15 +52,12 @@ impl StylePropertyList {
         }
     }
 
-    pub fn set_property(&mut self, name: &str, value: &str) {
-        self.properties.insert(name.to_string(), value.to_string());
+    pub fn set_property(&mut self, name: &str, value: StyleValue) {
+        self.properties.insert(name.to_string(), value.clone());
     }
 
-    pub fn get_property(&self, name: &str) -> Option<&str> {
-        match self.properties.get(name) {
-            Some(value) => Some(value.as_str()),
-            None => None,
-        }
+    pub fn get_property(&self, name: &str) -> Option<&StyleValue> {
+        self.properties.get(name)
     }
 }
 
@@ -30,7 +68,10 @@ mod tests {
     #[test]
     fn test_set_get_property() {
         let mut style = StylePropertyList::new();
-        style.set_property("color", "red");
-        assert_eq!(style.get_property("color"), Some("red"));
+
+        let val = StyleValue::Color(Color::Named("red".to_string()));
+        style.set_property("color", val.clone());
+
+        assert_eq!(style.get_property("color"), Some(&val.clone()));
     }
 }
