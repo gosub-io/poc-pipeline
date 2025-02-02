@@ -13,8 +13,8 @@ pub(crate) fn create_document() -> Document {
 
     // --------------
     let mut style = StylePropertyList::new();
-    style.set_property("width", StyleValue::Unit(150.0, Unit::Px));
-    style.set_property("height", StyleValue::Unit(100.0, Unit::Px));
+    style.set_property("width", StyleValue::Unit(450.0, Unit::Px));
+    style.set_property("height", StyleValue::Unit(300.0, Unit::Px));
 
     let mut attrs = AttrMap::new();
     attrs.set("src", "image.jpg");
@@ -49,17 +49,17 @@ pub(crate) fn create_document() -> Document {
     // --------------
     let mut style = StylePropertyList::new();
     style.set_property("display", StyleValue::Display(Display::Block));
-    style.set_property("font-size", StyleValue::Unit(2.0, Unit::Em));
+    style.set_property("font-size", StyleValue::Unit(48.0, Unit::Em));
     style.set_property("font-weight", StyleValue::FontWeight(FontWeight::Bold));
     style.set_property("margin-block-end", StyleValue::Unit(0.67, Unit::Em));
-    style.set_property("padding-top", StyleValue::Unit(14.0, Unit::Px));
-    style.set_property("padding-left", StyleValue::Unit(13.0, Unit::Px));
-    style.set_property("padding-bottom", StyleValue::Unit(12.0, Unit::Px));
-    style.set_property("padding-right", StyleValue::Unit(11.0, Unit::Px));
-    style.set_property("border-top-width", StyleValue::Unit(9.0, Unit::Px));
-    style.set_property("border-left-width", StyleValue::Unit(8.0, Unit::Px));
-    style.set_property("border-bottom-width", StyleValue::Unit(7.0, Unit::Px));
-    style.set_property("border-right-width", StyleValue::Unit(6.0, Unit::Px));
+    style.set_property("padding-top", StyleValue::Unit(10.0, Unit::Px));
+    style.set_property("padding-left", StyleValue::Unit(10.0, Unit::Px));
+    style.set_property("padding-bottom", StyleValue::Unit(10.0, Unit::Px));
+    style.set_property("padding-right", StyleValue::Unit(10.0, Unit::Px));
+    style.set_property("border-top-width", StyleValue::Unit(4.0, Unit::Px));
+    style.set_property("border-left-width", StyleValue::Unit(4.0, Unit::Px));
+    style.set_property("border-bottom-width", StyleValue::Unit(4.0, Unit::Px));
+    style.set_property("border-right-width", StyleValue::Unit(4.0, Unit::Px));
 
     let mut attrs = AttrMap::new();
     attrs.set("class", "title");
@@ -78,14 +78,32 @@ pub(crate) fn create_document() -> Document {
     // --------------
     let mut body_node = Node::new_element(&doc, "body".to_string(), None, false, None);
     body_node.children.push(h1_node);
-    body_node.children.push(script_node);
-    body_node.children.push(p_node);
+    // body_node.children.push(script_node);
+    // body_node.children.push(p_node);
 
     // --------------
+
+    let mut style = StylePropertyList::new();
+    style.set_property("height", StyleValue::Unit(300.0, Unit::Px));
+    style.set_property("width", StyleValue::Unit(300.0, Unit::Px));
+    // style.set_property("margin-block-end", StyleValue::Unit(0.67, Unit::Em));
+    style.set_property("margin-top", StyleValue::Unit(25.0, Unit::Px));
+    style.set_property("margin-left", StyleValue::Unit(25.0, Unit::Px));
+    style.set_property("margin-bottom", StyleValue::Unit(25.0, Unit::Px));
+    style.set_property("margin-right", StyleValue::Unit(25.0, Unit::Px));
+    style.set_property("padding-top", StyleValue::Unit(25.0, Unit::Px));
+    style.set_property("padding-left", StyleValue::Unit(25.0, Unit::Px));
+    style.set_property("padding-bottom", StyleValue::Unit(25.0, Unit::Px));
+    style.set_property("padding-right", StyleValue::Unit(25.0, Unit::Px));
+    style.set_property("border-top-width", StyleValue::Unit(10.0, Unit::Px));
+    style.set_property("border-left-width", StyleValue::Unit(10.0, Unit::Px));
+    style.set_property("border-bottom-width", StyleValue::Unit(10.0, Unit::Px));
+    style.set_property("border-right-width", StyleValue::Unit(10.0, Unit::Px));
+
     let mut attrs = AttrMap::new();
     attrs.set("lang", "en");
-    let mut html_node = Node::new_element(&doc, "html".to_string(), Some(attrs), false, None);
-    html_node.children.push(body_node);
+    let mut html_node = Node::new_element(&doc, "html".to_string(), Some(attrs), false, Some(style));
+    // html_node.children.push(body_node);
 
     doc.set_root(html_node);
     doc

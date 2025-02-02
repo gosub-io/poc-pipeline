@@ -1,8 +1,8 @@
-use taffy::Dimension::Length;
 use crate::render_tree::{RenderNode, RenderTree};
 use taffy::prelude::*;
 use crate::document::node::NodeType;
 use crate::document::style::{StyleValue, Unit};
+use crate::layouter::boxmodel as BoxModel;
 use crate::layouter::text::measure_text_height;
 use crate::layouter::ViewportSize;
 
@@ -15,7 +15,10 @@ pub fn generate_taffy_tree(render_tree: &RenderTree, viewport: ViewportSize) -> 
     }
 
     // let size = taffy::geometry::Size::new(viewport.width as f32, viewport.height as f32);
-    tree.compute_layout(root_id.unwrap(), Size::MAX_CONTENT).unwrap();
+    tree.compute_layout(root_id.unwrap(), Size {
+        width: AvailableSpace::Definite(viewport.width as f32),
+        height: AvailableSpace::Definite(viewport.height as f32),
+    }).unwrap();
 
     (tree, root_id.unwrap())
 }
@@ -59,7 +62,7 @@ fn generate_node(tree: &mut TaffyTree<()>, render_tree: &RenderTree, render_node
             }
 
             // --- Margin ---
-            if let Some(margin_block_start) = data.get_style("margin-block-start") {
+            if let Some(margin_block_start) = data.get_style("margin-top") {
                 match margin_block_start {
                     StyleValue::Unit(value, unit) => {
                         match unit {
@@ -71,7 +74,7 @@ fn generate_node(tree: &mut TaffyTree<()>, render_tree: &RenderTree, render_node
                     _ => {}
                 }
             }
-            if let Some(margin_block_end) = data.get_style("margin-block-end") {
+            if let Some(margin_block_end) = data.get_style("margin-bottom") {
                 match margin_block_end {
                     StyleValue::Unit(value, unit) => {
                         match unit {
@@ -83,7 +86,7 @@ fn generate_node(tree: &mut TaffyTree<()>, render_tree: &RenderTree, render_node
                     _ => {}
                 }
             }
-            if let Some(margin_inline_start) = data.get_style("margin-inline-start") {
+            if let Some(margin_inline_start) = data.get_style("margin-left") {
                 match margin_inline_start {
                     StyleValue::Unit(value, unit) => {
                         match unit {
@@ -95,7 +98,7 @@ fn generate_node(tree: &mut TaffyTree<()>, render_tree: &RenderTree, render_node
                     _ => {}
                 }
             }
-            if let Some(margin_inline_end) = data.get_style("margin-inline-end") {
+            if let Some(margin_inline_end) = data.get_style("margin-right") {
                 match margin_inline_end {
                     StyleValue::Unit(value, unit) => {
                         match unit {
@@ -216,8 +219,6 @@ fn generate_node(tree: &mut TaffyTree<()>, render_tree: &RenderTree, render_node
         }
     }
 
-    dbg!(&style);
-
     if dom_node.children.is_empty() {
         match tree.new_leaf(style) {
             Ok(leaf_id) => return Some(leaf_id),
@@ -236,5 +237,35 @@ fn generate_node(tree: &mut TaffyTree<()>, render_tree: &RenderTree, render_node
     match tree.new_with_children(style, &children_ids) {
         Ok(node_id) => Some(node_id),
         Err(_) => None,
+    }
+}
+
+
+pub fn convert_to_boxmodel(layout: &Layout) -> BoxModel::BoxModel {
+    BoxModel::BoxModel {
+        margin_box: BoxModel::Rect {
+            x: layout.location.x as f64,
+            y: layout.location.y as f64,
+            width: layout.size.width as f64 + layout.margin.left as f64 + layout.margin.right as f64,
+            height: layout.size.height as f64 + layout.margin.top as f64 + layout.margin.bottom as f64,
+        },
+        padding: BoxModel::Edges {
+            top: layout.padding.top as f64,
+            right: layout.padding.right as f64,
+            bottom: layout.padding.bottom as f64,
+            left: layout.padding.left as f64,
+        },
+        border: BoxModel::Edges {
+            top: layout.border.top as f64,
+            right: layout.border.right as f64,
+            bottom: layout.border.bottom as f64,
+            left: layout.border.left as f64,
+        },
+        margin: BoxModel::Edges {
+            top: layout.margin.top as f64,
+            right: layout.margin.right as f64,
+            bottom: layout.margin.bottom as f64,
+            left: layout.margin.left as f64,
+        }
     }
 }

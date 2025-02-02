@@ -2,8 +2,9 @@ use ::taffy::{NodeId, TaffyTree};
 use crate::layouter::taffy::generate_taffy_tree;
 use crate::render_tree::RenderTree;
 
-mod taffy;
+pub(crate) mod taffy;
 mod text;
+mod boxmodel;
 
 pub(crate) struct ViewportSize {
     pub(crate) width: f64,

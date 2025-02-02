@@ -3,7 +3,7 @@ use std::rc::Rc;
 use gtk4::{Application, ApplicationWindow, DrawingArea, ScrolledWindow};
 use gtk4::cairo::Context;
 use gtk4::prelude::{ApplicationExt, ApplicationExtManual, DrawingAreaExtManual, GtkWindowExt, WidgetExt};
-use taffy::{NodeId as TaffyNodeId, Rect};
+use taffy::NodeId as TaffyNodeId;
 use render_tree::RenderTree;
 use crate::layouter::{generate_layout, LayoutTree, ViewportSize};
 
@@ -35,7 +35,7 @@ fn main() {
 
     // --------------------------------------------------------------------
     // Layout the render-tree into a layout-tree
-    let mut layout_tree = generate_layout(render_tree, ViewportSize { width: 800.0, height: 600.0 });
+    let mut layout_tree = generate_layout(render_tree, ViewportSize { width: 400.0, height: 300.0 });
     layout_tree.taffy_tree.print_tree(layout_tree.taffy_root_id);
 
     let layout_tree = Rc::new(RefCell::new(layout_tree));
@@ -54,6 +54,8 @@ fn main() {
     app.run();
 }
 
+const SCALE_FACTOR: f64 = 2.0;
+
 fn build_ui(app: &Application, layout_tree: Rc<RefCell<LayoutTree>>) {
     let window = ApplicationWindow::builder()
         .application(app)
@@ -67,7 +69,7 @@ fn build_ui(app: &Application, layout_tree: Rc<RefCell<LayoutTree>>) {
     let area = DrawingArea::new();
     area.set_vexpand(true);
     area.set_hexpand(true);
-    area.set_draw_func(move |_area, cr, width, height| {
+    area.set_draw_func(move |_area, cr, _width, _height| {
         let layout_tree = layout_tree_for_draw.borrow();
 
         // white background
@@ -77,62 +79,36 @@ fn build_ui(app: &Application, layout_tree: Rc<RefCell<LayoutTree>>) {
         fn draw_node(cr: &Context, taffy: &taffy::TaffyTree<()>, taffy_node_id: TaffyNodeId) {
             let layout_node = taffy.layout(taffy_node_id).unwrap();
 
-            let content = layout_node.content_box_size();
-            let padding = layout_node.padding;
-            let border = layout_node.border;
-            let margin = layout_node.margin;
+            let bm = layouter::taffy::convert_to_boxmodel(&layout_node);
+            dbg!(&bm);
+            dbg!(&bm.margin_box);
+            dbg!(&bm.border_box());
+            dbg!(&bm.padding_box());
+            dbg!(&bm.content_box());
 
-            let margin_rect = Rect::new(
-                layout_node.location.x - margin.left,
-                layout_node.location.y - margin.top,
-                content.width + margin.left + margin.right,
-                content.height + margin.top + margin.bottom,
-            );
+            // Draw margin
+            let m = bm.margin_box;
+            cr.set_source_rgb(243.0 / 255.0, 243.0 / 255.0, 173.0 / 255.0);
+            cr.rectangle(m.x, m.y, m.width, m.height);
+            _ = cr.fill();
 
-            let border_rect = Rect::new(
-                layout_node.location.x - margin.left - border.left,
-                layout_node.location.y - margin.top - border.top,
-                content.width + margin.left + margin.right + border.left + border.right,
-                content.height + margin.top + margin.bottom + border.top + border.bottom,
-            );
+            // Draw border
+            let b = bm.border_box();
+            cr.set_source_rgb(48.0 / 255.0, 12.0 / 255.0, 124.0 / 255.0);
+            cr.rectangle(b.x, b.y, b.width, b.height);
+            _ = cr.fill();
 
-            let padding_rect = Rect::new(
-                layout_node.location.x - margin.left - border.left - padding.left,
-                layout_node.location.y - margin.top - border.top - padding.top,
-                content.width + margin.left + margin.right + border.left + border.right + padding.left + padding.right,
-                content.height + margin.top + margin.bottom + border.top + border.bottom + padding.top + padding.bottom,
-            );
+            // Draw padding (blue)
+            cr.set_source_rgb(173.0 / 255.0, 173.0 / 255.0, 247.0 / 255.0);
+            let p = bm.padding_box();
+            cr.rectangle(p.x, p.y, p.width, p.height);
+            _ = cr.fill();
 
-            let content_rect = Rect::new(
-                layout_node.location.x - margin.left - border.left - padding.left,
-                layout_node.location.y - margin.top - border.top - padding.top,
-                content.width + padding.left + padding.right,
-                content.height + padding.top + padding.bottom,
-            );
-
-            // dbg!(content_rect);
-            // dbg!(padding_rect);
-            // dbg!(border_rect);
-            // dbg!(margin_rect);
-
-            // // Margin
-            // cr.set_source_rgb(0.0, 1.0, 1.0);
-            // cr.rectangle(
-            //     margin_rect.x as f64,
-            //     margin_rect.y as f64,
-            //     margin_rect.width as f64,
-            //     margin_rect.height as f64,
-            // );
-            // cr.fill();
-            //
-            // // Border
-            // cr.set_source_rgb(0.0, 0.0, 0.0);
-            // cr.rectangle(
-            //     border_rect.x as f64,
-            //     border_rect.y as f64,
-            //     border_rect.width as f64,
-            //     border_rect.height as f64,
-            // );
+            // Draw content (white fill with black stroke)
+            let c = bm.content_box();
+            cr.set_source_rgb(173.0 / 255.0, 244.0 / 255.0, 247.0 / 255.0);
+            cr.rectangle(c.x, c.y, c.width, c.height);
+            _ = cr.fill();
 
             for child_id in taffy.children(taffy_node_id).unwrap() {
                 draw_node(cr, taffy, child_id);
