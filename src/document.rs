@@ -90,8 +90,8 @@ pub(crate) fn create_document() -> Document {
     // --------------
 
     let mut style = StylePropertyList::new();
-    style.set_property("height", StyleValue::Unit(300.0, Unit::Px));
-    style.set_property("width", StyleValue::Unit(300.0, Unit::Px));
+    // style.set_property("height", StyleValue::Unit(300.0, Unit::Px));
+    // style.set_property("width", StyleValue::Unit(300.0, Unit::Px));
     // style.set_property("margin-block-end", StyleValue::Unit(0.67, Unit::Em));
     style.set_property("margin-top", StyleValue::Unit(25.0, Unit::Px));
     style.set_property("margin-left", StyleValue::Unit(25.0, Unit::Px));

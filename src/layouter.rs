@@ -22,13 +22,15 @@ pub(crate) struct LayoutTree {
 }
 
 pub fn generate_layout(render_tree: RenderTree, viewport: ViewportSize) -> LayoutTree {
-    // let (tree, root_id) = generate_taffy_tree(&render_tree, viewport);
-    // LayoutTree {
-    //     render_tree: render_tree,
-    //     taffy_tree: tree,
-    //     taffy_root_id: root_id,
-    // }
+    let (tree, root_id) = generate_taffy_tree(&render_tree, viewport);
 
+    LayoutTree {
+        render_tree: render_tree,
+        taffy_tree: tree,
+        taffy_root_id: root_id,
+    }
+
+        /*
     let mut tree: TaffyTree<()> = TaffyTree::new();
 
     let node1 = tree.new_leaf(
@@ -37,6 +39,7 @@ pub fn generate_layout(render_tree: RenderTree, viewport: ViewportSize) -> Layou
             size: Size { width: length(50.0), height: length(50.0) },
             margin: Rect { top: length(10.0), left: length(10.0), right: length(10.0), bottom: length(10.0),},
             padding: Rect { top: length(10.0), left: length(10.0), right: length(10.0), bottom: length(10.0),},
+            border: Rect { top: length(10.0), left: length(10.0), right: length(10.0), bottom: length(10.0),},
             display: Display::Block,
             ..Default::default()
         },
@@ -48,6 +51,7 @@ pub fn generate_layout(render_tree: RenderTree, viewport: ViewportSize) -> Layou
             size: Size { width: length(50.0), height: length(50.0) },
             // margin: Rect { top: length(10.0), left: length(10.0), right: length(10.0), bottom: length(10.0),},
             padding: Rect { top: length(10.0), left: length(10.0), right: length(10.0), bottom: length(10.0),},
+            border: Rect { top: length(10.0), left: length(10.0), right: length(10.0), bottom: length(10.0),},
             display: Display::Block,
             ..Default::default()
         },
@@ -59,6 +63,7 @@ pub fn generate_layout(render_tree: RenderTree, viewport: ViewportSize) -> Layou
             size: Size { width: length(50.0), height: length(50.0) },
             margin: Rect { top: length(10.0), left: length(10.0), right: length(10.0), bottom: length(10.0),},
             // padding: Rect { top: length(10.0), left: length(10.0), right: length(10.0), bottom: length(10.0),},
+            border: Rect { top: length(10.0), left: length(10.0), right: length(10.0), bottom: length(10.0),},
             display: Display::Block,
             ..Default::default()
         },
@@ -82,4 +87,5 @@ pub fn generate_layout(render_tree: RenderTree, viewport: ViewportSize) -> Layou
         taffy_tree: tree,
         taffy_root_id: root_node,
     }
+         */
 }

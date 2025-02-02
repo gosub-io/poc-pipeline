@@ -1,5 +1,4 @@
 use std::cell::RefCell;
-use std::collections::HashMap;
 use std::rc::Rc;
 use crate::document::node::{Node, NodeType, NodeId};
 
@@ -132,11 +131,11 @@ impl Document {
 
 #[cfg(test)]
 mod tests {
-    use crate::create_document;
+    use crate::document;
 
     #[test]
     fn test_walk_depth_first() {
-        let document = create_document();
+        let document = document::create_document();
 
         let mut s = String::new();
         let _ = document.print_tree(&mut s);

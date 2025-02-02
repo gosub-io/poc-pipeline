@@ -35,7 +35,7 @@ fn main() {
 
     // --------------------------------------------------------------------
     // Layout the render-tree into a layout-tree
-    let mut layout_tree = generate_layout(render_tree, ViewportSize { width: 400.0, height: 300.0 });
+    let mut layout_tree = generate_layout(render_tree, ViewportSize { width: 800.0, height: 600.0 });
     layout_tree.taffy_tree.print_tree(layout_tree.taffy_root_id);
 
     let layout_tree = Rc::new(RefCell::new(layout_tree));
@@ -74,15 +74,10 @@ fn build_ui(app: &Application, layout_tree: Rc<RefCell<LayoutTree>>) {
         cr.set_source_rgb(1.0, 1.0, 1.0);
         _ = cr.paint();
 
-        fn draw_node(cr: &Context, taffy: &taffy::TaffyTree<()>, taffy_node_id: TaffyNodeId) {
+        fn draw_node(cr: &Context, taffy: &taffy::TaffyTree<()>, taffy_node_id: TaffyNodeId, offset: (f32, f32)) {
             let layout_node = taffy.layout(taffy_node_id).unwrap();
 
-            let bm = layouter::taffy::convert_to_boxmodel(&layout_node);
-            // dbg!(&bm);
-            // dbg!(&bm.margin_box);
-            // dbg!(&bm.border_box());
-            // dbg!(&bm.padding_box());
-            // dbg!(&bm.content_box());
+            let bm = layouter::taffy::convert_to_boxmodel(&layout_node, offset);
 
             // Draw margin
             let m = bm.margin_box;
@@ -109,11 +104,11 @@ fn build_ui(app: &Application, layout_tree: Rc<RefCell<LayoutTree>>) {
             _ = cr.fill();
 
             for child_id in taffy.children(taffy_node_id).unwrap() {
-                draw_node(cr, taffy, child_id);
+                draw_node(cr, taffy, child_id, (offset.0 + layout_node.location.x, offset.1 + layout_node.location.y));
             }
         }
 
-        draw_node(cr, &layout_tree.taffy_tree, layout_tree.taffy_root_id);
+        draw_node(cr, &layout_tree.taffy_tree, layout_tree.taffy_root_id, (0.0, 0.0));
     });
 
     let scroll = ScrolledWindow::builder()
