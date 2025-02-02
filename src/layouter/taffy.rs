@@ -244,8 +244,8 @@ fn generate_node(tree: &mut TaffyTree<()>, render_tree: &RenderTree, render_node
 pub fn convert_to_boxmodel(layout: &Layout) -> BoxModel::BoxModel {
     BoxModel::BoxModel {
         margin_box: BoxModel::Rect {
-            x: layout.location.x as f64,
-            y: layout.location.y as f64,
+            x: layout.location.x as f64 - layout.margin.left as f64,
+            y: layout.location.y as f64 - layout.margin.top as f64,
             width: layout.size.width as f64 + layout.margin.left as f64 + layout.margin.right as f64,
             height: layout.size.height as f64 + layout.margin.top as f64 + layout.margin.bottom as f64,
         },

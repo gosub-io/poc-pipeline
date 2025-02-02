@@ -52,6 +52,12 @@ pub(crate) fn create_document() -> Document {
     style.set_property("font-size", StyleValue::Unit(48.0, Unit::Em));
     style.set_property("font-weight", StyleValue::FontWeight(FontWeight::Bold));
     style.set_property("margin-block-end", StyleValue::Unit(0.67, Unit::Em));
+
+    style.set_property("margin-bottom", StyleValue::Unit(10.0, Unit::Em));
+    style.set_property("margin-top", StyleValue::Unit(10.0, Unit::Px));
+    style.set_property("margin-left", StyleValue::Unit(10.0, Unit::Px));
+    style.set_property("margin-right", StyleValue::Unit(10.0, Unit::Px));
+
     style.set_property("padding-top", StyleValue::Unit(10.0, Unit::Px));
     style.set_property("padding-left", StyleValue::Unit(10.0, Unit::Px));
     style.set_property("padding-bottom", StyleValue::Unit(10.0, Unit::Px));
@@ -78,8 +84,8 @@ pub(crate) fn create_document() -> Document {
     // --------------
     let mut body_node = Node::new_element(&doc, "body".to_string(), None, false, None);
     body_node.children.push(h1_node);
-    // body_node.children.push(script_node);
-    // body_node.children.push(p_node);
+    body_node.children.push(script_node);
+    body_node.children.push(p_node);
 
     // --------------
 
@@ -103,7 +109,7 @@ pub(crate) fn create_document() -> Document {
     let mut attrs = AttrMap::new();
     attrs.set("lang", "en");
     let mut html_node = Node::new_element(&doc, "html".to_string(), Some(attrs), false, Some(style));
-    // html_node.children.push(body_node);
+    html_node.children.push(body_node);
 
     doc.set_root(html_node);
     doc

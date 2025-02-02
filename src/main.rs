@@ -54,8 +54,6 @@ fn main() {
     app.run();
 }
 
-const SCALE_FACTOR: f64 = 2.0;
-
 fn build_ui(app: &Application, layout_tree: Rc<RefCell<LayoutTree>>) {
     let window = ApplicationWindow::builder()
         .application(app)
@@ -74,17 +72,17 @@ fn build_ui(app: &Application, layout_tree: Rc<RefCell<LayoutTree>>) {
 
         // white background
         cr.set_source_rgb(1.0, 1.0, 1.0);
-        cr.paint();
+        _ = cr.paint();
 
         fn draw_node(cr: &Context, taffy: &taffy::TaffyTree<()>, taffy_node_id: TaffyNodeId) {
             let layout_node = taffy.layout(taffy_node_id).unwrap();
 
             let bm = layouter::taffy::convert_to_boxmodel(&layout_node);
-            dbg!(&bm);
-            dbg!(&bm.margin_box);
-            dbg!(&bm.border_box());
-            dbg!(&bm.padding_box());
-            dbg!(&bm.content_box());
+            // dbg!(&bm);
+            // dbg!(&bm.margin_box);
+            // dbg!(&bm.border_box());
+            // dbg!(&bm.padding_box());
+            // dbg!(&bm.content_box());
 
             // Draw margin
             let m = bm.margin_box;
