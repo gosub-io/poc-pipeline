@@ -77,6 +77,8 @@ fn build_ui(app: &Application, layout_tree: Rc<RefCell<LayoutTree>>) {
         fn draw_node(cr: &Context, taffy: &taffy::TaffyTree<()>, taffy_node_id: TaffyNodeId, offset: (f32, f32)) {
             let layout_node = taffy.layout(taffy_node_id).unwrap();
 
+            dbg!(&layout_node);
+
             let bm = layouter::taffy::convert_to_boxmodel(&layout_node, offset);
 
             // Draw margin
@@ -84,6 +86,9 @@ fn build_ui(app: &Application, layout_tree: Rc<RefCell<LayoutTree>>) {
             cr.set_source_rgb(243.0 / 255.0, 243.0 / 255.0, 173.0 / 255.0);
             cr.rectangle(m.x, m.y, m.width, m.height);
             _ = cr.fill();
+            cr.rectangle(m.x, m.y, m.width, m.height);
+            cr.set_source_rgb(1.0, 0.0, 0.0);
+            _ = cr.stroke();
 
             // Draw border
             let b = bm.border_box();
@@ -102,6 +107,7 @@ fn build_ui(app: &Application, layout_tree: Rc<RefCell<LayoutTree>>) {
             cr.set_source_rgb(173.0 / 255.0, 244.0 / 255.0, 247.0 / 255.0);
             cr.rectangle(c.x, c.y, c.width, c.height);
             _ = cr.fill();
+
 
             for child_id in taffy.children(taffy_node_id).unwrap() {
                 draw_node(cr, taffy, child_id, (offset.0 + layout_node.location.x, offset.1 + layout_node.location.y));

@@ -15,6 +15,10 @@ pub(crate) fn create_document() -> Document {
     let mut style = StylePropertyList::new();
     style.set_property("width", StyleValue::Unit(450.0, Unit::Px));
     style.set_property("height", StyleValue::Unit(300.0, Unit::Px));
+    style.set_property("border-left-width", StyleValue::Unit(4.0, Unit::Px));
+    style.set_property("border-right-width", StyleValue::Unit(4.0, Unit::Px));
+    style.set_property("border-top-width", StyleValue::Unit(4.0, Unit::Px));
+    style.set_property("border-bottom-width", StyleValue::Unit(4.0, Unit::Px));
 
     let mut attrs = AttrMap::new();
     attrs.set("src", "image.jpg");
@@ -53,7 +57,7 @@ pub(crate) fn create_document() -> Document {
     style.set_property("font-weight", StyleValue::FontWeight(FontWeight::Bold));
     style.set_property("margin-block-end", StyleValue::Unit(0.67, Unit::Em));
 
-    style.set_property("margin-bottom", StyleValue::Unit(10.0, Unit::Em));
+    style.set_property("margin-bottom", StyleValue::Unit(10.0, Unit::Px));
     style.set_property("margin-top", StyleValue::Unit(10.0, Unit::Px));
     style.set_property("margin-left", StyleValue::Unit(10.0, Unit::Px));
     style.set_property("margin-right", StyleValue::Unit(10.0, Unit::Px));

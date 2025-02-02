@@ -10,17 +10,30 @@ pub fn generate_taffy_tree(render_tree: &RenderTree, viewport: ViewportSize) -> 
     let mut tree: TaffyTree<()> = TaffyTree::new();
 
     let root_id = generate_node(&mut tree, &render_tree, &render_tree.root);
-    if root_id.is_none() {
+    let Some(root_id) = root_id else {
         panic!("Failed to generate root node render tree");
-    }
+    };
+
+    let new_root_id = tree.new_with_children(
+        Style {
+            margin: Rect {
+                top: LengthPercentageAuto::Length(25.0),
+                right: LengthPercentageAuto::Length(0.0),
+                bottom: LengthPercentageAuto::Length(0.0),
+                left: LengthPercentageAuto::Length(25.0),
+            },
+            ..Default::default()
+        },
+        &[root_id],
+    ).unwrap();
 
     // let size = taffy::geometry::Size::new(viewport.width as f32, viewport.height as f32);
-    tree.compute_layout(root_id.unwrap(), Size {
+    tree.compute_layout(new_root_id, Size {
         width: AvailableSpace::Definite(viewport.width as f32),
         height: AvailableSpace::Definite(viewport.height as f32),
     }).unwrap();
 
-    (tree, root_id.unwrap())
+    (tree, new_root_id)
 }
 
 fn generate_node(tree: &mut TaffyTree<()>, render_tree: &RenderTree, render_node: &RenderNode) -> Option<NodeId> {
