@@ -2,6 +2,7 @@ use render_tree::RenderTree;
 use crate::document::document::Document;
 use crate::document::node::{AttrMap, Node};
 use crate::document::style::{Color, Display, StylePropertyList, StyleValue, Unit, FontWeight};
+use crate::layouter::{Layouter, ViewportSize};
 
 #[allow(unused)]
 mod document;
@@ -28,8 +29,8 @@ fn main() {
     println!("{:.2}% of the dom elements removed", (1.0 - (render_tree_element_count as f64 / doc_element_count as f64)) * 100.0);
 
     // --------------------------------------------------------------------
-    let mut layouter = layouter::Layouter::new(render_tree);
-    layouter.generate(layouter::Size { width: 800.0, height: 600.0 });
+    let mut layouter = Layouter::new(render_tree);
+    layouter.generate(ViewportSize { width: 800.0, height: 600.0 });
 }
 
 
