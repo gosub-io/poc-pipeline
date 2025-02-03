@@ -15,38 +15,50 @@ pub(crate) struct ViewportSize {
     pub(crate) height: f64,
 }
 
-#[derive(Debug)]
+pub type LayoutElementId = usize;
+
+#[derive(Debug, Clone)]
 pub struct LayoutElementNode {
+    pub id: LayoutElementId,
     // Id of the node in the DOM, contains the data, like element name, attributes, etc.
     pub dom_node_id: DomNodeId,
     // Id of the node in the layout tree. Contains all layout information
     pub taffy_node_id: TaffyNodeId,
     // Children of this node
-    pub children: Vec<LayoutElementNode>,
+    pub children: Vec<LayoutElementId>,
     // Generated boxmodel for this node
     pub box_model: BoxModel,
 }
 
-pub(crate) struct LayoutTree {
+
+#[derive(Debug, Clone)]
+pub struct TaffyStruct {
+    pub tree: TaffyTree,
+    pub root_id: TaffyNodeId,
+}
+
+#[derive(Clone)]
+pub struct LayoutTree {
     // Wrapped render tree
-    render_tree: RenderTree,
-    /// Generated layout tree
-    pub taffy_tree: TaffyTree,
-    /// Root Taffy ID of the element in the tree
-    pub taffy_root_id: TaffyNodeId,
-    /// List of all elements in the layout tree
-    pub root_layout_element: LayoutElementNode,
-    // Mapping of node IDs between the Taffy and DOM trees
-    pub node_mapping: HashMap<TaffyNodeId, DomNodeId>,
+    pub render_tree: RenderTree,
+    // Wrapped taffy tree
+    pub taffy: TaffyStruct,
+
+    pub arena : HashMap<LayoutElementId, LayoutElementNode>,
+    pub root_id: LayoutElementId,
+}
+
+impl LayoutTree {
+    pub fn get_node_by_id(&self, node_id: LayoutElementId) -> Option<&LayoutElementNode> {
+        self.arena.get(&node_id)
+    }
 }
 
 impl std::fmt::Debug for LayoutTree {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("LayoutTree")
-            // .field("taffy_tree", &self.taffy_tree)
-            .field("taffy_root_id", &self.taffy_root_id)
-            .field("root_layout_element", &self.root_layout_element)
-            .field("node_mapping", &self.node_mapping)
+            .field("arena", &self.arena)
+            .field("root_id", &self.root_id)
             .finish()
     }
 }

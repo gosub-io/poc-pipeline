@@ -3,7 +3,7 @@ use crate::render_tree::{RenderNode, RenderTree};
 use taffy::prelude::*;
 use crate::document::node::{NodeId as RenderNodeId, NodeType};
 use crate::document::style::{StyleValue, Unit};
-use crate::layouter::{boxmodel as BoxModel, LayoutElementNode, LayoutTree};
+use crate::layouter::{boxmodel as BoxModel, LayoutElementNode, LayoutTree, TaffyStruct};
 use crate::layouter::text::measure_text_height;
 use crate::layouter::ViewportSize;
 
@@ -37,10 +37,12 @@ pub fn generate_with_taffy(render_tree: RenderTree, viewport: ViewportSize) -> L
     /// Return layout tree with all information
     LayoutTree {
         render_tree,
-        taffy_tree: tree,
-        taffy_root_id: root_id,
-        root_layout_element: layout_element_node,
-        node_mapping,
+        taffy: TaffyStruct {
+            tree,
+            root_id,
+        },
+        arena: HashMap::new(),
+        root_id,
     }
 }
 
@@ -261,6 +263,7 @@ fn generate_node(
             Ok(leaf_id) => {
                 node_mapping.insert(leaf_id, render_node.node_id);
                 let el = LayoutElementNode {
+                    id: 0,
                     dom_node_id: dom_node.node_id,
                     taffy_node_id: leaf_id,
                     box_model: BoxModel::BoxModel::ZERO,
@@ -288,6 +291,7 @@ fn generate_node(
         Ok(node_id) => {
             node_mapping.insert(node_id, render_node.node_id);
             let el = LayoutElementNode {
+                id: 0,
                 dom_node_id: dom_node.node_id,
                 taffy_node_id: node_id,
                 box_model: BoxModel::BoxModel::ZERO,

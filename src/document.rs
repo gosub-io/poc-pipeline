@@ -24,7 +24,7 @@ pub(crate) fn create_document() -> Document {
     attrs.set("src", "image.jpg");
     attrs.set("alt", "image");
 
-    let img_node = Node::new_element(&doc, "img".to_string(), Some(attrs), true, Some(style));
+    let img_node_id = doc.new_element("img", Some(attrs), true, Some(style));
 
     // --------------
     let mut style = StylePropertyList::new();
@@ -32,8 +32,9 @@ pub(crate) fn create_document() -> Document {
     style.set_property("display", StyleValue::None);
     style.set_property("font-weight", StyleValue::FontWeight(FontWeight::Bolder));
 
-    let mut strong_node = Node::new_element(&doc, "strong".to_string(), None, false, Some(style));
-    strong_node.children.push(Node::new_text(&doc, "strong".to_string()));
+    let strong_node_id = doc.new_element("strong", None, false, Some(style));
+    let strong_text_node_id = doc.new_text("strong");
+    doc.add_child(strong_node_id, strong_text_node_id);
 
     // --------------
     let mut style = StylePropertyList::new();
@@ -44,11 +45,10 @@ pub(crate) fn create_document() -> Document {
     let mut attrs = AttrMap::new();
     attrs.set("class", "paragraph");
 
-    let mut p_node = Node::new_element(&doc, "p".to_string(), Some(attrs), false, None);
-    p_node.children.push(Node::new_text(&doc, "paragraph".to_string()));
-    p_node.children.push(strong_node);
-    p_node.children.push(img_node);
-
+    let p_node_id = doc.new_element("p", Some(attrs), false, None);
+    let p_text_node_id = doc.new_text("paragraph");
+    doc.add_child(p_node_id, strong_node_id);
+    doc.add_child(p_node_id, img_node_id);
 
     // --------------
     let mut style = StylePropertyList::new();
@@ -75,24 +75,24 @@ pub(crate) fn create_document() -> Document {
     attrs.set("class", "title");
     attrs.set("data-alpine", "x-wrap");
 
-    let mut h1_node = Node::new_element(&doc, "h1".to_string(), Some(attrs.clone()), false, Some(style.clone()));
-    h1_node.children.push(Node::new_text(&doc, "header".to_string()));
+    let h1_node_id = doc.new_element("h1", Some(attrs.clone()), false, Some(style.clone()));
+    let h1_text_node_id = doc.new_text("header");
+    doc.add_child(h1_node_id, h1_text_node_id);
 
     // --------------
     let mut attrs = AttrMap::new();
     attrs.set("src", "script.js");
     attrs.set("type", "text/javascript");
     attrs.set("async", "true");
-    let script_node = Node::new_element(&doc, "script".to_string(), Some(attrs), true, None);
+    let script_node_id = doc.new_element("script", Some(attrs), true, None);
 
     // --------------
-    let mut body_node = Node::new_element(&doc, "body".to_string(), None, false, None);
-    body_node.children.push(h1_node);
-    body_node.children.push(script_node);
-    body_node.children.push(p_node);
+    let body_node_id = doc.new_element("body", None, false, None);
+    doc.add_child(body_node_id, h1_node_id);
+    doc.add_child(body_node_id, script_node_id);
+    doc.add_child(body_node_id, p_node_id);
 
     // --------------
-
     let mut style = StylePropertyList::new();
     // style.set_property("height", StyleValue::Unit(300.0, Unit::Px));
     // style.set_property("width", StyleValue::Unit(300.0, Unit::Px));
@@ -112,9 +112,9 @@ pub(crate) fn create_document() -> Document {
 
     let mut attrs = AttrMap::new();
     attrs.set("lang", "en");
-    let mut html_node = Node::new_element(&doc, "html".to_string(), Some(attrs), false, Some(style));
-    html_node.children.push(body_node);
+    let html_node_id = doc.new_element("html", Some(attrs), false, Some(style));
+    doc.add_child(html_node_id, body_node_id);
 
-    doc.set_root(html_node);
+    doc.set_root(html_node_id);
     doc
 }

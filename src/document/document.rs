@@ -1,43 +1,49 @@
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::rc::Rc;
-use crate::document::node::{Node, NodeType, NodeId};
+use crate::document::node::{Node, NodeType, NodeId, AttrMap};
+use crate::document::style::StylePropertyList;
 
+#[derive(Clone)]
 pub struct Document {
-    pub root: Option<Node>,
+    pub arena: HashMap<NodeId, Node>,
+    pub root_id: Option<NodeId>,
     pub next_node_id: Rc<RefCell<usize>>,
 }
 
 impl Document {
 
-    pub fn get_node_by_id(&self, node_id: NodeId) -> Option<&Node> {
-        fn get_node_by_id_helper(node: &Node, node_id: NodeId) -> Option<&Node> {
-            if node.node_id == node_id {
-                return Some(node);
-            }
-
-            for child in &node.children {
-                let result = get_node_by_id_helper(child, node_id);
-                if result.is_some() {
-                    return result;
-                }
-            }
-
-            None
-        }
-
-        match &self.root {
-            None => None,
-            Some(root) => get_node_by_id_helper(root, node_id),
-        }
+    pub fn new_element(&mut self, tag_name: &str, attributes: Option<AttrMap>, self_closing: bool, style: Option<StylePropertyList>) -> NodeId {
+        let node = Node::new_element(self, tag_name.to_string(), attributes, self_closing, style);
+        let node_id = node.node_id.clone();
+        self.arena.insert(node_id.clone(), node);
+        node_id
     }
 
-    pub fn set_root(&mut self, root: Node) {
-        self.root = Some(root);
+    pub fn new_text(&mut self, data: &str) -> NodeId {
+        let node = Node::new_text(self, data.to_string());
+        let node_id = node.node_id.clone();
+        self.arena.insert(node_id.clone(), node);
+        node_id
+    }
+
+    pub fn add_child(&mut self, parent_id: NodeId, child_id: NodeId) {
+        let parent = self.arena.get_mut(&parent_id).unwrap();
+        parent.children.push(child_id);
+    }
+
+    pub fn get_node_by_id(&self, node_id: NodeId) -> Option<&Node> {
+        self.arena.get(&node_id)
+    }
+
+    pub fn set_root(&mut self, root_id: NodeId) {
+        self.root_id = Some(root_id);
     }
 
     pub fn new() -> Document {
         Document {
-            root: None,
+            arena: HashMap::new(),
+            root_id: None,
             next_node_id: Rc::new(RefCell::new(1)),
         }
     }
@@ -59,46 +65,40 @@ pub enum NodeVisit {
 
 impl Document {
     pub fn count_elements(&self) -> usize {
-        fn count_elements_node(node: &Node) -> usize {
-            let mut count = 1;
-            for child in &node.children {
-                count += count_elements_node(child);
-            }
-            count
-        }
-
-        match &self.root {
-            None => 0,
-            Some(root) => count_elements_node(root),
-        }
+        self.arena.len()
     }
 
-    pub fn walk_depth_first<F>(&self, node: &Node, cb: &mut F)
+    pub fn walk_depth_first<F>(&self, node_id: NodeId, cb: &mut F)
     where
-        F: FnMut(&Node, usize, NodeVisit),
+        F: FnMut(NodeId, usize, NodeVisit),
     {
-        self.walk_depth_first_helper(node, 0, cb);
+        self.walk_depth_first_helper(node_id, 0, cb);
     }
 
-    fn walk_depth_first_helper<F>(&self, node: &Node, level: usize, cb: &mut F)
+    fn walk_depth_first_helper<F>(&self, node_id: NodeId, level: usize, cb: &mut F)
     where
-        F: FnMut(&Node, usize, NodeVisit),
+        F: FnMut(NodeId, usize, NodeVisit),
     {
-        cb(node, level, NodeVisit::Enter);
-        for child in &node.children {
-            self.walk_depth_first_helper(child, level + 1, cb);
+        cb(node_id, level, NodeVisit::Enter);
+        let node = self.get_node_by_id(node_id).unwrap();
+        for child_id in &node.children {
+            self.walk_depth_first_helper(*child_id, level + 1, cb);
         }
-        cb(node, level, NodeVisit::Exit);
+        cb(node_id, level, NodeVisit::Exit);
     }
 
     pub fn print_tree(&self, writer: &mut dyn std::fmt::Write) -> Result<(), std::fmt::Error> {
-        if self.root.is_none() {
+        if self.root_id.is_none() {
             return Ok(());
         }
 
         self.walk_depth_first(
-            &self.root.as_ref().unwrap(),
-            &mut |node, level, visit_mode| {
+            self.root_id.unwrap(),
+            &mut |node_id, level, visit_mode| {
+                let Some(node) = self.get_node_by_id(node_id) else {
+                    return;
+                };
+
                 let indent = " ".repeat(level * 4);
                 match visit_mode {
                     NodeVisit::Enter => {

@@ -1,52 +1,58 @@
+use std::collections::HashMap;
 use crate::document::document::Document;
 use crate::document::node::{Node, NodeType, NodeId};
 use crate::document::style::StyleValue;
 
+type RenderNodeId = usize;
+
+#[derive(Clone)]
 pub struct RenderNode {
-    pub node_id: NodeId,
-    pub children: Vec<RenderNode>,
+    pub node_id: RenderNodeId,
+    pub children: Vec<RenderNodeId>,
 }
+
 
 /// A RenderTree holds both the DOM and the render tree. This tree holds all the visible nodes in
 /// the DOM.
+#[derive(Clone)]
 pub struct RenderTree {
     pub doc: Document,
-    pub root: RenderNode,
+    pub arena: HashMap<RenderNodeId, RenderNode>,
+    pub root_id: Option<RenderNodeId>,
 }
 
 impl std::fmt::Debug for RenderTree {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("RenderTree")
-            // .field("doc", &self.doc)
-            // .field("root", &self.root)
+            // .field("arena", &self.arena)
+            .field("root_id", &self.root_id)
             .finish()
     }
 }
 
 impl RenderTree {
-    pub(crate) fn count_elements(&self) -> usize {
-        fn count_elements_node(node: &RenderNode) -> usize {
-            let mut count = 1;
-            for child in &node.children {
-                count += count_elements_node(child);
-            }
-            count
+    pub fn count_elements(&self) -> usize {
+        self.arena.len()
+    }
+
+    pub fn print(&self) {
+        match self.root_id {
+            Some(root_id) => self.print_node(root_id, 0),
+            None => println!("No root node"),
         }
-
-        count_elements_node(&self.root)
-    }
-}
-
-impl RenderTree {
-    pub(crate) fn print(&self) {
-        self.print_node(&self.root, 0);
     }
 
-    fn print_node(&self, node: &RenderNode, level: usize) {
+    pub fn get_node_by_id(&self, node_id: RenderNodeId) -> Option<&RenderNode> {
+        self.arena.get(&node_id)
+    }
+
+    fn print_node(&self, node_id: RenderNodeId, level: usize) {
+        let node = self.get_node_by_id(node_id).unwrap();
+
         let indent = " ".repeat(level * 4);
         println!("{}{}", indent, node.node_id);
-        for child in &node.children {
-            self.print_node(child, level + 1);
+        for child_id in &node.children {
+            self.print_node(*child_id, level + 1);
         }
     }
 }
@@ -57,18 +63,19 @@ impl RenderTree {
     pub(crate) fn new(doc: Document) -> Self {
         RenderTree {
             doc,
-            root: RenderNode { node_id: NodeId::from(0), children: vec![] },
+            arena: HashMap::new(),
+            root_id: None,
         }
     }
 
     pub fn parse(&mut self) {
-        if self.doc.root.is_none() {
+        let Some(root_id) = self.doc.root_id else {
             panic!("Document has no root node");
-        }
+        };
 
         let doc = &self.doc;
-        match self.build_rendertree(&doc.root.as_ref().unwrap()) {
-            Some(render_node) => self.root = render_node,
+        match self.build_rendertree(root_id) {
+            Some(render_node_id) => self.root_id = Some(render_node_id),
             None => panic!("Failed to build rendertree"),
         }
     }
@@ -98,22 +105,30 @@ impl RenderTree {
         }
     }
 
-    fn build_rendertree(&self, node: &Node) -> Option<RenderNode> {
+    fn build_rendertree(&mut self, node_id: NodeId) -> Option<RenderNodeId> {
+        let Some(node) = self.doc.get_node_by_id(node_id) else {
+            return None;
+        };
+
         if !self.is_visible(node) {
             return None;
         }
 
         let mut render_node = RenderNode {
-            node_id: node.node_id,
+            node_id: RenderNodeId::from(node_id),
             children: Vec::new(),
         };
 
-        for child in &node.children {
-            if let Some(render_child) = self.build_rendertree(child) {
+        let children = node.children.clone();
+        for child_id in children {
+            if let Some(render_child) = self.build_rendertree(child_id) {
                 render_node.children.push(render_child);
             }
         }
 
-        Some(render_node)
+        let render_node_id = render_node.node_id;
+        self.arena.insert(render_node_id, render_node);
+
+        Some(render_node_id)
     }
 }

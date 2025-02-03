@@ -43,6 +43,7 @@ impl AttrMap {
 }
 
 
+#[derive(Clone)]
 pub struct ElementData {
     /// Element name (ie: P, DIV, IMG etc)
     pub tag_name: String,
@@ -83,6 +84,7 @@ impl ElementData {
     }
 }
 
+#[derive(Clone)]
 pub enum NodeType {
     Text(String),
     Element(ElementData),
@@ -109,10 +111,10 @@ impl From<NodeId> for usize {
     }
 }
 
-
+#[derive(Clone)]
 pub struct Node {
     pub node_id: NodeId,
-    pub children: Vec<Node>,
+    pub children: Vec<NodeId>,
     pub node_type: NodeType,
 }
 
