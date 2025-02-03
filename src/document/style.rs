@@ -41,6 +41,7 @@ pub enum StyleValue {
     FontWeight(FontWeight),
 }
 
+#[derive(Debug, Clone)]
 pub struct StylePropertyList {
     pub properties: HashMap<String, StyleValue>,
 }

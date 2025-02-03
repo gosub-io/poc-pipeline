@@ -13,6 +13,7 @@ mod document;
 mod render_tree;
 #[allow(unused)]
 mod layouter;
+mod layering;
 
 fn main() {
     // --------------------------------------------------------------------
@@ -37,6 +38,15 @@ fn main() {
     // Layout the render-tree into a layout-tree
     let mut layout_tree = generate_layout(render_tree, ViewportSize { width: 800.0, height: 600.0 });
     layout_tree.taffy_tree.print_tree(layout_tree.taffy_root_id);
+
+
+    // let a = layout_tree.taffy_tree.layout(layout_tree.taffy_root_id).unwrap();
+    // dbg!(&a);
+    // let binding = layout_tree.taffy_tree.children(layout_tree.taffy_root_id).unwrap();
+    // let n = binding.get(0).unwrap();
+    // let a = layout_tree.taffy_tree.layout(*n).unwrap();
+    // dbg!(&a);
+
 
     let layout_tree = Rc::new(RefCell::new(layout_tree));
 
@@ -77,18 +87,17 @@ fn build_ui(app: &Application, layout_tree: Rc<RefCell<LayoutTree>>) {
         fn draw_node(cr: &Context, taffy: &taffy::TaffyTree<()>, taffy_node_id: TaffyNodeId, offset: (f32, f32)) {
             let layout_node = taffy.layout(taffy_node_id).unwrap();
 
-            dbg!(&layout_node);
-
-            let bm = layouter::taffy::convert_to_boxmodel(&layout_node, offset);
+            let bm = layouter::taffy::to_boxmodel(&layout_node, offset);
+            dbg!(&bm.margin_box);
+            // dbg!(&bm.border_box());
+            // dbg!(&bm.padding_box());
+            // dbg!(&bm.content_box());
 
             // Draw margin
             let m = bm.margin_box;
             cr.set_source_rgb(243.0 / 255.0, 243.0 / 255.0, 173.0 / 255.0);
             cr.rectangle(m.x, m.y, m.width, m.height);
             _ = cr.fill();
-            cr.rectangle(m.x, m.y, m.width, m.height);
-            cr.set_source_rgb(1.0, 0.0, 0.0);
-            _ = cr.stroke();
 
             // Draw border
             let b = bm.border_box();
@@ -108,9 +117,12 @@ fn build_ui(app: &Application, layout_tree: Rc<RefCell<LayoutTree>>) {
             cr.rectangle(c.x, c.y, c.width, c.height);
             _ = cr.fill();
 
+            cr.rectangle(m.x, m.y, m.width, m.height);
+            cr.set_source_rgb(1.0, 0.0, 0.0);
+            _ = cr.stroke();
 
             for child_id in taffy.children(taffy_node_id).unwrap() {
-                draw_node(cr, taffy, child_id, (offset.0 + layout_node.location.x, offset.1 + layout_node.location.y));
+                draw_node(cr, taffy, child_id, (offset.0 + layout_node.location.x + layout_node.margin.left, offset.1 + layout_node.location.y + layout_node.margin.top));
             }
         }
 

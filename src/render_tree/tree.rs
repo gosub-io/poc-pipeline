@@ -1,4 +1,3 @@
-
 use crate::document::document::Document;
 use crate::document::node::{Node, NodeType, NodeId};
 use crate::document::style::StyleValue;
@@ -8,11 +7,20 @@ pub struct RenderNode {
     pub children: Vec<RenderNode>,
 }
 
-/// A rendertree holds both the DOM and the render tree. This tree holds all the visible nodes in
+/// A RenderTree holds both the DOM and the render tree. This tree holds all the visible nodes in
 /// the DOM.
 pub struct RenderTree {
     pub doc: Document,
     pub root: RenderNode,
+}
+
+impl std::fmt::Debug for RenderTree {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("RenderTree")
+            // .field("doc", &self.doc)
+            // .field("root", &self.root)
+            .finish()
+    }
 }
 
 impl RenderTree {

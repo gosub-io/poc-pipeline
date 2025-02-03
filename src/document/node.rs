@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use crate::document::document::Document;
 use crate::document::style::{StylePropertyList, StyleValue};
 
+#[derive(Debug, Clone)]
 pub struct AttrMap {
     attributes: HashMap<String, String>,
 }
