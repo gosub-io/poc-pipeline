@@ -24,7 +24,7 @@ pub struct LayoutElementNode {
     // Children of this node
     pub children: Vec<LayoutElementNode>,
     // Generated boxmodel for this node
-    pub box_model: Option<BoxModel>,
+    pub box_model: BoxModel,
 }
 
 pub(crate) struct LayoutTree {

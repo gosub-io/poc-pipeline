@@ -25,6 +25,13 @@ pub struct BoxModel {
 }
 
 impl BoxModel {
+    pub const ZERO: Self = Self {
+        margin_box: Rect { x: 0.0, y: 0.0, width: 0.0, height: 0.0 },
+        margin: Edges { top: 0.0, right: 0.0, bottom: 0.0, left: 0.0 },
+        border: Edges { top: 0.0, right: 0.0, bottom: 0.0, left: 0.0 },
+        padding: Edges { top: 0.0, right: 0.0, bottom: 0.0, left: 0.0 },
+    };
+
     pub fn border_box(&self) -> Rect {
         Rect {
             x: self.margin_box.x + self.margin.left,

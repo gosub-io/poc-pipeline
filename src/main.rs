@@ -3,9 +3,8 @@ use std::rc::Rc;
 use gtk4::{Application, ApplicationWindow, DrawingArea, ScrolledWindow};
 use gtk4::cairo::Context;
 use gtk4::prelude::{ApplicationExt, ApplicationExtManual, DrawingAreaExtManual, GtkWindowExt, WidgetExt};
-use taffy::NodeId as TaffyNodeId;
 use render_tree::RenderTree;
-use crate::layouter::{generate_layout, LayoutTree, ViewportSize};
+use crate::layouter::{generate_layout, LayoutElementNode, LayoutTree, ViewportSize};
 
 #[allow(unused)]
 mod document;
@@ -38,15 +37,6 @@ fn main() {
     // Layout the render-tree into a layout-tree
     let mut layout_tree = generate_layout(render_tree, ViewportSize { width: 800.0, height: 600.0 });
     layout_tree.taffy_tree.print_tree(layout_tree.taffy_root_id);
-
-
-    // let a = layout_tree.taffy_tree.layout(layout_tree.taffy_root_id).unwrap();
-    // dbg!(&a);
-    // let binding = layout_tree.taffy_tree.children(layout_tree.taffy_root_id).unwrap();
-    // let n = binding.get(0).unwrap();
-    // let a = layout_tree.taffy_tree.layout(*n).unwrap();
-    // dbg!(&a);
-
 
     let layout_tree = Rc::new(RefCell::new(layout_tree));
 
@@ -84,35 +74,28 @@ fn build_ui(app: &Application, layout_tree: Rc<RefCell<LayoutTree>>) {
         cr.set_source_rgb(1.0, 1.0, 1.0);
         _ = cr.paint();
 
-        fn draw_node(cr: &Context, taffy: &taffy::TaffyTree<()>, taffy_node_id: TaffyNodeId, offset: (f32, f32)) {
-            let layout_node = taffy.layout(taffy_node_id).unwrap();
-
-            let bm = layouter::taffy::to_boxmodel(&layout_node, offset);
-            dbg!(&bm.margin_box);
-            // dbg!(&bm.border_box());
-            // dbg!(&bm.padding_box());
-            // dbg!(&bm.content_box());
+        fn draw_node(cr: &Context, el: &LayoutElementNode) {
 
             // Draw margin
-            let m = bm.margin_box;
+            let m = el.box_model.margin_box;
             cr.set_source_rgb(243.0 / 255.0, 243.0 / 255.0, 173.0 / 255.0);
             cr.rectangle(m.x, m.y, m.width, m.height);
             _ = cr.fill();
 
             // Draw border
-            let b = bm.border_box();
+            let b = el.box_model.border_box();
             cr.set_source_rgb(48.0 / 255.0, 12.0 / 255.0, 124.0 / 255.0);
             cr.rectangle(b.x, b.y, b.width, b.height);
             _ = cr.fill();
 
             // Draw padding (blue)
             cr.set_source_rgb(173.0 / 255.0, 173.0 / 255.0, 247.0 / 255.0);
-            let p = bm.padding_box();
+            let p = el.box_model.padding_box();
             cr.rectangle(p.x, p.y, p.width, p.height);
             _ = cr.fill();
 
             // Draw content (white fill with black stroke)
-            let c = bm.content_box();
+            let c = el.box_model.content_box();
             cr.set_source_rgb(173.0 / 255.0, 244.0 / 255.0, 247.0 / 255.0);
             cr.rectangle(c.x, c.y, c.width, c.height);
             _ = cr.fill();
@@ -121,12 +104,13 @@ fn build_ui(app: &Application, layout_tree: Rc<RefCell<LayoutTree>>) {
             cr.set_source_rgb(1.0, 0.0, 0.0);
             _ = cr.stroke();
 
-            for child_id in taffy.children(taffy_node_id).unwrap() {
-                draw_node(cr, taffy, child_id, (offset.0 + layout_node.location.x + layout_node.margin.left, offset.1 + layout_node.location.y + layout_node.margin.top));
+            // Draw its children
+            for el in &el.children {
+                draw_node(cr, el);
             }
         }
 
-        draw_node(cr, &layout_tree.taffy_tree, layout_tree.taffy_root_id, (0.0, 0.0));
+        draw_node(cr, &layout_tree.root_layout_element);
     });
 
     let scroll = ScrolledWindow::builder()

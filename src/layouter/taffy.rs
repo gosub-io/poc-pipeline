@@ -23,7 +23,7 @@ pub fn generate_with_taffy(render_tree: RenderTree, viewport: ViewportSize) -> L
 
     fn generate_boxmodel(tree: &TaffyTree, el: &mut LayoutElementNode, offset: (f32, f32)) {
         let layout = tree.layout(el.taffy_node_id).unwrap();
-        el.box_model = Some(to_boxmodel(&layout, offset));
+        el.box_model = to_boxmodel(&layout, offset);
         for child in &mut el.children {
             generate_boxmodel(tree, child,(
                 offset.0 + layout.location.x + layout.margin.left,
@@ -263,7 +263,7 @@ fn generate_node(
                 let el = LayoutElementNode {
                     dom_node_id: dom_node.node_id,
                     taffy_node_id: leaf_id,
-                    box_model: None,
+                    box_model: BoxModel::BoxModel::ZERO,
                     children: vec![],
                 };
                 return Some((leaf_id, el))
@@ -290,7 +290,7 @@ fn generate_node(
             let el = LayoutElementNode {
                 dom_node_id: dom_node.node_id,
                 taffy_node_id: node_id,
-                box_model: None,
+                box_model: BoxModel::BoxModel::ZERO,
                 children: children_els,
             };
             Some((node_id, el))
