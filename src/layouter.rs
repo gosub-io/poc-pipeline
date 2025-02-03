@@ -52,7 +52,5 @@ impl std::fmt::Debug for LayoutTree {
 }
 
 pub fn generate_layout(render_tree: RenderTree, viewport: ViewportSize) -> LayoutTree {
-    let layout_tree = generate_with_taffy(render_tree, viewport);
-    dbg!(&layout_tree);
-    layout_tree
+    generate_with_taffy(render_tree, viewport)
 }
