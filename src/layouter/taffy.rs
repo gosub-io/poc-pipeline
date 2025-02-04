@@ -6,7 +6,7 @@ use taffy::prelude::*;
 use crate::document::node::{NodeType, NodeId as DomNodeId};
 use crate::document::style::{StyleValue, Unit};
 use crate::layouter::{boxmodel as BoxModel, LayoutElementNode, LayoutTree, TaffyStruct, TaffyNodeId, LayoutElementId};
-use crate::layouter::text::measure_text_height;
+use crate::layouter::text::{get_text_dimension, measure_text_height};
 use crate::layouter::ViewportSize;
 
 /// Generates a layout tree based on taffy. Note that the layout tree current holds taffy information (like styles)
@@ -278,12 +278,9 @@ fn generate_node(
             }
         }
         NodeType::Text(text) => {
-            let font_size = 32.0;
-            let line_height = 36.0;
-            style.size.height = Dimension::Length(
-                measure_text_height(text, font_size, line_height) as f32
-            );
-
+            let (width, height) = get_text_dimension(text, "Arial", 32.0);
+            style.size.width = Dimension::Length(width as f32);
+            style.size.height = Dimension::Length(height as f32);
         }
     }
 

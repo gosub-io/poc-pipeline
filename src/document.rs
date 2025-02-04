@@ -76,7 +76,7 @@ pub(crate) fn create_document() -> Document {
     attrs.set("data-alpine", "x-wrap");
 
     let h1_node_id = doc.new_element("h1", Some(attrs.clone()), false, Some(style.clone()));
-    let h1_text_node_id = doc.new_text("header");
+    let h1_text_node_id = doc.new_text("header with some extra long text to see how it wraps");
     doc.add_child(h1_node_id, h1_text_node_id);
 
     // --------------

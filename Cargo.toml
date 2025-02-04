@@ -6,3 +6,4 @@ edition = "2021"
 [dependencies]
 taffy = "0.7.5"
 gtk4 = "0.9.5"
+parley = "0.2.0"
