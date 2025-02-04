@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 use std::rc::Rc;
-use gtk4::{Application, ApplicationWindow, DrawingArea, ScrolledWindow};
+use gtk4::{glib, Application, ApplicationWindow, DrawingArea, ScrolledWindow};
 use gtk4::cairo::Context;
 use gtk4::prelude::{ApplicationExt, ApplicationExtManual, DrawingAreaExtManual, GtkWindowExt, WidgetExt};
 use render_tree::RenderTree;
@@ -69,6 +69,10 @@ fn build_ui(app: &Application, layer_list: Rc<RefCell<LayerList>>) {
 
     let layer_list_for_draw = layer_list.clone();
 
+
+    let visible_layer_list = Rc::new(RefCell::new(vec![true; 10]));
+    let visible_layer_list_clone = visible_layer_list.clone();
+
     let area = DrawingArea::new();
     area.set_vexpand(true);
     area.set_hexpand(true);
@@ -81,8 +85,7 @@ fn build_ui(app: &Application, layer_list: Rc<RefCell<LayerList>>) {
 
 
         fn draw_layer(cr: &Context, layer_list: &LayerList, layer_id: LayerId) {
-            fn draw_node(cr: &Context, layer_list: &LayerList, el: &LayoutElementNode) {
-                dbg!("Drawing element {}", el.id);
+            fn draw_node(cr: &Context, el: &LayoutElementNode) {
                 // Draw margin
                 let m = el.box_model.margin_box;
                 cr.set_source_rgb(243.0 / 255.0, 243.0 / 255.0, 173.0 / 255.0);
@@ -118,13 +121,23 @@ fn build_ui(app: &Application, layer_list: Rc<RefCell<LayerList>>) {
                 // }
             }
 
-            for el_node_id in &layer_list.layers.borrow().get(layer_id).unwrap().elements {
+            let binding = layer_list.layers.borrow();
+            let Some(layer) = binding.get(layer_id) else {
+                return;
+            };
+
+            for el_node_id in &layer.elements {
                 let el = layer_list.layout_tree.get_node_by_id(*el_node_id).unwrap();
-                draw_node(cr, layer_list, el);
+                draw_node(cr, el);
             }
         }
 
-        draw_layer(cr, &layer_list_for_draw, 0);
+        for (i, visible) in visible_layer_list_clone.borrow().iter().enumerate() {
+            if *visible {
+                draw_layer(cr, &layer_list_for_draw, i as LayerId);
+            }
+        }
+        // draw_layer(cr, &layer_list_for_draw, 0);
         // draw_layer(cr, &layer_list_for_draw, 1);
     });
 
@@ -134,6 +147,32 @@ fn build_ui(app: &Application, layer_list: Rc<RefCell<LayerList>>) {
         .child(&area)
         .build();
     window.set_child(Some(&scroll));
+
+
+    let visible_layer_list_clone = visible_layer_list.clone();
+
+    let controller = gtk4::EventControllerKey::new();
+    controller.connect_key_pressed(move |_controller, keyval, _keycode, _state| {
+        let mut vll = visible_layer_list_clone.borrow_mut();
+
+        match keyval {
+            key if key == gtk4::gdk::Key::_1 => { vll[0] = !vll[0]; area.queue_draw(); }
+            key if key == gtk4::gdk::Key::_2 => { vll[1] = !vll[1]; area.queue_draw(); }
+            key if key == gtk4::gdk::Key::_3 => { vll[2] = !vll[2]; area.queue_draw(); }
+            key if key == gtk4::gdk::Key::_4 => { vll[3] = !vll[3]; area.queue_draw(); }
+            key if key == gtk4::gdk::Key::_5 => { vll[4] = !vll[4]; area.queue_draw(); }
+            key if key == gtk4::gdk::Key::_6 => { vll[5] = !vll[5]; area.queue_draw(); }
+            key if key == gtk4::gdk::Key::_7 => { vll[6] = !vll[6]; area.queue_draw(); }
+            key if key == gtk4::gdk::Key::_8 => { vll[7] = !vll[7]; area.queue_draw(); }
+            key if key == gtk4::gdk::Key::_9 => { vll[8] = !vll[8]; area.queue_draw(); }
+            key if key == gtk4::gdk::Key::_0 => { vll[9] = !vll[9]; area.queue_draw(); }
+            _ => (),
+        }
+
+        glib::Propagation::Proceed
+    });
+    window.add_controller(controller);
+
 
     window.set_default_size(800, 600);
     window.show();
