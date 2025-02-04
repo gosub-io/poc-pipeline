@@ -731,6 +731,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "pangocairo"
+version = "0.20.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4690509a2fea2a6552a0ef8aa3e5f790c1365365ee0712afa1aedb39af3997b6"
+dependencies = [
+ "cairo-rs",
+ "glib",
+ "libc",
+ "pango",
+ "pangocairo-sys",
+]
+
+[[package]]
+name = "pangocairo-sys"
+version = "0.20.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5be6ac24147911a6a46783922fc288cf02f67570bc0d360e563b5b26aead6767"
+dependencies = [
+ "cairo-sys-rs",
+ "glib-sys",
+ "libc",
+ "pango-sys",
+ "system-deps",
+]
+
+[[package]]
 name = "parley"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -775,6 +801,7 @@ name = "poc-pipeline"
 version = "0.1.0"
 dependencies = [
  "gtk4",
+ "pangocairo",
  "parley",
  "taffy",
 ]

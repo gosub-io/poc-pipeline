@@ -10,7 +10,7 @@ use crate::document::node::{NodeId as DomNodeId, NodeId};
 use crate::layouter::taffy::generate_with_taffy;
 
 pub mod taffy;
-mod text;
+pub mod text;
 mod boxmodel;
 
 pub(crate) struct ViewportSize {

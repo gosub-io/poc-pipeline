@@ -6,7 +6,7 @@ use taffy::prelude::*;
 use crate::document::node::{NodeType, NodeId as DomNodeId};
 use crate::document::style::{StyleValue, Unit};
 use crate::layouter::{boxmodel as BoxModel, LayoutElementNode, LayoutTree, TaffyStruct, TaffyNodeId, LayoutElementId};
-use crate::layouter::text::{get_text_dimension, measure_text_height};
+use crate::layouter::text::get_text_dimension;
 use crate::layouter::ViewportSize;
 
 /// Generates a layout tree based on taffy. Note that the layout tree current holds taffy information (like styles)

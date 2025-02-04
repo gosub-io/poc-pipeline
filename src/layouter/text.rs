@@ -5,7 +5,7 @@ static FONT_CTX: OnceLock<Mutex<parley::FontContext>> = OnceLock::new();
 static LAYOUT_CTX: OnceLock<Mutex<parley::LayoutContext>> = OnceLock::new();
 #[derive(Clone, Copy, Debug, PartialEq)]
 
-struct ColorBrush {
+pub struct ColorBrush {
     r: u8,
     g: u8,
     b: u8,
@@ -23,7 +23,7 @@ impl Default for ColorBrush {
     }
 }
 
-fn get_font_context() -> std::sync::MutexGuard<'static, parley::FontContext> {
+pub fn get_font_context() -> std::sync::MutexGuard<'static, parley::FontContext> {
     FONT_CTX
         .get_or_init(|| Mutex::new(parley::FontContext::new()))
         .lock()
@@ -37,7 +37,7 @@ fn get_layout_context() -> std::sync::MutexGuard<'static, parley::LayoutContext>
         .unwrap()
 }
 
-pub fn get_text_dimension(text: &str, font_family: &str, font_size: f64) -> (f64, f64) {
+pub fn get_text_layout(text: &str, font_family: &str, font_size: f64) -> Layout<ColorBrush> {
     let font_stack = parley::FontStack::from(font_family);
 
     let display_scale = 1.0;
@@ -55,9 +55,14 @@ pub fn get_text_dimension(text: &str, font_family: &str, font_size: f64) -> (f64
     layout.break_all_lines(max_advance);
     layout.align(max_advance, parley::layout::Alignment::Start);
 
+    layout
+}
+
+pub fn get_text_dimension(text: &str, font_family: &str, font_size: f64) -> (f64, f64) {
+    let layout = get_text_layout(text, font_family, font_size);
     (layout.width() as f64, layout.height() as f64)
 }
 
-pub fn measure_text_height(text: &str, font_size: f64, line_height: f64) -> f64 {
-    line_height
-}
+// pub fn measure_text_height(text: &str, font_size: f64, line_height: f64) -> f64 {
+//     line_height
+// }
