@@ -1,4 +1,4 @@
 mod tree;
 
 pub use tree::RenderTree;
-pub use tree::RenderNode;
+pub use tree::RenderNodeId;

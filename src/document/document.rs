@@ -1,5 +1,6 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::ops::AddAssign;
 use std::rc::Rc;
 use crate::document::node::{Node, NodeType, NodeId, AttrMap};
 use crate::document::style::StylePropertyList;
@@ -8,7 +9,7 @@ use crate::document::style::StylePropertyList;
 pub struct Document {
     pub arena: HashMap<NodeId, Node>,
     pub root_id: Option<NodeId>,
-    pub next_node_id: Rc<RefCell<usize>>,
+    next_node_id: Rc<RefCell<NodeId>>,
 }
 
 impl Document {
@@ -44,7 +45,7 @@ impl Document {
         Document {
             arena: HashMap::new(),
             root_id: None,
-            next_node_id: Rc::new(RefCell::new(1)),
+            next_node_id: Rc::new(RefCell::new(NodeId::new(1))),
         }
     }
 
@@ -54,7 +55,7 @@ impl Document {
         let mut nid = self.next_node_id.borrow_mut();
         *nid += 1;
 
-        NodeId::from(id)
+        id
     }
 }
 
@@ -141,18 +142,17 @@ mod tests {
         let _ = document.print_tree(&mut s);
 
         println!("{}", s);
-        let result = r#"(10) <html lang="en"/>
-    (9) <body />
-        (6) <h1 class="title" data-alpine="x-wrap"/>
-            (7) header
+        let result = r#"(NodeID(10)) <html lang="en"/>
+    (NodeID(9)) <body />
+        (NodeID(6)) <h1 class="title" data-alpine="x-wrap"/>
+            (NodeID(7)) header
         </h1>
-        (8) <script async="true" src="script.js" type="text/javascript">
-        (4) <p class="paragraph"/>
-            (5) paragraph
-            (2) <strong />
-                (3) strong
+        (NodeID(8)) <script async="true" src="script.js" type="text/javascript">
+        (NodeID(4)) <p class="paragraph"/>
+            (NodeID(2)) <strong />
+                (NodeID(3)) strong
             </strong>
-            (1) <img alt="image" src="image.jpg">
+            (NodeID(1)) <img alt="image" src="image.jpg">
         </p>
     </body>
 </html>

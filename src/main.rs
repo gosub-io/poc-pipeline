@@ -82,6 +82,7 @@ fn build_ui(app: &Application, layer_list: Rc<RefCell<LayerList>>) {
 
         fn draw_layer(cr: &Context, layer_list: &LayerList, layer_id: LayerId) {
             fn draw_node(cr: &Context, layer_list: &LayerList, el: &LayoutElementNode) {
+                dbg!("Drawing element {}", el.id);
                 // Draw margin
                 let m = el.box_model.margin_box;
                 cr.set_source_rgb(243.0 / 255.0, 243.0 / 255.0, 173.0 / 255.0);
@@ -110,11 +111,11 @@ fn build_ui(app: &Application, layer_list: Rc<RefCell<LayerList>>) {
                 cr.set_source_rgb(1.0, 0.0, 0.0);
                 _ = cr.stroke();
 
-                // Draw its children
-                for el_id in &el.children {
-                    let el = layer_list.layout_tree.get_node_by_id(*el_id).unwrap();
-                    draw_node(cr, layer_list, el);
-                }
+                // // Draw its children
+                // for el_id in &el.children {
+                //     let el = layer_list.layout_tree.get_node_by_id(*el_id).unwrap();
+                //     draw_node(cr, layer_list, el);
+                // }
             }
 
             for el_node_id in &layer_list.layers.borrow().get(layer_id).unwrap().elements {

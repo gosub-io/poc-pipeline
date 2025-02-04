@@ -8,6 +8,7 @@ pub(crate) struct Layer {
     /// Layer ID
     pub layer_id: LayerId,
     /// Order of the layer
+    #[allow(unused)]
     pub order: isize,
     /// Elements in this layer
     pub elements: Vec<LayoutElementId>
@@ -79,6 +80,7 @@ impl LayerList {
         layer_id
     }
 
+    #[allow(unused)]
     fn get_layer(&self, layer_id: LayerId) -> Option<Ref<Layer>> {
         let layers = self.layers.borrow();
         let pos = layers.iter().position(|layer| layer.layer_id == layer_id)?;
@@ -112,7 +114,7 @@ impl LayerList {
                 .doc
                 .get_node_by_id(layout_element.dom_node_id)
                 .unwrap()
-                ;
+            ;
             match dom_node.node_type {
                 crate::document::node::NodeType::Element(ref element_data) => {
                     element_data.tag_name.eq_ignore_ascii_case("img")

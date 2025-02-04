@@ -1,9 +1,40 @@
 use std::collections::HashMap;
+use std::ops::AddAssign;
 use crate::document::document::Document;
 use crate::document::node::{Node, NodeType, NodeId};
 use crate::document::style::StyleValue;
 
-type RenderNodeId = usize;
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct RenderNodeId(u64);
+
+impl RenderNodeId {
+    pub const fn new(val: u64) -> Self {
+        Self(val)
+    }
+
+    pub fn to_u64(&self) -> u64 {
+        self.0
+    }
+}
+
+impl From<NodeId> for RenderNodeId {
+    fn from(node_id: NodeId) -> Self {
+        Self(node_id.to_u64())
+    }
+}
+
+impl AddAssign<i32> for RenderNodeId {
+    fn add_assign(&mut self, rhs: i32) {
+        self.0 += rhs as u64;
+    }
+}
+
+impl std::fmt::Display for RenderNodeId {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "RenderNodeID({})", self.0)
+    }
+}
+
 
 #[derive(Clone)]
 pub struct RenderNode {

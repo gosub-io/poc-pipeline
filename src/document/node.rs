@@ -1,6 +1,8 @@
 use std::collections::HashMap;
+use std::ops::AddAssign;
 use crate::document::document::Document;
 use crate::document::style::{StylePropertyList, StyleValue};
+use crate::render_tree::RenderNodeId;
 
 #[derive(Debug, Clone)]
 pub struct AttrMap {
@@ -43,7 +45,7 @@ impl AttrMap {
 }
 
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ElementData {
     /// Element name (ie: P, DIV, IMG etc)
     pub tag_name: String,
@@ -84,34 +86,44 @@ impl ElementData {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum NodeType {
     Text(String),
     Element(ElementData),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct NodeId(usize);
+pub struct NodeId(u64);
+
+impl NodeId {
+    pub fn to_u64(&self) -> u64 {
+        self.0
+    }
+
+    pub const fn new(val: u64) -> Self {
+        Self(val)
+    }
+}
+
+impl From<RenderNodeId> for NodeId {
+    fn from(node_id: RenderNodeId) -> Self {
+        Self(node_id.to_u64())
+    }
+}
+
+impl AddAssign<i32> for NodeId {
+    fn add_assign(&mut self, rhs: i32) {
+        self.0 += rhs as u64;
+    }
+}
 
 impl std::fmt::Display for NodeId {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
-        write!(f, "{}", self.0)
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "NodeID({})", self.0)
     }
 }
 
-impl From<usize> for NodeId {
-    fn from(num: usize) -> Self {
-        NodeId(num)
-    }
-}
-
-impl From<NodeId> for usize {
-    fn from(node_id: NodeId) -> Self {
-        node_id.0
-    }
-}
-
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Node {
     pub node_id: NodeId,
     pub children: Vec<NodeId>,

@@ -1,52 +1,53 @@
+use std::cell::RefCell;
 use std::collections::HashMap;
-use crate::render_tree::{RenderNode, RenderTree};
+use std::rc::Rc;
+use crate::render_tree::{RenderTree, RenderNodeId};
 use taffy::prelude::*;
-use crate::document::node::{NodeId as RenderNodeId, NodeType};
+use crate::document::node::{NodeType, NodeId as DomNodeId};
 use crate::document::style::{StyleValue, Unit};
-use crate::layouter::{boxmodel as BoxModel, LayoutElementNode, LayoutTree, TaffyStruct};
+use crate::layouter::{boxmodel as BoxModel, LayoutElementNode, LayoutTree, TaffyStruct, TaffyNodeId, LayoutElementId};
 use crate::layouter::text::measure_text_height;
 use crate::layouter::ViewportSize;
 
+/// Generates a layout tree based on taffy. Note that the layout tree current holds taffy information (like styles)
+/// that we probably want to convert to our own style system. We already do this with the taffy layout through the
+/// BoxModel structure.
 pub fn generate_with_taffy(render_tree: RenderTree, viewport: ViewportSize) -> LayoutTree {
-    // The tree and the node_mapping will be filled by the generate_node function
-    let mut tree: TaffyTree<()> = TaffyTree::new();
-    let mut node_mapping = HashMap::new();
-    let Some((root_id, mut layout_element_node)) = generate_node(&mut tree, &mut node_mapping, &render_tree, &render_tree.root) else {
+    let root_id = render_tree.root_id.unwrap();
+    let Some(mut layout_tree) = generate_tree(render_tree, root_id) else {
         panic!("Failed to generate root node render tree");
     };
 
     // Compute the layout based on the viewport
-    tree.compute_layout(root_id, Size {
+    layout_tree.taffy.tree.compute_layout(layout_tree.taffy.root_id, Size {
         width: AvailableSpace::Definite(viewport.width as f32),
         height: AvailableSpace::Definite(viewport.height as f32),
     }).unwrap();
 
-    fn generate_boxmodel(tree: &TaffyTree, el: &mut LayoutElementNode, offset: (f32, f32)) {
-        let layout = tree.layout(el.taffy_node_id).unwrap();
+    fn generate_boxmodel(layout_tree: &mut LayoutTree, node_id: LayoutElementId, offset: (f32, f32)) {
+        let el = layout_tree.get_node_by_id(node_id).unwrap();
+        let layout = layout_tree.taffy.tree.layout(el.taffy_node_id).unwrap().clone();
+
+        let el = layout_tree.get_node_by_id_mut(node_id).unwrap();
         el.box_model = to_boxmodel(&layout, offset);
-        for child in &mut el.children {
-            generate_boxmodel(tree, child,(
+        let child_ids = el.children.clone();
+
+        for child_id in child_ids {
+            generate_boxmodel(layout_tree, child_id, (
                 offset.0 + layout.location.x + layout.margin.left,
                 offset.1 + layout.location.y + layout.margin.top
             ));
         }
     }
 
-    generate_boxmodel(&tree, &mut layout_element_node, (0.0, 0.0));
+    // Generate box model for the whole layout tree
+    let root_id = layout_tree.root_id;
+    generate_boxmodel(&mut layout_tree, root_id, (0.0, 0.0));
 
-    /// Return layout tree with all information
-    LayoutTree {
-        render_tree,
-        taffy: TaffyStruct {
-            tree,
-            root_id,
-        },
-        arena: HashMap::new(),
-        root_id,
-    }
+    layout_tree
 }
 
-// Returns true if there is a margin on the rect (if the rect is non-zero)
+// Returns true if there is a margin on the rect (basically, if the rect is non-zero)
 fn has_margin(src: Rect<LengthPercentageAuto>) -> bool {
     let is_zero = (src.top == LengthPercentageAuto::Length(0.0) || src.top == LengthPercentageAuto::Percent(0.0)) &&
     (src.right == LengthPercentageAuto::Length(0.0) || src.right == LengthPercentageAuto::Percent(0.0)) &&
@@ -56,19 +57,47 @@ fn has_margin(src: Rect<LengthPercentageAuto>) -> bool {
     !is_zero
 }
 
+
+fn generate_tree(
+    render_tree: RenderTree,
+    root_id: RenderNodeId,
+) -> Option<LayoutTree> {
+    let mut tree: TaffyTree<()> = TaffyTree::new();
+
+    let mut layout_tree = LayoutTree {
+        render_tree,
+        taffy: TaffyStruct {
+            tree,
+            root_id: TaffyNodeId::new(0), // Will be filled in later
+        },
+        arena: HashMap::new(),
+        root_id: LayoutElementId::new(0), // Will be filled in layer
+        next_node_id: Rc::new(RefCell::new(LayoutElementId::new(0))),
+    };
+
+    let ids = {
+        let temp_el = generate_node(&mut layout_tree, root_id).unwrap();
+        (temp_el.taffy_node_id, temp_el.id)
+    };
+
+    layout_tree.taffy.root_id = ids.0;
+    layout_tree.root_id = ids.1;
+
+    Some(layout_tree)
+}
+
 fn generate_node(
-    tree: &mut TaffyTree<()>,
-    node_mapping: &mut HashMap<NodeId, RenderNodeId>,
-    render_tree: &RenderTree,
-    render_node: &RenderNode,
-) -> Option<(NodeId, LayoutElementNode)> {
+    layout_tree: &mut LayoutTree,
+    render_node_id: RenderNodeId,
+) -> Option<&LayoutElementNode> {
     let mut style = Style {
         display: Display::Block,
         ..Default::default()
     };
 
     // Find the DOM node in the DOM document that is wrapped in the render tree
-    let Some(dom_node) = render_tree.doc.get_node_by_id(render_node.node_id) else {
+    let dom_node_id = DomNodeId::from(render_node_id);   // DOM node IDs and render node IDs are interchangeable
+    let Some(dom_node) = layout_tree.render_tree.doc.get_node_by_id(dom_node_id) else {
         return None;
     };
 
@@ -259,50 +288,63 @@ fn generate_node(
     }
 
     if dom_node.children.is_empty() {
-        match tree.new_leaf(style) {
+        match layout_tree.taffy.tree.new_leaf(style) {
             Ok(leaf_id) => {
-                node_mapping.insert(leaf_id, render_node.node_id);
                 let el = LayoutElementNode {
-                    id: 0,
-                    dom_node_id: dom_node.node_id,
+                    id: layout_tree.next_node_id(),
+                    dom_node_id,
+                    render_node_id,
                     taffy_node_id: leaf_id,
                     box_model: BoxModel::BoxModel::ZERO,
                     children: vec![],
                 };
-                return Some((leaf_id, el))
+
+                let id = el.id;
+                layout_tree.arena.insert(id, el);
+                return layout_tree.arena.get(&id);
             },
-            Err(_) => return None,
+            Err(_) => {},
         }
+
+        return None
     }
 
-    let mut children_ids = Vec::new();
-    let mut children_els = Vec::new();
-    for child_render_node in &render_node.children {
-        match generate_node(tree, node_mapping, render_tree, child_render_node) {
-            Some((child_id, el)) => {
-                children_ids.push(child_id);
-                children_els.push(el);
+    let mut children_taffy_ids = Vec::new();
+    let mut children_el_ids = Vec::new();
+
+    let render_node = layout_tree.render_tree.get_node_by_id(render_node_id).unwrap();
+    let children = render_node.children.clone();
+
+    for child_render_node_id in &children {
+        match generate_node(layout_tree, *child_render_node_id) {
+            Some(el) => {
+                children_taffy_ids.push(el.taffy_node_id);
+                children_el_ids.push(el.id);
             },
             None => continue,
         }
     }
 
-    match tree.new_with_children(style, &children_ids) {
-        Ok(node_id) => {
-            node_mapping.insert(node_id, render_node.node_id);
+    match layout_tree.taffy.tree.new_with_children(style, &children_taffy_ids) {
+        Ok(leaf_id) => {
             let el = LayoutElementNode {
-                id: 0,
-                dom_node_id: dom_node.node_id,
-                taffy_node_id: node_id,
+                id: layout_tree.next_node_id(),
+                dom_node_id,
+                render_node_id,
+                taffy_node_id: leaf_id,
                 box_model: BoxModel::BoxModel::ZERO,
-                children: children_els,
+                children: children_el_ids,
             };
-            Some((node_id, el))
+
+            let id = el.id;
+            layout_tree.arena.insert(id, el);
+            layout_tree.arena.get(&id)
         }
         Err(_) => None,
     }
 }
 
+/// Converts a taffy layout to our own BoxModel structure
 pub fn to_boxmodel(layout: &Layout, offset: (f32, f32)) -> BoxModel::BoxModel {
     BoxModel::BoxModel {
         margin_box: BoxModel::Rect {
