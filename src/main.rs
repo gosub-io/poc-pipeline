@@ -123,10 +123,8 @@ fn build_ui(app: &Application, layer_list: Rc<RefCell<LayerList>>) {
             }
         }
 
-        // Only draw layer 0,
         draw_layer(cr, &layer_list_for_draw, 0);
-        // draw_layer(cr, &layer_list_for_draw.layers.borrow().get(1));
-        // draw_node(cr, &layout_tree.root_layout_element);
+        // draw_layer(cr, &layer_list_for_draw, 1);
     });
 
     let scroll = ScrolledWindow::builder()
