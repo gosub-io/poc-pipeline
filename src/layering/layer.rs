@@ -64,13 +64,26 @@ impl LayerList {
         layer_list
     }
 
-    // fn get_element_by_id(&self, id: NodeId) -> Option<&LayoutElementNode> {
-    //     let layout_tree = &self.layout_tree;
-    //     let taffy_id = layout_tree.node_mapping.get(&id)?;
-    //     let root = &layout_tree.root_layout_element;
-    //     let element = self.get_element_by_taffy_id(root, *taffy_id)?;
-    //     Some(element)
-    // }
+    /// Find the element at the given coordinates. It will return the given element if it is found or None otherwise
+    pub fn find_element_at(&self, x: f64, y: f64) -> Option<LayoutElementId> {
+        // This assumes that the layers are ordered from top to bottom
+        for layer in self.layers.borrow().iter().rev() {
+            for element_id in layer.elements.iter().rev() {
+                let layout_element = self.layout_tree.get_node_by_id(*element_id).unwrap();
+                let box_model = &layout_element.box_model;
+
+                if x >= box_model.margin_box.x &&
+                    x < box_model.margin_box.x + box_model.margin_box.width &&
+                    y >= box_model.margin_box.y &&
+                    y < box_model.margin_box.y + box_model.margin_box.height
+                {
+                    return Some(*element_id);
+                }
+            }
+        }
+
+        None
+    }
 
     fn new_layer(&self, order: isize) -> LayerId {
         let layer = Layer::new(self.next_layer_id(), order);

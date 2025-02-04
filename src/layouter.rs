@@ -43,15 +43,15 @@ impl std::fmt::Display for LayoutElementId {
 #[derive(Debug, Clone)]
 pub struct LayoutElementNode {
     pub id: LayoutElementId,
-    // Id of the node in the DOM, contains the data, like element name, attributes, etc.
+    /// Id of the node in the DOM, contains the data, like element name, attributes, etc.
     pub dom_node_id: DomNodeId,
-    // Id of the node in the render tree. This is normally the same node ID as the dom node ID
+    /// Id of the node in the render tree. This is normally the same node ID as the dom node ID
     pub render_node_id: RenderNodeId,
-    // Id of the node in the layout tree. Contains all layout information
+    /// Id of the node in the layout tree. Contains all layout information
     pub taffy_node_id: TaffyNodeId,
-    // Children of this node
+    /// Children of this node
     pub children: Vec<LayoutElementId>,
-    // Generated boxmodel for this node
+    /// Generated boxmodel for this node
     pub box_model: BoxModel,
 }
 
