@@ -89,10 +89,9 @@ pub fn paint_cairo(layer_list: &LayerList, cr: &Context, visible_layer_list: Vec
                 }
                 NodeType::Text(text, _style) => {
                     // @TODO: layout is already calculated.. We need to fetch it from somewhere
-
                     let x = el.box_model.content_box().x;
                     let y = el.box_model.content_box().y;
-                    if let Ok(layout) = get_text_layout(text, "Arial", 12.0 * gtk4::pango::SCALE as f64, 600.0) {
+                    if let Ok(layout) = get_text_layout(text, "Arial", 12.0, el.box_model.content_box().width) {
                         rasterize_text_layout(cr, layout, (x, y));
                     }
                 }

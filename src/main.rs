@@ -181,6 +181,6 @@ fn build_ui(app: &Application, browser_state: Rc<RefCell<BrowserState>>) {
     window.add_controller(controller);
 
 
-    window.set_default_size(800, 600);
+    window.set_default_size(1024, 768);
     window.show();
 }

@@ -13,8 +13,8 @@ pub(crate) fn create_document() -> Document {
 
     // --------------
     let mut style = StylePropertyList::new();
-    style.set_property(StyleProperty::Width, StyleValue::Unit(450.0, Unit::Px));
-    style.set_property(StyleProperty::Height, StyleValue::Unit(300.0, Unit::Px));
+    style.set_property(StyleProperty::Width, StyleValue::Unit(200.0, Unit::Px));
+    style.set_property(StyleProperty::Height, StyleValue::Unit(200.0, Unit::Px));
     style.set_property(StyleProperty::BorderLeftWidth, StyleValue::Unit(4.0, Unit::Px));
     style.set_property(StyleProperty::BorderRightWidth, StyleValue::Unit(4.0, Unit::Px));
     style.set_property(StyleProperty::BorderTopWidth, StyleValue::Unit(4.0, Unit::Px));
@@ -31,6 +31,8 @@ pub(crate) fn create_document() -> Document {
     style.set_property(StyleProperty::Color, StyleValue::Color(Color::Named("red".to_string())));
     style.set_property(StyleProperty::Display, StyleValue::None);
     style.set_property(StyleProperty::FontWeight, StyleValue::FontWeight(FontWeight::Bolder));
+    style.set_property(StyleProperty::FontSize, StyleValue::Unit(32.0, Unit::Px));
+    style.set_property(StyleProperty::FontFamily, StyleValue::Keyword("Comic Sans MS".into()));
 
     let strong_node_id = doc.new_element("strong", None, false, Some(style.clone()));
     let strong_text_node_id = doc.new_text("This is some strong text", Some(style.clone()));
@@ -57,6 +59,7 @@ pub(crate) fn create_document() -> Document {
     style.set_property(StyleProperty::Display, StyleValue::Display(Display::Block));
     style.set_property(StyleProperty::FontSize, StyleValue::Unit(48.0, Unit::Px));
     style.set_property(StyleProperty::FontWeight, StyleValue::FontWeight(FontWeight::Bold));
+    style.set_property(StyleProperty::FontFamily, StyleValue::Keyword("Verdana".into()));
     // style.set_property("margin-block-end", StyleValue::Unit(0.67, Unit::Em));
 
     style.set_property(StyleProperty::MarginBottom, StyleValue::Unit(10.0, Unit::Px));

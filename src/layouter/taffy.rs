@@ -6,6 +6,7 @@ use taffy::prelude::*;
 use crate::document::node::{NodeType, NodeId as DomNodeId};
 use crate::document::style::{StyleProperty, StyleValue, Unit};
 use crate::layouter::{boxmodel as BoxModel, LayoutElementNode, LayoutTree, TaffyStruct, TaffyNodeId, LayoutElementId};
+use crate::layouter::pango_text::get_text_layout;
 use crate::layouter::ViewportSize;
 
 #[derive(Clone, Debug)]
@@ -44,14 +45,34 @@ pub fn generate_with_taffy(render_tree: RenderTree, viewport: ViewportSize) -> L
         height: AvailableSpace::Definite(viewport.height as f32),
     };
     layout_tree.taffy.tree.compute_layout_with_measure(layout_tree.taffy.root_id, size, |v_kd, v_as, v_ni, v_nc, v_s| {
-        println!("----------------------");
-        println!("kd: {:?}", v_kd);
-        println!("as: {:?}", v_as);
-        println!("ni: {:?}", v_ni);
-        println!("nc: {:?}", v_nc);
-        // println!("s: {:?}", v_s);
+        // println!("----------------------");
+        // println!("kd: {:?}", v_kd);
+        // println!("as: {:?}", v_as);
+        // println!("ni: {:?}", v_ni);
+        // println!("nc: {:?}", v_nc);
+        // // println!("s: {:?}", v_s);
 
-        Size { width: 100.0, height: 100.0 }
+        match v_nc {
+            Some(NodeContext::Text(text_ctx)) => {
+                let font_size = text_ctx.size;
+                let font_family = text_ctx.family.as_str();
+                let text = text_ctx.text.as_str();
+
+                let layout = get_text_layout(text, font_family, font_size as f64, v_as.width.unwrap() as f64);
+                match layout {
+                    Ok(layout) => {
+                        Size {
+                            width: 100.0,
+                            height: 100.0,
+                            // width: layout.width() as f32,
+                            // height: layout.height() as f32,
+                        }
+                    },
+                    Err(_) => Size::ZERO
+                }
+            },
+            _ => Size::ZERO
+        }
     }).unwrap();
 
     fn generate_boxmodel(layout_tree: &mut LayoutTree, node_id: LayoutElementId, offset: (f32, f32)) {
@@ -312,11 +333,6 @@ _ => {}
             }
         }
         NodeType::Text(text, style) => {
-            // let layout = get_text_layout(text, "Arial", 32.0, 600.0);
-            // let (width, height) = get_text_dimension(text, "Arial", 32.0, 600.0);
-            // style.size.width = Dimension::Length(width as f32);
-            // style.size.height = Dimension::Length(height as f32);
-
             let mut font_size = 16.0;
             let mut font_family = "Arial".to_string();
 
