@@ -6,5 +6,10 @@ edition = "2021"
 [dependencies]
 taffy = "0.7.5"
 gtk4 = "0.9.5"
-parley = "0.2.0"
-pangocairo = "0.20.7"
+parley = { version = "0.2.0", optional = true }
+pangocairo = { version = "0.20.7", optional = true }
+
+[features]
+default = ["pango"]
+pango = ["dep:pangocairo"]
+parley = ["dep:parley"]

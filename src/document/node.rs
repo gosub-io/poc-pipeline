@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::ops::AddAssign;
 use crate::document::document::Document;
-use crate::document::style::{StylePropertyList, StyleValue};
+use crate::document::style::{StylePropertyList, StyleValue, StyleProperty};
 use crate::render_tree::RenderNodeId;
 
 #[derive(Debug, Clone)]
@@ -67,8 +67,8 @@ impl ElementData {
         }
     }
 
-    pub fn get_style(&self, key: &str) -> Option<&StyleValue> {
-        self.styles.properties.get(key)
+    pub fn get_style(&self, key: StyleProperty) -> Option<&StyleValue> {
+        self.styles.properties.get(&key)
     }
 
     #[allow(unused)]
@@ -88,7 +88,7 @@ impl ElementData {
 
 #[derive(Clone, Debug)]
 pub enum NodeType {
-    Text(String),
+    Text(String, StylePropertyList),
     Element(ElementData),
 }
 
@@ -131,11 +131,12 @@ pub struct Node {
 }
 
 impl Node {
-    pub fn new_text(doc: &Document, data: String) -> Node {
+    /// Text nodes also have styles. Normally this is taken from the parent element that the text resides in.
+    pub fn new_text(doc: &Document, text: String, style: Option<StylePropertyList>) -> Node {
         Node {
             node_id: doc.next_node_id(),
             children: vec![],
-            node_type: NodeType::Text(data),
+            node_type: NodeType::Text(text, style.unwrap_or(StylePropertyList::new())),
         }
     }
 

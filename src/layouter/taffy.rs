@@ -4,10 +4,30 @@ use std::rc::Rc;
 use crate::render_tree::{RenderTree, RenderNodeId};
 use taffy::prelude::*;
 use crate::document::node::{NodeType, NodeId as DomNodeId};
-use crate::document::style::{StyleValue, Unit};
+use crate::document::style::{StyleProperty, StyleValue, Unit};
 use crate::layouter::{boxmodel as BoxModel, LayoutElementNode, LayoutTree, TaffyStruct, TaffyNodeId, LayoutElementId};
-use crate::layouter::text::get_text_dimension;
 use crate::layouter::ViewportSize;
+
+#[derive(Clone, Debug)]
+pub struct TextContext {
+    text: String,
+    family: String,
+    size: f32,
+}
+
+#[derive(Clone, Debug)]
+pub struct ImageContext {
+    src: String,
+    alt: String,
+}
+
+// Contexts for certain nodes
+#[derive(Clone, Debug)]
+pub enum NodeContext {
+    Text(TextContext),
+    Image(ImageContext),
+}
+
 
 /// Generates a layout tree based on taffy. Note that the layout tree current holds taffy information (like styles)
 /// that we probably want to convert to our own style system. We already do this with the taffy layout through the
@@ -19,9 +39,19 @@ pub fn generate_with_taffy(render_tree: RenderTree, viewport: ViewportSize) -> L
     };
 
     // Compute the layout based on the viewport
-    layout_tree.taffy.tree.compute_layout(layout_tree.taffy.root_id, Size {
+    let size = Size {
         width: AvailableSpace::Definite(viewport.width as f32),
         height: AvailableSpace::Definite(viewport.height as f32),
+    };
+    layout_tree.taffy.tree.compute_layout_with_measure(layout_tree.taffy.root_id, size, |v_kd, v_as, v_ni, v_nc, v_s| {
+        println!("----------------------");
+        println!("kd: {:?}", v_kd);
+        println!("as: {:?}", v_as);
+        println!("ni: {:?}", v_ni);
+        println!("nc: {:?}", v_nc);
+        // println!("s: {:?}", v_s);
+
+        Size { width: 100.0, height: 100.0 }
     }).unwrap();
 
     fn generate_boxmodel(layout_tree: &mut LayoutTree, node_id: LayoutElementId, offset: (f32, f32)) {
@@ -62,7 +92,7 @@ fn generate_tree(
     render_tree: RenderTree,
     root_id: RenderNodeId,
 ) -> Option<LayoutTree> {
-    let mut tree: TaffyTree<()> = TaffyTree::new();
+    let mut tree: TaffyTree<NodeContext> = TaffyTree::new();
 
     let mut layout_tree = LayoutTree {
         render_tree,
@@ -86,6 +116,7 @@ fn generate_tree(
     Some(layout_tree)
 }
 
+
 fn generate_node(
     layout_tree: &mut LayoutTree,
     render_node_id: RenderNodeId,
@@ -94,6 +125,9 @@ fn generate_node(
         display: Display::Block,
         ..Default::default()
     };
+
+    // Context to set for text nodes
+    let mut context = None;
 
     // Find the DOM node in the DOM document that is wrapped in the render tree
     let dom_node_id = DomNodeId::from(render_node_id);   // DOM node IDs and render node IDs are interchangeable
@@ -104,7 +138,7 @@ fn generate_node(
     match &dom_node.node_type {
         NodeType::Element(data) => {
             // --- Width and Height styles ---
-            if let Some(width) = data.get_style("width") {
+            if let Some(width) = data.get_style(StyleProperty::Width) {
                 match width {
                     StyleValue::Unit(value, unit) => {
                         match unit {
@@ -116,7 +150,7 @@ fn generate_node(
                     _ => {}
                 }
             }
-            if let Some(height) = data.get_style("height") {
+            if let Some(height) = data.get_style(StyleProperty::Height) {
                 match height {
                     StyleValue::Unit(value, unit) => {
                         match unit {
@@ -130,7 +164,7 @@ fn generate_node(
             }
 
             // --- Margin ---
-            if let Some(margin_block_start) = data.get_style("margin-top") {
+            if let Some(margin_block_start) = data.get_style(StyleProperty::MarginTop) {
                 match margin_block_start {
                     StyleValue::Unit(value, unit) => {
                         match unit {
@@ -142,7 +176,7 @@ fn generate_node(
                     _ => {}
                 }
             }
-            if let Some(margin_block_end) = data.get_style("margin-bottom") {
+            if let Some(margin_block_end) = data.get_style(StyleProperty::MarginBottom) {
                 match margin_block_end {
                     StyleValue::Unit(value, unit) => {
                         match unit {
@@ -154,7 +188,7 @@ fn generate_node(
                     _ => {}
                 }
             }
-            if let Some(margin_inline_start) = data.get_style("margin-left") {
+            if let Some(margin_inline_start) = data.get_style(StyleProperty::MarginLeft) {
                 match margin_inline_start {
                     StyleValue::Unit(value, unit) => {
                         match unit {
@@ -166,7 +200,7 @@ fn generate_node(
                     _ => {}
                 }
             }
-            if let Some(margin_inline_end) = data.get_style("margin-right") {
+            if let Some(margin_inline_end) = data.get_style(crate::document::style::StyleProperty::MarginRight) {
                 match margin_inline_end {
                     StyleValue::Unit(value, unit) => {
                         match unit {
@@ -179,7 +213,7 @@ fn generate_node(
                 }
             }
             // --- Padding ---
-            if let Some(padding_block_start) = data.get_style("padding-top") {
+            if let Some(padding_block_start) = data.get_style(StyleProperty::PaddingTop) {
                 match padding_block_start {
                     StyleValue::Unit(value, unit) => {
                         match unit {
@@ -191,7 +225,7 @@ fn generate_node(
                     _ => {}
                 }
             }
-            if let Some(padding_block_end) = data.get_style("padding-bottom") {
+            if let Some(padding_block_end) = data.get_style(StyleProperty::PaddingBottom) {
                 match padding_block_end {
                     StyleValue::Unit(value, unit) => {
                         match unit {
@@ -203,7 +237,7 @@ fn generate_node(
                     _ => {}
                 }
             }
-            if let Some(padding_inline_start) = data.get_style("padding-left") {
+            if let Some(padding_inline_start) = data.get_style(StyleProperty::PaddingLeft) {
                 match padding_inline_start {
                     StyleValue::Unit(value, unit) => {
                         match unit {
@@ -215,7 +249,7 @@ fn generate_node(
                     _ => {}
                 }
             }
-            if let Some(padding_inline_end) = data.get_style("padding-right") {
+            if let Some(padding_inline_end) = data.get_style(StyleProperty::PaddingRight) {
                 match padding_inline_end {
                     StyleValue::Unit(value, unit) => {
                         match unit {
@@ -228,19 +262,19 @@ fn generate_node(
                 }
             }
             // --- Border ---
-            if let Some(border_top_width) = data.get_style("border-top-width") {
-                match border_top_width {
-                    StyleValue::Unit(value, unit) => {
-                        match unit {
-                            Unit::Px => style.border.top = LengthPercentage::Length(*value),
-                            Unit::Percent => style.border.top = LengthPercentage::Percent(*value),
-                            _ => {}
-                        }
-                    }
-                    _ => {}
-                }
-            }
-            if let Some(border_bottom_width) = data.get_style("border-bottom-width") {
+            if let Some(border_top_width) = data.get_style(StyleProperty::BorderTopWidth) {
+match border_top_width {
+StyleValue::Unit(value, unit) => {
+match unit {
+Unit::Px => style.border.top = LengthPercentage::Length(*value),
+Unit::Percent => style.border.top = LengthPercentage::Percent(*value),
+_ => {}
+}
+}
+_ => {}
+}
+}
+            if let Some(border_bottom_width) = data.get_style(StyleProperty::BorderBottomWidth) {
                 match border_bottom_width {
                     StyleValue::Unit(value, unit) => {
                         match unit {
@@ -252,7 +286,7 @@ fn generate_node(
                     _ => {}
                 }
             }
-            if let Some(border_left_width) = data.get_style("border-left-width") {
+            if let Some(border_left_width) = data.get_style(StyleProperty::BorderLeftWidth) {
                 match border_left_width {
                     StyleValue::Unit(value, unit) => {
                         match unit {
@@ -264,7 +298,7 @@ fn generate_node(
                     _ => {}
                 }
             }
-            if let Some(border_right_width) = data.get_style("border-right-width") {
+            if let Some(border_right_width) = data.get_style(StyleProperty::BorderRightWidth) {
                 match border_right_width {
                     StyleValue::Unit(value, unit) => {
                         match unit {
@@ -277,15 +311,49 @@ fn generate_node(
                 }
             }
         }
-        NodeType::Text(text) => {
-            let (width, height) = get_text_dimension(text, "Arial", 32.0);
-            style.size.width = Dimension::Length(width as f32);
-            style.size.height = Dimension::Length(height as f32);
+        NodeType::Text(text, style) => {
+            // let layout = get_text_layout(text, "Arial", 32.0, 600.0);
+            // let (width, height) = get_text_dimension(text, "Arial", 32.0, 600.0);
+            // style.size.width = Dimension::Length(width as f32);
+            // style.size.height = Dimension::Length(height as f32);
+
+            let mut font_size = 16.0;
+            let mut font_family = "Arial".to_string();
+
+            match style.get_property(StyleProperty::FontSize) {
+                Some(StyleValue::Unit(value, unit)) => {
+                    match unit {
+                        Unit::Px => font_size = *value,
+                        Unit::Em => panic!("Don't know how to deal with em units for fonts"),
+                        Unit::Rem => panic!("Don't know how to deal with rem units for fonts"),
+                        _ => panic!("Incorrect font-size property unit"),
+                    }
+                }
+                _ => {},
+            }
+
+            match style.get_property(StyleProperty::FontFamily) {
+                Some(StyleValue::Keyword(value)) => font_family = value.clone(),
+                _ => {},
+            }
+
+            context = Some(NodeContext::Text(
+                TextContext {
+                    text: text.clone(),
+                    family: font_family,
+                    size: font_size,
+                }
+            ));
         }
     }
 
     if dom_node.children.is_empty() {
-        match layout_tree.taffy.tree.new_leaf(style) {
+        let result = match context {
+            Some(context) => layout_tree.taffy.tree.new_leaf_with_context(style, context),
+            None => layout_tree.taffy.tree.new_leaf(style),
+        };
+
+        match result {
             Ok(leaf_id) => {
                 let el = LayoutElementNode {
                     id: layout_tree.next_node_id(),

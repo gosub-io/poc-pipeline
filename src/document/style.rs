@@ -1,5 +1,30 @@
 use std::collections::HashMap;
 
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub enum StyleProperty {
+    Color,
+    FontSize,
+    FontWeight,
+    Display,
+    Width,
+    Height,
+    MarginTop,
+    MarginRight,
+    MarginBottom,
+    MarginLeft,
+    PaddingTop,
+    PaddingRight,
+    PaddingBottom,
+    PaddingLeft,
+    BorderBottomWidth,
+    BorderTopWidth,
+    BorderLeftWidth,
+    BorderRightWidth,
+    MarginBlockStart,
+    MarginBlockEnd,
+    FontFamily,
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum Unit {
     Px,
@@ -43,7 +68,7 @@ pub enum StyleValue {
 
 #[derive(Debug, Clone)]
 pub struct StylePropertyList {
-    pub properties: HashMap<String, StyleValue>,
+    pub properties: HashMap<StyleProperty, StyleValue>,
 }
 
 impl StylePropertyList {
@@ -53,12 +78,12 @@ impl StylePropertyList {
         }
     }
 
-    pub fn set_property(&mut self, name: &str, value: StyleValue) {
-        self.properties.insert(name.to_string(), value.clone());
+    pub fn set_property(&mut self, prop: StyleProperty, value: StyleValue) {
+        self.properties.insert(prop, value.clone());
     }
 
-    pub fn get_property(&self, name: &str) -> Option<&StyleValue> {
-        self.properties.get(name)
+    pub fn get_property(&self, prop: StyleProperty) -> Option<&StyleValue> {
+        self.properties.get(&prop)
     }
 }
 

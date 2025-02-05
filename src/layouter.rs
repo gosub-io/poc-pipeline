@@ -7,11 +7,21 @@ use ::taffy::prelude::TaffyMaxContent;
 use crate::layouter::boxmodel::BoxModel;
 use crate::render_tree::{RenderTree, RenderNodeId};
 use crate::document::node::{NodeId as DomNodeId, NodeId};
-use crate::layouter::taffy::generate_with_taffy;
+use crate::layouter::taffy::{generate_with_taffy, NodeContext};
 
 pub mod taffy;
-pub mod text;
 mod boxmodel;
+
+#[cfg(not(any(feature = "parley", feature = "pango")))]
+compile_error!("Either the 'parley' or 'pango' feature must be enabled");
+
+#[cfg(all(feature = "parley", feature = "pango"))]
+compile_error!("Only one of the 'parley' or 'pango' features can be enabled");
+
+#[cfg(feature = "parley")]
+pub mod parley_text;
+#[cfg(feature = "pango")]
+pub mod pango_text;
 
 pub(crate) struct ViewportSize {
     pub(crate) width: f64,
@@ -58,7 +68,7 @@ pub struct LayoutElementNode {
 
 #[derive(Debug, Clone)]
 pub struct TaffyStruct {
-    pub tree: TaffyTree,
+    pub tree: TaffyTree<NodeContext>,
     pub root_id: TaffyNodeId,
 }
 

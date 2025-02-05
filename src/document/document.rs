@@ -21,8 +21,8 @@ impl Document {
         node_id
     }
 
-    pub fn new_text(&mut self, data: &str) -> NodeId {
-        let node = Node::new_text(self, data.to_string());
+    pub fn new_text(&mut self, text: &str, style: Option<StylePropertyList>) -> NodeId {
+        let node = Node::new_text(self, text.to_string(), style);
         let node_id = node.node_id.clone();
         self.arena.insert(node_id.clone(), node);
         node_id
@@ -104,7 +104,7 @@ impl Document {
                 match visit_mode {
                     NodeVisit::Enter => {
                         match &node.node_type {
-                            NodeType::Text(text) => writeln!(writer, "{}({}) {}", indent, node.node_id, text).unwrap(),
+                            NodeType::Text(text, _) => writeln!(writer, "{}({}) {}", indent, node.node_id, text).unwrap(),
                             NodeType::Element(element) => {
                                 if element.is_self_closing() {
                                     writeln!(writer, "{}({}) <{} {}>", indent, node.node_id, element.tag_name, element.attributes.to_string()).unwrap();

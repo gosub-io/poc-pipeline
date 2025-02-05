@@ -62,7 +62,3 @@ pub fn get_text_dimension(text: &str, font_family: &str, font_size: f64) -> (f64
     let layout = get_text_layout(text, font_family, font_size);
     (layout.width() as f64, layout.height() as f64)
 }
-
-// pub fn measure_text_height(text: &str, font_size: f64, line_height: f64) -> f64 {
-//     line_height
-// }

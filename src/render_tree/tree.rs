@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::ops::AddAssign;
 use crate::document::document::Document;
 use crate::document::node::{Node, NodeType, NodeId};
-use crate::document::style::StyleValue;
+use crate::document::style::{StyleProperty, StyleValue};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct RenderNodeId(u64);
@@ -113,7 +113,7 @@ impl RenderTree {
 
     fn is_visible(&self, node: &Node) -> bool {
         match &node.node_type {
-            NodeType::Text(_) => true,
+            NodeType::Text(..) => true,
             NodeType::Element(element) => {
                 // Check element name
                 if INVISIBLE_ELEMENTS.contains(&element.tag_name.as_str()) {
@@ -127,7 +127,7 @@ impl RenderTree {
                     }
                 }
 
-                if element.get_style("display") == Some(&StyleValue::None) {
+                if element.get_style(StyleProperty::Display) == Some(&StyleValue::None) {
                     return false;
                 }
 
