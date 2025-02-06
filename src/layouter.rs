@@ -4,6 +4,7 @@ use std::ops::AddAssign;
 use std::rc::Rc;
 use ::taffy::{NodeId as TaffyNodeId, TaffyTree};
 use ::taffy::prelude::TaffyMaxContent;
+use gtk4::pango::Layout;
 use crate::layouter::boxmodel::BoxModel;
 use crate::render_tree::{RenderTree, RenderNodeId};
 use crate::document::node::{NodeId as DomNodeId, NodeId};
@@ -51,6 +52,25 @@ impl std::fmt::Display for LayoutElementId {
 
 
 #[derive(Debug, Clone)]
+pub enum LayoutContext {
+    None,
+    Text(Text),
+    Image(Image),
+}
+
+#[derive(Clone, Debug)]
+pub struct Text {
+    pub layout: Layout,
+}
+
+#[derive(Clone, Debug)]
+pub struct Image {
+    pub src: String,
+    pub alt: String,
+}
+
+
+#[derive(Debug, Clone)]
 pub struct LayoutElementNode {
     pub id: LayoutElementId,
     /// Id of the node in the DOM, contains the data, like element name, attributes, etc.
@@ -63,6 +83,8 @@ pub struct LayoutElementNode {
     pub children: Vec<LayoutElementId>,
     /// Generated boxmodel for this node
     pub box_model: BoxModel,
+    /// Node context
+    pub context: LayoutContext,
 }
 
 

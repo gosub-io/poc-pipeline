@@ -2,8 +2,7 @@ use gtk4::cairo::Context;
 use pangocairo::functions::{show_layout};
 use crate::document::node::NodeType;
 use crate::layering::layer::{LayerId, LayerList};
-use crate::layouter::{LayoutElementId, LayoutElementNode};
-use crate::layouter::pango_text::get_text_layout;
+use crate::layouter::{LayoutContext, LayoutElementId, LayoutElementNode};
 
 pub fn paint_cairo(layer_list: &LayerList, cr: &Context, visible_layer_list: Vec<bool>, wireframed: bool, hover: Option<LayoutElementId>) {
     // white background
@@ -75,8 +74,6 @@ pub fn paint_cairo(layer_list: &LayerList, cr: &Context, visible_layer_list: Vec
                 return;
             };
 
-            // If we have a text element, we already have text layout which we can render the glyphsy
-
             match &node.node_type {
                 NodeType::Element(ref _el_data) => {
                     // if let Some(ref style) = el_data.computed_style {
@@ -87,19 +84,14 @@ pub fn paint_cairo(layer_list: &LayerList, cr: &Context, visible_layer_list: Vec
                     //     }
                     // }
                 }
-                NodeType::Text(text, _style) => {
-                    // @TODO: layout is already calculated.. We need to fetch it from somewhere
-                    let x = el.box_model.content_box().x;
-                    let y = el.box_model.content_box().y;
-                    if let Ok(layout) = get_text_layout(text, "Arial", 12.0, el.box_model.content_box().width) {
-                        rasterize_text_layout(cr, layout, (x, y));
+                NodeType::Text(_text, _style) => {
+                    if let Some(LayoutContext::Text(ctx)) = &el.context {
+                        let x = el.box_model.content_box().x;
+                        let y = el.box_model.content_box().y;
+                        rasterize_text_layout(cr, ctx.layout.clone(), (x, y));
                     }
                 }
             }
-
-            // cr.set_source_rgba(0.0, 0.0, 0.0, 1.0);
-            // cr.rectangle(el.box_model.content_box().x, el.box_model.content_box().y, el.box_model.content_box().width, el.box_model.content_box().height);
-            // _ = cr.fill();
         }
 
         let binding = layer_list.layers.borrow();

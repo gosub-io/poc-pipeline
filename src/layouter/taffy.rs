@@ -5,7 +5,7 @@ use crate::render_tree::{RenderTree, RenderNodeId};
 use taffy::prelude::*;
 use crate::document::node::{NodeType, NodeId as DomNodeId};
 use crate::document::style::{StyleProperty, StyleValue, Unit};
-use crate::layouter::{boxmodel as BoxModel, LayoutElementNode, LayoutTree, TaffyStruct, TaffyNodeId, LayoutElementId};
+use crate::layouter::{boxmodel as BoxModel, LayoutElementNode, LayoutTree, TaffyStruct, TaffyNodeId, LayoutElementId, LayoutContext};
 use crate::layouter::pango_text::get_text_layout;
 use crate::layouter::ViewportSize;
 
@@ -45,13 +45,6 @@ pub fn generate_with_taffy(render_tree: RenderTree, viewport: ViewportSize) -> L
         height: AvailableSpace::Definite(viewport.height as f32),
     };
     layout_tree.taffy.tree.compute_layout_with_measure(layout_tree.taffy.root_id, size, |v_kd, v_as, v_ni, v_nc, v_s| {
-        // println!("----------------------");
-        // println!("kd: {:?}", v_kd);
-        // println!("as: {:?}", v_as);
-        // println!("ni: {:?}", v_ni);
-        // println!("nc: {:?}", v_nc);
-        // // println!("s: {:?}", v_s);
-
         match v_nc {
             Some(NodeContext::Text(text_ctx)) => {
                 let font_size = text_ctx.size;
@@ -62,10 +55,8 @@ pub fn generate_with_taffy(render_tree: RenderTree, viewport: ViewportSize) -> L
                 match layout {
                     Ok(layout) => {
                         Size {
-                            width: 100.0,
-                            height: 100.0,
-                            // width: layout.width() as f32,
-                            // height: layout.height() as f32,
+                            width: layout.width() as f32,
+                            height: layout.height() as f32,
                         }
                     },
                     Err(_) => Size::ZERO
@@ -109,10 +100,7 @@ fn has_margin(src: Rect<LengthPercentageAuto>) -> bool {
 }
 
 
-fn generate_tree(
-    render_tree: RenderTree,
-    root_id: RenderNodeId,
-) -> Option<LayoutTree> {
+fn generate_tree(render_tree: RenderTree, root_id: RenderNodeId) -> Option<LayoutTree> {
     let mut tree: TaffyTree<NodeContext> = TaffyTree::new();
 
     let mut layout_tree = LayoutTree {
@@ -122,7 +110,7 @@ fn generate_tree(
             root_id: TaffyNodeId::new(0), // Will be filled in later
         },
         arena: HashMap::new(),
-        root_id: LayoutElementId::new(0), // Will be filled in layer
+        root_id: LayoutElementId::new(0), // Will be filled in later
         next_node_id: Rc::new(RefCell::new(LayoutElementId::new(0))),
     };
 
@@ -138,10 +126,7 @@ fn generate_tree(
 }
 
 
-fn generate_node(
-    layout_tree: &mut LayoutTree,
-    render_node_id: RenderNodeId,
-) -> Option<&LayoutElementNode> {
+fn generate_node(layout_tree: &mut LayoutTree, render_node_id: RenderNodeId) -> Option<&LayoutElementNode> {
     let mut style = Style {
         display: Display::Block,
         ..Default::default()
@@ -284,17 +269,17 @@ fn generate_node(
             }
             // --- Border ---
             if let Some(border_top_width) = data.get_style(StyleProperty::BorderTopWidth) {
-match border_top_width {
-StyleValue::Unit(value, unit) => {
-match unit {
-Unit::Px => style.border.top = LengthPercentage::Length(*value),
-Unit::Percent => style.border.top = LengthPercentage::Percent(*value),
-_ => {}
-}
-}
-_ => {}
-}
-}
+                match border_top_width {
+                    StyleValue::Unit(value, unit) => {
+                        match unit {
+                            Unit::Px => style.border.top = LengthPercentage::Length(*value),
+                            Unit::Percent => style.border.top = LengthPercentage::Percent(*value),
+                            _ => {}
+                        }
+                    }
+                    _ => {}
+                }
+            }
             if let Some(border_bottom_width) = data.get_style(StyleProperty::BorderBottomWidth) {
                 match border_bottom_width {
                     StyleValue::Unit(value, unit) => {
@@ -378,6 +363,7 @@ _ => {}
                     taffy_node_id: leaf_id,
                     box_model: BoxModel::BoxModel::ZERO,
                     children: vec![],
+                    context: LayoutContext::None,
                 };
 
                 let id = el.id;
@@ -415,6 +401,7 @@ _ => {}
                 taffy_node_id: leaf_id,
                 box_model: BoxModel::BoxModel::ZERO,
                 children: children_el_ids,
+                context: LayoutContext::None,
             };
 
             let id = el.id;
