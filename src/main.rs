@@ -28,7 +28,7 @@ struct BrowserState {
     debug_hover: bool,
     /// When set, this is the element that is currently hovered upon
     current_hovered_element: Option<LayoutElementId>,
-    /// LayerList
+    /// LayerList that is currently being rendered
     layer_list: LayerList,
 }
 
@@ -61,6 +61,12 @@ fn main() {
     let layer_list = LayerList::new(layout_tree);
 
     // --------------------------------------------------------------------
+    // Tiling phase
+
+    // --------------------------------------------------------------------
+    // Here the pipeline is not quite correct. We basically skip the tiling rendering and compositing phases.
+    // We don't know yet how thightly this is coupled with the UI.
+
     // Render the layout-tree into a GTK window
     let app = Application::builder()
         .application_id("io.gosub.renderer")
@@ -96,11 +102,17 @@ fn build_ui(app: &Application, browser_state: Rc<RefCell<BrowserState>>) {
     let browser_state_clone = browser_state.clone();
     area.set_draw_func(move |_area, cr, _width, _height| {
         let browser_state_clone = browser_state_clone.clone();
+
+        // Paint the layer list to the cairo context. Also pass a few flags that allows
+        // us to control what is exactly being rendered.
         paint_cairo(
             &browser_state_clone.borrow().layer_list,
             cr,
+            // List of the layers to render
             browser_state_clone.borrow().visible_layer_list.clone(),
+            // When true, only render the wireframes of the layout elements
             browser_state_clone.borrow().wireframed,
+            // When set, only render the hovered element
             if browser_state_clone.borrow().debug_hover {
                 browser_state_clone.borrow().current_hovered_element
             } else {
@@ -109,6 +121,9 @@ fn build_ui(app: &Application, browser_state: Rc<RefCell<BrowserState>>) {
         );
     });
 
+    /// When we move the mouse, we can detect which element is currently hovered upon
+    /// This allows us to trigger events (OnElementLeave, onElementEnter). At that point,
+    /// we trigger a redraw, since there can be things that need to be updated.
     let motion_controller = EventControllerMotion::new();
     let browser_state_clone = browser_state.clone();
     let area_clone = area.clone();
@@ -146,6 +161,7 @@ fn build_ui(app: &Application, browser_state: Rc<RefCell<BrowserState>>) {
     });
     area.add_controller(motion_controller);
 
+
     let scroll = ScrolledWindow::builder()
         .hscrollbar_policy(gtk4::PolicyType::Automatic)
         .vscrollbar_policy(gtk4::PolicyType::Automatic)
@@ -154,13 +170,14 @@ fn build_ui(app: &Application, browser_state: Rc<RefCell<BrowserState>>) {
     window.set_child(Some(&scroll));
 
 
-
+    // Add keyboard shortcuts to trigger some of the rendering options
     let controller = gtk4::EventControllerKey::new();
     let browser_state_clone = browser_state.clone();
     controller.connect_key_pressed(move |_controller, keyval, _keycode, _state| {
         let mut bsm = browser_state_clone.borrow_mut();
 
         match keyval {
+            // numeric keys triggers the visibility of the layers
             key if key == gtk4::gdk::Key::_1 => { bsm.visible_layer_list[0] = !bsm.visible_layer_list[0]; area.queue_draw(); }
             key if key == gtk4::gdk::Key::_2 => { bsm.visible_layer_list[1] = !bsm.visible_layer_list[1]; area.queue_draw(); }
             key if key == gtk4::gdk::Key::_3 => { bsm.visible_layer_list[2] = !bsm.visible_layer_list[2]; area.queue_draw(); }
@@ -171,7 +188,9 @@ fn build_ui(app: &Application, browser_state: Rc<RefCell<BrowserState>>) {
             key if key == gtk4::gdk::Key::_8 => { bsm.visible_layer_list[7] = !bsm.visible_layer_list[7]; area.queue_draw(); }
             key if key == gtk4::gdk::Key::_9 => { bsm.visible_layer_list[8] = !bsm.visible_layer_list[8]; area.queue_draw(); }
             key if key == gtk4::gdk::Key::_0 => { bsm.visible_layer_list[9] = !bsm.visible_layer_list[9]; area.queue_draw(); }
+            // toggle wireframed elements
             key if key == gtk4::gdk::Key::w => { bsm.wireframed = !bsm.wireframed; area.queue_draw(); }
+            // toggle displaying only the hovered element
             key if key == gtk4::gdk::Key::d => { bsm.debug_hover = !bsm.debug_hover; area.queue_draw(); }
             _ => (),
         }

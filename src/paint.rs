@@ -4,6 +4,9 @@ use crate::document::node::NodeType;
 use crate::layering::layer::{LayerId, LayerList};
 use crate::layouter::{LayoutContext, LayoutElementId, LayoutElementNode};
 
+// This function is used to paint the layers to the screen, but it's still too tightly coupled. We still miss the tiling, rendering and compositing
+// part of the system. Basically, this function will does the compositing and rendering, and tiling is still missing in the whole setup.
+
 pub fn paint_cairo(layer_list: &LayerList, cr: &Context, visible_layer_list: Vec<bool>, wireframed: bool, hover: Option<LayoutElementId>) {
     // white background
     cr.set_source_rgb(1.0, 1.0, 1.0);
