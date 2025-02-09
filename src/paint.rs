@@ -3,11 +3,18 @@ use pangocairo::functions::{show_layout};
 use crate::document::node::NodeType;
 use crate::layering::layer::{LayerId, LayerList};
 use crate::layouter::{LayoutContext, LayoutElementId, LayoutElementNode};
-
+use crate::tiler::TileList;
 // This function is used to paint the layers to the screen, but it's still too tightly coupled. We still miss the tiling, rendering and compositing
 // part of the system. Basically, this function will does the compositing and rendering, and tiling is still missing in the whole setup.
 
-pub fn paint_cairo(layer_list: &LayerList, cr: &Context, visible_layer_list: Vec<bool>, wireframed: bool, hover: Option<LayoutElementId>) {
+pub fn paint_cairo(
+    tile_list: &TileList,
+    cr: &Context,
+    visible_layer_list: Vec<bool>,
+    wireframed: bool,
+    hover: Option<LayoutElementId>,
+    show_tilegrid: bool,
+) {
     // white background
     cr.set_source_rgb(1.0, 1.0, 1.0);
     _ = cr.paint();
@@ -43,6 +50,7 @@ pub fn paint_cairo(layer_list: &LayerList, cr: &Context, visible_layer_list: Vec
             _ = cr.stroke();
 
         }
+
         fn draw_debug_boxmodel(cr: &Context, el: &LayoutElementNode) {
             // Draw margin
             let m = el.box_model.margin_box;
@@ -72,6 +80,7 @@ pub fn paint_cairo(layer_list: &LayerList, cr: &Context, visible_layer_list: Vec
             cr.set_source_rgba(1.0, 0.0, 0.0, 0.25);
             _ = cr.stroke();
         }
+
         fn draw_paint(cr: &Context, layer_list: &LayerList, el: &LayoutElementNode) {
             let Some(node) = layer_list.layout_tree.render_tree.doc.get_node_by_id(el.dom_node_id) else {
                 return;
@@ -88,7 +97,7 @@ pub fn paint_cairo(layer_list: &LayerList, cr: &Context, visible_layer_list: Vec
                     // }
                 }
                 NodeType::Text(_text, _style) => {
-                    if let Some(LayoutContext::Text(ctx)) = &el.context {
+                    if let LayoutContext::Text(ctx) = &el.context {
                         let x = el.box_model.content_box().x;
                         let y = el.box_model.content_box().y;
                         rasterize_text_layout(cr, ctx.layout.clone(), (x, y));
@@ -98,7 +107,7 @@ pub fn paint_cairo(layer_list: &LayerList, cr: &Context, visible_layer_list: Vec
         }
 
         let binding = layer_list.layers.borrow();
-        let Some(layer) = binding.get(layer_id) else {
+        let Some(layer) = binding.get(&layer_id) else {
             return;
         };
 
@@ -122,7 +131,29 @@ pub fn paint_cairo(layer_list: &LayerList, cr: &Context, visible_layer_list: Vec
 
     for (layer_id, visible) in visible_layer_list.iter().enumerate() {
         if *visible {
-            draw_layer(cr, &layer_list, layer_id as LayerId, wireframed, hover);
+            draw_layer(cr, &tile_list.layer_list, layer_id as LayerId, wireframed, hover);
+        }
+    }
+
+    if show_tilegrid {
+        // Display the tilegrid based on the tiles
+        let h = tile_list.layer_list.layout_tree.root_height;
+        let w = tile_list.layer_list.layout_tree.root_width;
+
+        let row_cnt = (h / tile_list.tile_height as f32).ceil() as usize;
+        let col_cnt = (w / tile_list.tile_width as f32).ceil() as usize;
+
+        cr.set_source_rgba(0.0, 0.0, 0.0, 0.25);
+        for y in 0..row_cnt {
+            for x in 0..col_cnt {
+                cr.rectangle(
+                    x as f64 * tile_list.tile_width as f64,
+                    y as f64 * tile_list.tile_height as f64,
+                    tile_list.tile_width as f64,
+                    tile_list.tile_height as f64
+                );
+                _ = cr.stroke();
+            }
         }
     }
 }

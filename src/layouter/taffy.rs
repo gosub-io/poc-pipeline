@@ -5,7 +5,8 @@ use crate::render_tree::{RenderTree, RenderNodeId};
 use taffy::prelude::*;
 use crate::document::node::{NodeType, NodeId as DomNodeId};
 use crate::document::style::{StyleProperty, StyleValue, Unit};
-use crate::layouter::{boxmodel as BoxModel, LayoutElementNode, LayoutTree, TaffyStruct, TaffyNodeId, LayoutElementId, LayoutContext};
+use crate::geo;
+use crate::layouter::{boxmodel as BoxModel, LayoutElementNode, LayoutTree, TaffyStruct, TaffyNodeId, LayoutElementId, LayoutContext, RenderContext};
 use crate::layouter::pango_text::get_text_layout;
 use crate::layouter::ViewportSize;
 
@@ -86,6 +87,13 @@ pub fn generate_with_taffy(render_tree: RenderTree, viewport: ViewportSize) -> L
     let root_id = layout_tree.root_id;
     generate_boxmodel(&mut layout_tree, root_id, (0.0, 0.0));
 
+    // get dimension of the root node
+    let root = layout_tree.get_node_by_id(root_id).unwrap();
+    let w = root.box_model.margin_box.width as f32;
+    let h = root.box_model.margin_box.height as f32;
+    layout_tree.root_width = w;
+    layout_tree.root_height = h;
+
     layout_tree
 }
 
@@ -112,6 +120,8 @@ fn generate_tree(render_tree: RenderTree, root_id: RenderNodeId) -> Option<Layou
         arena: HashMap::new(),
         root_id: LayoutElementId::new(0), // Will be filled in later
         next_node_id: Rc::new(RefCell::new(LayoutElementId::new(0))),
+        root_width: 0.0,
+        root_height: 0.0,
     };
 
     let ids = {
@@ -364,6 +374,7 @@ fn generate_node(layout_tree: &mut LayoutTree, render_node_id: RenderNodeId) -> 
                     box_model: BoxModel::BoxModel::ZERO,
                     children: vec![],
                     context: LayoutContext::None,
+                    render_context: RenderContext::None,
                 };
 
                 let id = el.id;
@@ -402,6 +413,7 @@ fn generate_node(layout_tree: &mut LayoutTree, render_node_id: RenderNodeId) -> 
                 box_model: BoxModel::BoxModel::ZERO,
                 children: children_el_ids,
                 context: LayoutContext::None,
+                render_context: RenderContext::None,
             };
 
             let id = el.id;
@@ -415,7 +427,7 @@ fn generate_node(layout_tree: &mut LayoutTree, render_node_id: RenderNodeId) -> 
 /// Converts a taffy layout to our own BoxModel structure
 pub fn to_boxmodel(layout: &Layout, offset: (f32, f32)) -> BoxModel::BoxModel {
     BoxModel::BoxModel {
-        margin_box: BoxModel::Rect {
+        margin_box: geo::Rect {
             x: offset.0 as f64 + layout.location.x as f64,
             y: offset.1  as f64 + layout.location.y as f64,
             width: layout.size.width as f64 + layout.margin.left as f64 + layout.margin.right as f64,

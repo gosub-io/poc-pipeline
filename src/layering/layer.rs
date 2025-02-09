@@ -1,4 +1,5 @@
 use std::cell::{Ref, RefCell, RefMut};
+use std::collections::HashMap;
 use crate::layouter::{LayoutElementId, LayoutTree};
 
 pub type LayerId = usize;
@@ -38,8 +39,13 @@ impl std::fmt::Debug for Layer {
 
 #[derive(Clone)]
 pub(crate) struct LayerList {
+    /// Wrapped layout tree
     pub layout_tree: LayoutTree,
-    pub layers: RefCell<Vec<Layer>>,
+    /// List of all (unique) layer IDs
+    pub layer_ids: RefCell<Vec<LayerId>>,
+    /// List of layers
+    pub layers: RefCell<HashMap<LayerId, Layer>>,
+    /// Next layer ID
     next_layer_id: RefCell<LayerId>,
 }
 
@@ -56,7 +62,8 @@ impl LayerList {
     pub fn new(layout_tree: LayoutTree) -> LayerList {
         let mut layer_list = LayerList {
             layout_tree,
-            layers: RefCell::new(vec![]),
+            layers: RefCell::new(HashMap::new()),
+            layer_ids: RefCell::new(Vec::new()),
             next_layer_id: RefCell::new(0),
         };
 
@@ -67,7 +74,12 @@ impl LayerList {
     /// Find the element at the given coordinates. It will return the given element if it is found or None otherwise
     pub fn find_element_at(&self, x: f64, y: f64) -> Option<LayoutElementId> {
         // This assumes that the layers are ordered from top to bottom
-        for layer in self.layers.borrow().iter().rev() {
+        for layer_id in self.layer_ids.borrow().iter().rev() {
+            let binding = self.layers.borrow();
+            let Some(layer) = binding.get(layer_id) else {
+              continue;
+            };
+
             for element_id in layer.elements.iter().rev() {
                 let layout_element = self.layout_tree.get_node_by_id(*element_id).unwrap();
                 let box_model = &layout_element.box_model;
@@ -85,25 +97,28 @@ impl LayerList {
         None
     }
 
+    // Create a new layer to the list at the given order
     fn new_layer(&self, order: isize) -> LayerId {
         let layer = Layer::new(self.next_layer_id(), order);
         let layer_id = layer.layer_id;
-        self.layers.borrow_mut().push(layer);
+        self.layer_ids.borrow_mut().push(layer_id);
+        self.layers.borrow_mut().insert(layer_id, layer);
 
         layer_id
     }
 
     #[allow(unused)]
     fn get_layer(&self, layer_id: LayerId) -> Option<Ref<Layer>> {
-        let layers = self.layers.borrow();
-        let pos = layers.iter().position(|layer| layer.layer_id == layer_id)?;
-        Some(Ref::map(layers, |layers| &layers[pos]))
+        Ref::filter_map(self.layers.borrow(), |layers| layers.get(&layer_id)).ok()
     }
 
     fn get_layer_mut(&self, layer_id: LayerId) -> Option<RefMut<Layer>> {
         let layers = self.layers.borrow_mut();
-        let pos = layers.iter().position(|layer| layer.layer_id == layer_id)?;
-        Some(RefMut::map(layers, |layers| &mut layers[pos]))
+        if layers.contains_key(&layer_id) {
+            Some(RefMut::map(layers, |layers| layers.get_mut(&layer_id).unwrap()))
+        } else {
+            None
+        }
     }
 
     fn generate_layers(&mut self) {
@@ -151,10 +166,9 @@ impl LayerList {
     }
 
     fn next_layer_id(&self) -> LayerId {
-        let id = self.next_layer_id.borrow().clone();
-
-        let mut next_layer_id = self.next_layer_id.borrow_mut();
-        *next_layer_id += 1;
+        let mut next_id = self.next_layer_id.borrow_mut();
+        let id = *next_id;
+        *next_id += 1;
 
         id
     }

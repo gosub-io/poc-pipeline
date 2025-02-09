@@ -1,11 +1,4 @@
-/// A simple rectangle with a position (x, y) and dimensions (width, height).
-#[derive(Debug, Clone, Copy)]
-pub struct Rect {
-    pub x: f64,
-    pub y: f64,
-    pub width: f64,
-    pub height: f64,
-}
+use crate::geo;
 
 /// Represents the thickness (or spacing) on each side.
 #[derive(Debug, Clone, Copy)]
@@ -18,7 +11,7 @@ pub struct Edges {
 
 #[derive(Debug, Clone, Copy)]
 pub struct BoxModel {
-    pub margin_box: Rect,
+    pub margin_box: geo::Rect,
     pub margin: Edges,
     pub border: Edges,
     pub padding: Edges,
@@ -26,14 +19,14 @@ pub struct BoxModel {
 
 impl BoxModel {
     pub const ZERO: Self = Self {
-        margin_box: Rect { x: 0.0, y: 0.0, width: 0.0, height: 0.0 },
+        margin_box: geo::Rect { x: 0.0, y: 0.0, width: 0.0, height: 0.0 },
         margin: Edges { top: 0.0, right: 0.0, bottom: 0.0, left: 0.0 },
         border: Edges { top: 0.0, right: 0.0, bottom: 0.0, left: 0.0 },
         padding: Edges { top: 0.0, right: 0.0, bottom: 0.0, left: 0.0 },
     };
 
-    pub fn border_box(&self) -> Rect {
-        Rect {
+    pub fn border_box(&self) -> geo::Rect {
+        geo::Rect {
             x: self.margin_box.x + self.margin.left,
             y: self.margin_box.y + self.margin.top,
             width: self.margin_box.width - (self.margin.left + self.margin.right),
@@ -41,9 +34,9 @@ impl BoxModel {
         }
     }
 
-    pub fn padding_box(&self) -> Rect {
+    pub fn padding_box(&self) -> geo::Rect {
         let border_box = self.border_box();
-        Rect {
+        geo::Rect {
             x: border_box.x + self.border.left,
             y: border_box.y + self.border.top,
             width: border_box.width - (self.border.left + self.border.right),
@@ -51,9 +44,9 @@ impl BoxModel {
         }
     }
 
-    pub fn content_box(&self) -> Rect {
+    pub fn content_box(&self) -> geo::Rect {
         let padding_box = self.padding_box();
-        Rect {
+        geo::Rect {
             x: padding_box.x + self.padding.left,
             y: padding_box.y + self.padding.top,
             width: padding_box.width - (self.padding.left + self.padding.right),

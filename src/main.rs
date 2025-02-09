@@ -7,6 +7,9 @@ use render_tree::RenderTree;
 use crate::layering::layer::{LayerList};
 use crate::layouter::{generate_layout, ViewportSize};
 use crate::paint::paint_cairo;
+use crate::tiler::TileList;
+
+const TILE_DIMENSION : usize = 220;
 
 #[allow(unused)]
 mod document;
@@ -16,6 +19,9 @@ mod render_tree;
 mod layouter;
 mod layering;
 mod paint;
+#[allow(unused)]
+mod tiler;
+mod geo;
 
 /// Things that can change in the browser is stored in this structure. It keeps the current rendering pipeline (in the form of a layer_list),
 /// and some things that we can control, or is controlled by the user (like current_hovered_element).
@@ -26,15 +32,18 @@ struct BrowserState {
     wireframed: bool,
     /// Just show the hovered debug node in wireframe
     debug_hover: bool,
+    /// Show the tile grid
+    show_tilegrid: bool,
     /// When set, this is the element that is currently hovered upon
     current_hovered_element: Option<LayoutElementId>,
     /// LayerList that is currently being rendered
-    layer_list: LayerList,
+    tile_list: TileList,
 }
 
 fn main() {
     // --------------------------------------------------------------------
     // Generate a DOM tree
+    println!("\n\n\n\n\n--[ DOM TREE ]----------------------------------");
     let doc = document::create_document();
     let mut output = String::new();
     doc.print_tree(&mut output).unwrap();
@@ -42,6 +51,7 @@ fn main() {
 
     // --------------------------------------------------------------------
     // Convert the DOM tree into a render-tree that has all the non-visible elements removed
+    println!("\n\n\n\n\n--[ RENDER TREE ]----------------------------------");
     let mut render_tree = RenderTree::new(doc);
     render_tree.parse();
     render_tree.print();
@@ -53,19 +63,33 @@ fn main() {
 
     // --------------------------------------------------------------------
     // Layout the render-tree into a layout-tree
+    println!("\n\n\n\n\n--[ LAYOUT TREE ]----------------------------------");
     let mut layout_tree = generate_layout(render_tree, ViewportSize { width: 800.0, height: 600.0 });
     layout_tree.taffy.tree.print_tree(layout_tree.taffy.root_id);
+    println!("Layout width: {}, height: {}", layout_tree.root_width, layout_tree.root_height);
 
     // --------------------------------------------------------------------
     // Generate render layers
+    println!("\n\n\n\n\n--[ LAYER LIST ]----------------------------------");
     let layer_list = LayerList::new(layout_tree);
+    for (layer_id, layer) in layer_list.layers.borrow().iter() {
+        println!("Layer: {} (order: {})", layer_id, layer.order);
+        for element in layer.elements.iter() {
+            println!("  Element: {}", element);
+        }
+    }
 
     // --------------------------------------------------------------------
     // Tiling phase
+    println!("\n\n\n\n\n--[ TILING ]----------------------------------");
+    let mut tile_list = TileList::new(layer_list, TILE_DIMENSION);
+    tile_list.generate();
+    tile_list.print_list();
 
     // --------------------------------------------------------------------
     // Here the pipeline is not quite correct. We basically skip the tiling rendering and compositing phases.
-    // We don't know yet how thightly this is coupled with the UI.
+    // We don't know yet how tightly this is coupled with the UI.
+    println!("\n\n\n\n\n--[ PAINTING ]----------------------------------");
 
     // Render the layout-tree into a GTK window
     let app = Application::builder()
@@ -77,7 +101,8 @@ fn main() {
         wireframed: false,
         debug_hover: false,
         current_hovered_element: None,
-        layer_list,
+        tile_list,
+        show_tilegrid: true,
     };
     let browser_state = Rc::new(RefCell::new(browser_state));
 
@@ -85,7 +110,7 @@ fn main() {
         build_ui(app, browser_state.clone());
     });
 
-    app.run();
+    // app.run();
 }
 
 fn build_ui(app: &Application, browser_state: Rc<RefCell<BrowserState>>) {
@@ -106,7 +131,7 @@ fn build_ui(app: &Application, browser_state: Rc<RefCell<BrowserState>>) {
         // Paint the layer list to the cairo context. Also pass a few flags that allows
         // us to control what is exactly being rendered.
         paint_cairo(
-            &browser_state_clone.borrow().layer_list,
+            &browser_state_clone.borrow().tile_list,
             cr,
             // List of the layers to render
             browser_state_clone.borrow().visible_layer_list.clone(),
@@ -117,19 +142,20 @@ fn build_ui(app: &Application, browser_state: Rc<RefCell<BrowserState>>) {
                 browser_state_clone.borrow().current_hovered_element
             } else {
                 None
-            }
+            },
+            browser_state_clone.borrow().show_tilegrid,
         );
     });
 
-    /// When we move the mouse, we can detect which element is currently hovered upon
-    /// This allows us to trigger events (OnElementLeave, onElementEnter). At that point,
-    /// we trigger a redraw, since there can be things that need to be updated.
+    // When we move the mouse, we can detect which element is currently hovered upon
+    // This allows us to trigger events (OnElementLeave, onElementEnter). At that point,
+    // we trigger a redraw, since there can be things that need to be updated.
     let motion_controller = EventControllerMotion::new();
     let browser_state_clone = browser_state.clone();
     let area_clone = area.clone();
     motion_controller.connect_motion(move |_, x, y| {
         let mut bsm = browser_state_clone.borrow_mut();
-        match bsm.layer_list.find_element_at(x, y) {
+        match bsm.tile_list.layer_list.find_element_at(x, y) {
             Some(node_id) => {
                 match bsm.current_hovered_element {
                     Some(current_id) => {
@@ -192,6 +218,8 @@ fn build_ui(app: &Application, browser_state: Rc<RefCell<BrowserState>>) {
             key if key == gtk4::gdk::Key::w => { bsm.wireframed = !bsm.wireframed; area.queue_draw(); }
             // toggle displaying only the hovered element
             key if key == gtk4::gdk::Key::d => { bsm.debug_hover = !bsm.debug_hover; area.queue_draw(); }
+            // toggle tile grid
+            key if key == gtk4::gdk::Key::t => { bsm.show_tilegrid = !bsm.show_tilegrid; area.queue_draw(); }
             _ => (),
         }
 

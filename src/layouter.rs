@@ -69,6 +69,10 @@ pub struct Image {
     pub alt: String,
 }
 
+#[derive(Clone, Debug)]
+pub enum RenderContext {
+    None
+}
 
 #[derive(Debug, Clone)]
 pub struct LayoutElementNode {
@@ -83,9 +87,12 @@ pub struct LayoutElementNode {
     pub children: Vec<LayoutElementId>,
     /// Generated boxmodel for this node
     pub box_model: BoxModel,
-    /// Node context
+    /// Node context for layouting
     pub context: LayoutContext,
+    /// Node context for rendering
+    pub render_context: RenderContext,
 }
+
 
 
 #[derive(Debug, Clone)]
@@ -106,6 +113,10 @@ pub struct LayoutTree {
     pub root_id: LayoutElementId,
     /// Next node ID
     next_node_id: Rc<RefCell<LayoutElementId>>,
+    /// Root width
+    pub root_width: f32,
+    /// Root height
+    pub root_height: f32,
 }
 
 impl LayoutTree {

@@ -13,7 +13,12 @@ The stages:
  - Layering
  - Tiling
  - Rendering
+    - every layer
+    - create render commands
+    - execute render commands onto "texture" for the given tile
+    - per tile either renderer, dirty, not rendered
  - Compositing
+   - combine the tiles into a final image
 
 The first step is generating the render tree. It will convert a DOM tree together with CSS styles into a tree of nodes that are needed for 
 generating layout. The node IDs in the render-tree are the same as the node IDs in the DOM tree.
@@ -24,9 +29,10 @@ for the layout tree.
 The third step is to generate layers. Layers are used to optimize rendering. They are used to group elements that can be rendered together.
 For now, images are stored on their own layer. All the other elements are stored in the same layer (layer 0)
 
-[ not yet implemented ]
 The next step is tiling. Here we convert the layout tree into elements of 256x256 pixels (tiles). This is done to optimize rendering. Only the
-tiles that are visible on the screen are rendered.
+tiles that are visible on the screen are rendered and cached. When the user scrolls, we only need to render the new tiles that are visible 
+on the screen. This however, can be done during idle time in the browser as well. Futhermore, if the user scrolls backwards, older tiles that are
+still valid do not have to be rerendered again.
 
 [ not yet implemented ]
 The next step is actual painting of tiles. This is done by rendering the tiles that are visible on the screen.
