@@ -1,14 +1,10 @@
-use std::cell::RefCell;
 use std::collections::HashMap;
 use std::ops::AddAssign;
-use std::rc::Rc;
 use std::sync::{Arc, RwLock};
-use crate::geo::{Coordinate, Rect, Size};
+use crate::geo::{Coordinate, Rect};
 use crate::layering::layer::{LayerId, LayerList};
 use crate::layouter::{LayoutElementId, LayoutElementNode};
-
-#[allow(unused)]
-mod tile_texture_cache;
+use crate::painter::Texture;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TileId(u64);
@@ -32,28 +28,53 @@ impl std::fmt::Display for TileId {
 }
 
 #[derive(Debug, Clone)]
-pub struct TileTexture {
-    pub data: Vec<u8>,
-}
-
-#[derive(Debug, Clone)]
 pub struct TiledLayoutElement {
     /// Element to layout
     pub id: LayoutElementId,
-    /// Offset inside the tile
-    pub offset: Coordinate,
-    /// Dimensions of the element to layout
-    pub dimension: Size,
+    /// Position and dimension of the element inside the tile
+    pub rect: Rect,
+    /// Coordinate of the element in the tile
+    pub position: Coordinate,
 }
+
+/*
+
+Here is a box element (id 67) centered within 4 tiles. The tiles are 100x50 each.
+The rect size is 100x50.
+
+In tile 1, the rect of element 67 is (0, 0, 50, 25). The position is (50, 25)
+In tile 2, the rect of element 67 is (50, 0, 50, 25). The position is (0, 25)
+In tile 3, the rect of element 67 is (0, 25, 50, 25). The position is (50, 0).
+In tile 4, the rect of element 67 is (50, 25, 50, 25). The position is (0, 0).
+
+The position defines where the element will start in the tile.
+The rect defines the position and dimension of the element that needs to be rendered.
+
+In the first tile, the element starts at 50x25. Even though the element is 100x50 in side,
+the rect starts at 0,0 to 50,25. Which is the top left quarter of the element.
+
+    0           100         200
+    +------------+-----------+
+    |            |           |
+    |        ####|####       |
+    |        ####|####       |
+    |        ####|####       |
+ 50 +------------+-----------+
+    |        ####|####       |
+    |        ####|####       |
+    |        ####|####       |
+    |            |           |
+100 +------------+-----------+
+*/
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum TileState {
-    /// Tile texture exists, but needs to be repainted
+    /// Tile texture is clean
+    Clean,
+    /// Tile texture needs a repaint
     Dirty,
     /// Tile texture cannot be rendered by this backend
     Unrenderable,
-    /// Tile texture is loaded and is valid
-    Rendered,
 }
 
 #[derive(Debug, Clone)]
@@ -63,13 +84,12 @@ pub struct Tile {
     /// Elements found in the tile
     pub elements: Vec<TiledLayoutElement>,
     /// Texture that this tile is rendered to
-    pub texture: Option<Arc<TileTexture>>,
+    pub texture: Option<Arc<Texture>>,
     /// State of the tile
     pub state: TileState,
-    pub offset_x: usize,
-    pub offset_y: usize,
-    pub width: usize,
-    pub height: usize,
+    // Position and dimension of the tile in the layer
+    pub rect: Rect,
+    /// Layer id on which this tile lives
     pub layer_id: LayerId,
 }
 
@@ -106,13 +126,7 @@ impl TileList {
         let tile_ids = self.layers.get(&layer_id).unwrap();
         for tile_id in tile_ids {
             let tile = self.arena.get(tile_id).unwrap();
-            let tile_rect = Rect::new(
-                tile.offset_x as f64,
-                tile.offset_y as f64,
-                tile.width as f64,
-                tile.height as f64,
-            );
-            if tile_rect.intersects(viewport) {
+            if tile.rect.intersects(viewport) {
                 matching_tiles.push(*tile_id);
             }
         }
@@ -133,10 +147,8 @@ impl TileList {
     }
 
     pub fn generate(&mut self) {
-        // calculate the number of rows / cols for the tiles
         let rows = (self.layer_list.layout_tree.root_height / self.tile_height as f32).ceil() as usize;
         let cols = (self.layer_list.layout_tree.root_width / self.tile_width as f32).ceil() as usize;
-        println!("Rows: {}, Cols: {}", rows, cols);
 
         let mut layer_list = self.layer_list.layers.read().unwrap();
 
@@ -145,6 +157,7 @@ impl TileList {
             // Each layer gets a list of tiles (rows * cols). They are stored in the arena.
             let mut tile_ids = Vec::with_capacity(rows * cols);
 
+            // Generate tiles for this layer
             for y in 0..rows {
                 for x in 0..cols {
                     let tile_id = self.next_node_id();
@@ -153,10 +166,12 @@ impl TileList {
                         elements: Vec::new(),
                         texture: None,
                         state: TileState::Dirty,
-                        offset_x: x * self.tile_width,
-                        offset_y: y * self.tile_height,
-                        width: self.tile_width,
-                        height: self.tile_height,
+                        rect: Rect::new(
+                            x as f64 * self.tile_width as f64,
+                            y as f64 * self.tile_height as f64,
+                            self.tile_width as f64,
+                            self.tile_height as f64,
+                        ),
                         layer_id: *layer_id,
                     };
 
@@ -181,10 +196,36 @@ impl TileList {
                     continue;
                 };
 
-                // Find intersecting tiles for this element
+                // Iterate all tiles that intersects this element. Calculate the offset and dimension the element in those tiles
                 let matching_tile_ids = self.find_intersecting_tiles(&tile_ids, element);
+                // println!("Layer {:?} / Element {:?}: {:?}", layer_id, element_id, matching_tile_ids);
+                for tile_id in &matching_tile_ids {
+                    let tile = self.arena.get_mut(&tile_id).unwrap();
 
-                println!("Layer {:?} / Element {:?}: {:?}", layer_id, element_id, matching_tile_ids);
+                    if tile.rect.intersects(element.box_model.margin_box) {
+                        let rect = element.box_model.margin_box;
+
+                        let position = Coordinate::new(
+                            tile.rect.x.max(rect.x) - rect.x,
+                            tile.rect.y.max(rect.y) - rect.y
+                        );
+
+                        let dimension = Rect::new(
+                            rect.x.max(tile.rect.x) - tile.rect.x,
+                            rect.y.max(tile.rect.y) - tile.rect.y,
+                            (tile.rect.x + tile.rect.width).min(rect.x + rect.width) - tile.rect.x.max(rect.x),
+                            (tile.rect.y + tile.rect.height).min(rect.y + rect.height) - tile.rect.y.max(rect.y),
+                        );
+
+                        let tiled_element = TiledLayoutElement {
+                            id: element_id,
+                            rect: dimension,
+                            position: position,
+                        };
+
+                        tile.elements.push(tiled_element);
+                    }
+                }
             }
         }
     }
@@ -193,13 +234,7 @@ impl TileList {
         let mut matching_tile_ids = vec![];
         for tile_id in tile_ids.iter() {
             let tile = self.arena.get(tile_id).unwrap();
-            let tile_rect = Rect::new(
-                tile.offset_x as f64,
-                tile.offset_y as f64,
-                tile.width as f64,
-                tile.height as f64,
-            );
-            if tile_rect.intersects(element.box_model.margin_box) {
+            if tile.rect.intersects(element.box_model.margin_box) {
                 matching_tile_ids.push(*tile_id);
             }
         }
@@ -211,7 +246,8 @@ impl TileList {
         for (layer_id, tile_ids) in self.layers.iter() {
             println!("Layer: {}", layer_id);
             for tile_id in tile_ids {
-                println!("  Tile: {}", tile_id);
+                let tile = self.arena.get(tile_id).unwrap();
+                println!("  Tile: {} : {} elements", tile_id, tile.elements.len());
             }
         }
     }
@@ -222,6 +258,5 @@ impl TileList {
         *nid += 1;
         id
     }
-
 }
 

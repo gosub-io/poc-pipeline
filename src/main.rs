@@ -8,6 +8,7 @@ use crate::geo::Rect;
 use crate::layering::layer::{LayerId, LayerList};
 use crate::layouter::{generate_layout, ViewportSize};
 use crate::paint::paint_cairo;
+use crate::painter::Painter;
 use crate::tiler::{TileList, TileState};
 
 const TILE_DIMENSION : usize = 220;
@@ -25,6 +26,8 @@ mod tiler;
 #[allow(unused)]
 mod geo;
 mod browser_state;
+#[allow(unused)]
+mod painter;
 
 fn main() {
     // --------------------------------------------------------------------
@@ -103,9 +106,6 @@ fn main() {
 
 
 fn build_ui(app: &Application) {
-    let binding = get_browser_state();
-    let state = binding.read().unwrap();
-
     let window = ApplicationWindow::builder()
         .application(app)
         .title("Renderer")
@@ -136,14 +136,18 @@ fn build_ui(app: &Application) {
             };
 
             // if not dirty, no need to render and continue
-            if tile.state == TileState::Rendered {
+            if tile.state == TileState::Clean {
                 println!("tile is already rendered. Not rendering again.");
                 continue;
             }
 
+            let painter = Painter::new();
+            let texture = painter.paint(tile);
+            tile.texture = Some(texture);
+
             // Render the given tile
             println!("Rendering tile");
-            tile.state = TileState::Rendered;
+            tile.state = TileState::Clean;
         }
 
 
