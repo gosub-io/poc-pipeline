@@ -89,7 +89,8 @@ fn main() {
         current_hovered_element: None,
         tile_list: RwLock::new(tile_list),
         show_tilegrid: true,
-        viewport: Rect::new(0.0, 0.0, 800.0, 600.0)
+        viewport: Rect::new(0.0, 0.0, 800.0, 600.0),
+        _marker: Default::default(),
     };
     init_browser_state(browser_state);
 
@@ -108,21 +109,16 @@ fn build_ui(app: &Application) {
     let window = ApplicationWindow::builder()
         .application(app)
         .title("Renderer")
-        .default_width(
-            state.viewport.width as i32 -
-            state.viewport.x as i32
-        )
-        .default_height(
-            state.viewport.height as i32 -
-            state.viewport.y as i32
-        )
+        .default_width(800)
+        .default_height(600)
         .build();
 
     let area = DrawingArea::new();
-    area.set_vexpand(true);
-    area.set_hexpand(true);
+    // area.set_vexpand(true);
+    // area.set_hexpand(true);
+    area.set_content_height(800);
+    area.set_content_width(600);
     area.set_draw_func(move |_area, cr, _width, _height| {
-
         // --------------------------------------------------------------------
         // Next phase in the pipeline: we need to find which tiles we need to paint
         println!("\n\n\n\n\n--[ PAINTING ]----------------------------------");
@@ -205,8 +201,8 @@ fn build_ui(app: &Application) {
     area.add_controller(motion_controller);
 
     let scroll = ScrolledWindow::builder()
-        .hscrollbar_policy(gtk4::PolicyType::Automatic)
-        .vscrollbar_policy(gtk4::PolicyType::Automatic)
+        .hscrollbar_policy(gtk4::PolicyType::Always)
+        .vscrollbar_policy(gtk4::PolicyType::Always)
         .child(&area)
         .build();
     window.set_child(Some(&scroll));
@@ -289,6 +285,10 @@ fn on_viewport_changed(area: &DrawingArea, hadj: &Adjustment, vadj: &Adjustment)
     let height = vadj.page_size(); // Visible height
 
     println!("Visible viewport: x={} y={} width={} height={}", x, y, width, height);
+
+    let binding = get_browser_state();
+    let mut state = binding.write().unwrap();
+    state.viewport = Rect::new(x, y, width, height);
 
     area.queue_draw(); // Request re-draw if necessary
 }
