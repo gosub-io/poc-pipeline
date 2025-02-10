@@ -1,6 +1,7 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
+use std::sync::{Arc, RwLock};
 use crate::render_tree::{RenderTree, RenderNodeId};
 use taffy::prelude::*;
 use crate::document::node::{NodeType, NodeId as DomNodeId};
@@ -119,7 +120,7 @@ fn generate_tree(render_tree: RenderTree, root_id: RenderNodeId) -> Option<Layou
         },
         arena: HashMap::new(),
         root_id: LayoutElementId::new(0), // Will be filled in later
-        next_node_id: Rc::new(RefCell::new(LayoutElementId::new(0))),
+        next_node_id: Arc::new(RwLock::new(LayoutElementId::new(0))),
         root_width: 0.0,
         root_height: 0.0,
     };

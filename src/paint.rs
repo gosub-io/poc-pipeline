@@ -106,7 +106,7 @@ pub fn paint_cairo(
             }
         }
 
-        let binding = layer_list.layers.borrow();
+        let binding = layer_list.layers.read().unwrap();
         let Some(layer) = binding.get(&layer_id) else {
             return;
         };
@@ -131,7 +131,7 @@ pub fn paint_cairo(
 
     for (layer_id, visible) in visible_layer_list.iter().enumerate() {
         if *visible {
-            draw_layer(cr, &tile_list.layer_list, layer_id as LayerId, wireframed, hover);
+            draw_layer(cr, &tile_list.layer_list, LayerId::new(layer_id as u64), wireframed, hover);
         }
     }
 

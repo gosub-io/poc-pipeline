@@ -2,6 +2,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::ops::AddAssign;
 use std::rc::Rc;
+use std::sync::{Arc, RwLock};
 use crate::document::node::{Node, NodeType, NodeId, AttrMap};
 use crate::document::style::StylePropertyList;
 
@@ -9,7 +10,7 @@ use crate::document::style::StylePropertyList;
 pub struct Document {
     pub arena: HashMap<NodeId, Node>,
     pub root_id: Option<NodeId>,
-    next_node_id: Rc<RefCell<NodeId>>,
+    next_node_id: Arc<RwLock<NodeId>>,
 }
 
 impl Document {
@@ -45,16 +46,14 @@ impl Document {
         Document {
             arena: HashMap::new(),
             root_id: None,
-            next_node_id: Rc::new(RefCell::new(NodeId::new(1))),
+            next_node_id: Arc::new(RwLock::new(NodeId::new(1))),
         }
     }
 
     pub fn next_node_id(&self) -> NodeId {
-        let id = self.next_node_id.borrow().clone();
-
-        let mut nid = self.next_node_id.borrow_mut();
+        let mut nid = self.next_node_id.write().unwrap();
+        let id = *nid;
         *nid += 1;
-
         id
     }
 }

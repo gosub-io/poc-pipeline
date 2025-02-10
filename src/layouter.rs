@@ -2,6 +2,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::ops::AddAssign;
 use std::rc::Rc;
+use std::sync::{Arc, RwLock};
 use ::taffy::{NodeId as TaffyNodeId, TaffyTree};
 use ::taffy::prelude::TaffyMaxContent;
 use gtk4::pango::Layout;
@@ -112,7 +113,7 @@ pub struct LayoutTree {
     /// Root node of the layout tree
     pub root_id: LayoutElementId,
     /// Next node ID
-    next_node_id: Rc<RefCell<LayoutElementId>>,
+    next_node_id: Arc<RwLock<LayoutElementId>>,
     /// Root width
     pub root_width: f32,
     /// Root height
@@ -129,11 +130,9 @@ impl LayoutTree {
     }
 
     pub fn next_node_id(&self) -> LayoutElementId {
-        let id = self.next_node_id.borrow().clone();
-
-        let mut nid = self.next_node_id.borrow_mut();
+        let mut nid = self.next_node_id.write().unwrap();
+        let id = *nid;
         *nid += 1;
-
         id
     }
 }

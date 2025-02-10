@@ -1,8 +1,29 @@
-use std::cell::{Ref, RefCell, RefMut};
 use std::collections::HashMap;
+use std::ops::AddAssign;
+use std::sync::{Arc, RwLock};
 use crate::layouter::{LayoutElementId, LayoutTree};
 
-pub type LayerId = usize;
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct LayerId(u64);
+
+impl LayerId {
+    pub const fn new(val: u64) -> Self {
+        Self(val)
+    }
+}
+
+impl AddAssign<i32> for LayerId {
+    fn add_assign(&mut self, rhs: i32) {
+        self.0 += rhs as u64;
+    }
+}
+
+impl std::fmt::Display for LayerId {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "LayerId({})", self.0)
+    }
+}
+
 
 #[derive(Clone)]
 pub(crate) struct Layer {
@@ -37,16 +58,15 @@ impl std::fmt::Debug for Layer {
     }
 }
 
-#[derive(Clone)]
 pub(crate) struct LayerList {
     /// Wrapped layout tree
-    pub layout_tree: LayoutTree,
+    pub layout_tree: Arc<LayoutTree>,
     /// List of all (unique) layer IDs
-    pub layer_ids: RefCell<Vec<LayerId>>,
+    pub layer_ids: RwLock<Vec<LayerId>>,
     /// List of layers
-    pub layers: RefCell<HashMap<LayerId, Layer>>,
+    pub layers: RwLock<HashMap<LayerId, Layer>>,
     /// Next layer ID
-    next_layer_id: RefCell<LayerId>,
+    next_layer_id: RwLock<LayerId>,
 }
 
 impl std::fmt::Debug for LayerList {
@@ -61,10 +81,10 @@ impl std::fmt::Debug for LayerList {
 impl LayerList {
     pub fn new(layout_tree: LayoutTree) -> LayerList {
         let mut layer_list = LayerList {
-            layout_tree,
-            layers: RefCell::new(HashMap::new()),
-            layer_ids: RefCell::new(Vec::new()),
-            next_layer_id: RefCell::new(0),
+            layout_tree: Arc::new(layout_tree),
+            layers: RwLock::new(HashMap::new()),
+            layer_ids: RwLock::new(Vec::new()),
+            next_layer_id: RwLock::new(LayerId::new(0)),
         };
 
         layer_list.generate_layers();
@@ -74,8 +94,8 @@ impl LayerList {
     /// Find the element at the given coordinates. It will return the given element if it is found or None otherwise
     pub fn find_element_at(&self, x: f64, y: f64) -> Option<LayoutElementId> {
         // This assumes that the layers are ordered from top to bottom
-        for layer_id in self.layer_ids.borrow().iter().rev() {
-            let binding = self.layers.borrow();
+        for layer_id in self.layer_ids.read().unwrap().iter().rev() {
+            let binding = self.layers.read().unwrap();
             let Some(layer) = binding.get(layer_id) else {
               continue;
             };
@@ -101,28 +121,33 @@ impl LayerList {
     fn new_layer(&self, order: isize) -> LayerId {
         let layer = Layer::new(self.next_layer_id(), order);
         let layer_id = layer.layer_id;
-        self.layer_ids.borrow_mut().push(layer_id);
-        self.layers.borrow_mut().insert(layer_id, layer);
+        self.layer_ids.write().unwrap().push(layer_id);
+        self.layers.write().unwrap().insert(layer_id, layer);
 
         layer_id
     }
 
     #[allow(unused)]
-    fn get_layer(&self, layer_id: LayerId) -> Option<Ref<Layer>> {
-        Ref::filter_map(self.layers.borrow(), |layers| layers.get(&layer_id)).ok()
+    fn get_layer(&self, layer_id: LayerId) -> Option<std::sync::RwLockReadGuard<HashMap<LayerId, Layer>>> {
+        let layers = self.layers.read().unwrap(); // ✅ Correctly uses RwLockReadGuard
+        if layers.contains_key(&layer_id) {
+            Some(layers) // Return read guard (keeps access)
+        } else {
+            None
+        }
     }
 
-    fn get_layer_mut(&self, layer_id: LayerId) -> Option<RefMut<Layer>> {
-        let layers = self.layers.borrow_mut();
+    fn get_layer_mut(&self, layer_id: LayerId) -> Option<std::sync::RwLockWriteGuard<HashMap<LayerId, Layer>>> {
+        let layers = self.layers.write().unwrap(); // ✅ Correctly uses RwLockWriteGuard
         if layers.contains_key(&layer_id) {
-            Some(RefMut::map(layers, |layers| layers.get_mut(&layer_id).unwrap()))
+            Some(layers) // Return write guard (keeps access)
         } else {
             None
         }
     }
 
     fn generate_layers(&mut self) {
-        self.layers.borrow_mut().clear();
+        self.layers.write().unwrap().clear();
 
         let root_id = self.layout_tree.root_id;
         let default_layer_id = self.new_layer(0);
@@ -135,41 +160,44 @@ impl LayerList {
             return;
         };
 
-        let is_image = {
-            let dom_node = self
-                .layout_tree
-                .render_tree
-                .doc
-                .get_node_by_id(layout_element.dom_node_id)
-                .unwrap()
-            ;
-            match dom_node.node_type {
+        let is_image = self.layout_tree.render_tree.doc
+            .get_node_by_id(layout_element.dom_node_id)
+            .and_then(|dom_node| match dom_node.node_type {
                 crate::document::node::NodeType::Element(ref element_data) => {
-                    element_data.tag_name.eq_ignore_ascii_case("img")
+                    Some(element_data.tag_name.eq_ignore_ascii_case("img"))
                 },
-                _ => false
-            }
-        };
+                _ => None,
+            })
+            .unwrap_or(false);
 
         if is_image {
             let image_layer_id = self.new_layer(1);
-            let mut image_layer = self.get_layer_mut(image_layer_id).unwrap();
-            image_layer.add_element(layout_element.id);
+            if let Some(mut layers) = self.get_layer_mut(image_layer_id) {
+                if let Some(image_layer) = layers.get_mut(&image_layer_id) {
+                    image_layer.add_element(layout_element.id);
+                } else {
+                    println!("Warning: Image layer {} not found in HashMap", image_layer_id);
+                }
+            }
         } else {
-            let mut layer = self.get_layer_mut(layer_id).unwrap();
-            layer.add_element(layout_element.id);
+            if let Some(mut layers) = self.get_layer_mut(layer_id) {
+                if let Some(layer) = layers.get_mut(&layer_id) {
+                    layer.add_element(layout_element.id);
+                } else {
+                    println!("Warning: Layer {} not found in HashMap", layer_id);
+                }
+            }
         }
 
-        for child_id in layout_element.children.iter() {
-            self.traverse(layer_id, *child_id);
+        for &child_id in &layout_element.children {
+            self.traverse(layer_id, child_id);
         }
     }
 
     fn next_layer_id(&self) -> LayerId {
-        let mut next_id = self.next_layer_id.borrow_mut();
-        let id = *next_id;
-        *next_id += 1;
-
+        let mut nid = self.next_layer_id.write().unwrap();
+        let id = *nid;
+        *nid += 1;
         id
     }
 }
