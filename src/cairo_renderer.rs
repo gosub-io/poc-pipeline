@@ -1,12 +1,16 @@
+// This file contains all the stuff needed to render through cairo
+
 use gtk4::cairo::Context;
 use pangocairo::functions::{show_layout};
 use crate::document::node::NodeType;
 use crate::layering::layer::{LayerId, LayerList};
 use crate::layouter::{LayoutContext, LayoutElementId, LayoutElementNode};
 use crate::tiler::TileList;
-// This function is used to paint the layers to the screen, but it's still too tightly coupled. We still miss the tiling, rendering and compositing
-// part of the system. Basically, this function will does the compositing and rendering, and tiling is still missing in the whole setup.
 
+// This function is used to paint the layers to the screen, but it's still too tightly coupled. We still miss the tiling, rendering and compositing
+// part of the system. Basically, this function will do the compositing and rendering, and tiling is still missing in the whole setup.
+
+#[allow(unused)]
 pub fn paint_cairo(
     tile_list: &TileList,
     cr: &Context,
@@ -158,6 +162,7 @@ pub fn paint_cairo(
     }
 }
 
+#[allow(unused)]
 fn rasterize_text_layout(cr: &Context, layout: gtk4::pango::Layout, offset: (f64, f64)) {
     cr.set_source_rgba(0.0, 0.0, 0.0, 1.0);
     cr.move_to(offset.0, offset.1);

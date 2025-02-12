@@ -4,7 +4,7 @@ use std::sync::{Arc, RwLock};
 use crate::geo::{Coordinate, Rect};
 use crate::layering::layer::{LayerId, LayerList};
 use crate::layouter::{LayoutElementId, LayoutElementNode};
-use crate::painter::Texture;
+use crate::painter::{Texture, TextureId};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TileId(u64);
@@ -84,7 +84,7 @@ pub struct Tile {
     /// Elements found in the tile
     pub elements: Vec<TiledLayoutElement>,
     /// Texture that this tile is rendered to
-    pub texture: Option<Arc<Texture>>,
+    pub texture_id: Option<TextureId>,
     /// State of the tile
     pub state: TileState,
     // Position and dimension of the tile in the layer
@@ -164,7 +164,7 @@ impl TileList {
                     let tile = Tile {
                         id: tile_id,
                         elements: Vec::new(),
-                        texture: None,
+                        texture_id: None,
                         state: TileState::Dirty,
                         rect: Rect::new(
                             x as f64 * self.tile_width as f64,

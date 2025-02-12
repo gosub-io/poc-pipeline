@@ -1,31 +1,38 @@
 use std::collections::HashMap;
-use std::sync::{Arc, OnceLock, RwLock};
+use std::sync::{Arc, Mutex, MutexGuard, OnceLock, RwLock, RwLockWriteGuard};
 use crate::painter::{Texture, TextureId};
 
-pub static TEXTURE_STORE: OnceLock<Arc<RwLock<TextureStore>>> = OnceLock::new();
+pub static TEXTURE_STORE: OnceLock<RwLock<TextureStore>> = OnceLock::new();
 
-pub fn get_texture_store() -> Arc<RwLock<TextureStore>> {
-    TEXTURE_STORE.get_or_init(|| Arc::new(RwLock::new(TextureStore::new()))).clone()
+pub fn get_texture_store() -> &'static RwLock<TextureStore> {
+    TEXTURE_STORE.get_or_init(|| RwLock::new(TextureStore::new()))
 }
 
-/// Texture store stores all the textures. It can remove textures if needed (memory constraints for instance).
+/// Texture store stores all the textures. It can remove textures if needed (LRU / memory constraints for instance).
 pub struct TextureStore {
     textures: HashMap<TextureId, Arc<Texture>>,
-    next_id: Arc<RwLock<TextureId>>,
+    next_id: RwLock<TextureId>,
 }
 
 impl TextureStore {
     pub fn new() -> Self {
         Self {
             textures: HashMap::new(),
-            next_id: Arc::new(RwLock::new(TextureId::new(0))),
+            next_id: RwLock::new(TextureId::new(0)),
         }
     }
 
-    pub fn next_id(&self) -> TextureId {
-        let mut nid = self.next_id.write().unwrap();
-        let id = *nid;
-        *nid += 1;
+    pub fn add(&mut self, width: usize, height: usize, data: Vec<u8>) -> TextureId {
+        let texture = Texture {
+            id: self.next_id(),
+            width,
+            height,
+            data,
+        };
+
+        let id = texture.id;
+        self.textures.insert(texture.id, Arc::new(texture));
+
         id
     }
 
@@ -37,11 +44,14 @@ impl TextureStore {
         self.textures.get(&texture_id).cloned()
     }
 
-    pub fn get_mut(&mut self, texture_id: TextureId) -> Option<&mut Arc<Texture>> {
-        self.textures.get_mut(&texture_id)
+    pub fn remove(&mut self, texture_id: TextureId) {
+        self.textures.remove(&texture_id);
     }
 
-    pub fn remove(&mut self, texture_id: TextureId) -> Option<Arc<Texture>> {
-        self.textures.remove(&texture_id)
+    fn next_id(&self) -> TextureId {
+        let mut nid = self.next_id.write().unwrap();
+        let id = *nid;
+        *nid += 1;
+        id
     }
 }

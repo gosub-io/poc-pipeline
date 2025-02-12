@@ -1,5 +1,6 @@
 use std::sync::RwLock;
-use gtk4::{glib, Adjustment, Application, ApplicationWindow, DrawingArea, EventControllerMotion, ScrolledWindow};
+use gtk4::{cairo, glib, Adjustment, Application, ApplicationWindow, DrawingArea, EventControllerMotion, ScrolledWindow};
+use gtk4::cairo::{Context, ImageSurface};
 use gtk4::glib::clone;
 use gtk4::prelude::{AdjustmentExt, ApplicationExt, ApplicationExtManual, DrawingAreaExt, DrawingAreaExtManual, GtkWindowExt, WidgetExt};
 use render_tree::RenderTree;
@@ -7,8 +8,8 @@ use crate::browser_state::{get_browser_state, init_browser_state, BrowserState};
 use crate::geo::Rect;
 use crate::layering::layer::{LayerId, LayerList};
 use crate::layouter::{generate_layout, ViewportSize};
-use crate::paint::paint_cairo;
 use crate::painter::Painter;
+use crate::painter::texture_store::get_texture_store;
 use crate::tiler::{TileList, TileState};
 
 const TILE_DIMENSION : usize = 220;
@@ -28,6 +29,7 @@ mod geo;
 mod browser_state;
 #[allow(unused)]
 mod painter;
+mod cairo_renderer;
 
 fn main() {
     // --------------------------------------------------------------------
@@ -114,62 +116,11 @@ fn build_ui(app: &Application) {
         .build();
 
     let area = DrawingArea::new();
-    // area.set_vexpand(true);
-    // area.set_hexpand(true);
     area.set_content_height(800);
     area.set_content_width(600);
     area.set_draw_func(move |_area, cr, _width, _height| {
-        // --------------------------------------------------------------------
-        // Next phase in the pipeline: we need to find which tiles we need to paint
-        println!("\n\n\n\n\n--[ PAINTING ]----------------------------------");
-        let binding = get_browser_state();
-        let state = binding.read().unwrap();
-        let tile_ids = state.tile_list.read().unwrap().get_intersecting_tiles(LayerId::new(0), state.viewport);
-        for tile_id in tile_ids {
-            print!("Rendering tile {:?}: ", tile_id);
-            // get tile
-            let mut binding = state.tile_list.write().unwrap();
-            let Some(tile) = binding.get_tile_mut(tile_id) else {
-                log::warn!("Tile not found: {:?}", tile_id);
-                println!("tile not found?");
-                continue;
-            };
-
-            // if not dirty, no need to render and continue
-            if tile.state == TileState::Clean {
-                println!("tile is already rendered. Not rendering again.");
-                continue;
-            }
-
-            let painter = Painter::new();
-            let texture = painter.paint(tile);
-            tile.texture = Some(texture);
-
-            // Render the given tile
-            println!("Rendering tile");
-            tile.state = TileState::Clean;
-        }
-
-
-        let binding = get_browser_state();
-        let state = binding.read().unwrap();
-        // Paint the layer list to the cairo context. Also pass a few flags that allows
-        // us to control what is exactly being rendered.
-        paint_cairo(
-            &state.tile_list.read().unwrap(),
-            cr,
-            // List of the layers to render
-            state.visible_layer_list.clone(),
-            // When true, only render the wireframes of the layout elements
-            state.wireframed,
-            // When set, only render the hovered element
-            if state.debug_hover {
-                state.current_hovered_element
-            } else {
-                None
-            },
-            state.show_tilegrid,
-        );
+        do_paint();
+        do_compositing(cr);
     });
 
     // When we move the mouse, we can detect which element is currently hovered upon
@@ -246,6 +197,91 @@ fn build_ui(app: &Application) {
 
     window.set_default_size(1024, 768);
     window.show();
+}
+
+/// Paint all the dirty tiles that are in view
+fn do_paint() {
+    let binding = get_browser_state();
+    let state = binding.read().unwrap();
+
+    let tile_ids = state.tile_list.read().unwrap().get_intersecting_tiles(LayerId::new(0), state.viewport);
+    for tile_id in tile_ids {
+        // get tile
+        let mut binding = state.tile_list.write().unwrap();
+        let Some(tile) = binding.get_tile(tile_id) else {
+            log::warn!("Tile not found: {:?}", tile_id);
+            println!("tile not found?");
+            continue;
+        };
+
+        // if not dirty, no need to render and continue
+        if tile.state == TileState::Clean {
+            continue;
+        }
+
+        // Paint the given tile
+        println!("Rendering tile");
+        let painter = Painter::new();
+        let texture_id = painter.paint(tile);
+
+        let Some(tile) = binding.get_tile_mut(tile_id) else {
+            log::warn!("Tile not found: {:?}", tile_id);
+            println!("tile not found?");
+            continue;
+        };
+        tile.texture_id = Some(texture_id);
+        tile.state = TileState::Clean;
+    }
+}
+
+/// Composite all the viewable tiles onto the CR surface
+fn do_compositing(cr: &Context) {
+    let binding = get_browser_state();
+    let state = binding.read().expect("Failed to get browser state");
+
+    let tile_ids = state.tile_list.read().unwrap().get_intersecting_tiles(LayerId::new(0), state.viewport);
+    for tile_id in tile_ids {
+        let binding = state.tile_list.write().unwrap();
+        let Some(tile) = binding.get_tile(tile_id) else {
+            log::warn!("Tile not found: {:?}", tile_id);
+            println!("tile not found?");
+            continue;
+        };
+
+        let Some(texture_id) = tile.texture_id else {
+            println!("No texture found for tile: {:?}", tile_id);
+            continue;
+        };
+
+        // Composite
+        println!("Compositing tile: {:?}", tile_id);
+
+        let binding = get_texture_store();
+        let texture_store = binding.read().expect("Failed to get texture store");
+
+        let Some(texture) = texture_store.get(texture_id) else {
+            println!("No texture found for tile: {:?}", tile_id);
+            continue;
+        };
+        drop(texture_store);
+
+        let surface = ImageSurface::create_for_data(
+            texture.data.clone(),       // Expensive, but we need to copy the data onto a new surface
+            cairo::Format::ARgb32,
+            texture.width as i32,
+            texture.height as i32,
+            texture.width as i32 * 4,
+        ).expect("Failed to create image surface");
+
+        cr.rectangle(
+            tile.rect.x,
+            tile.rect.y,
+            tile.rect.height,
+            tile.rect.width,
+        );
+        _ = cr.set_source_surface(surface, tile.rect.x, tile.rect.y);
+        _ = cr.fill();
+    }
 }
 
 // Function to set up viewport event listeners
