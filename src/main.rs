@@ -9,7 +9,8 @@ use crate::geo::Rect;
 use crate::layering::layer::{LayerId, LayerList};
 use crate::layouter::{generate_layout, ViewportSize};
 use crate::painter::Painter;
-use crate::painter::texture_store::get_texture_store;
+use crate::rasterize::Rasterizer;
+use crate::rasterize::texture_store::get_texture_store;
 use crate::tiler::{TileList, TileState};
 
 const TILE_DIMENSION : usize = 220;
@@ -17,18 +18,19 @@ const TILE_DIMENSION : usize = 220;
 #[allow(unused)]
 mod document;
 #[allow(unused)]
+mod geo;
+mod browser_state;
+#[allow(unused)]
 mod render_tree;
 #[allow(unused)]
 mod layouter;
 mod layering;
-mod paint;
 #[allow(unused)]
 mod tiler;
 #[allow(unused)]
-mod geo;
-mod browser_state;
-#[allow(unused)]
 mod painter;
+mod rasterize;
+
 mod cairo_renderer;
 
 fn main() {
@@ -120,6 +122,7 @@ fn build_ui(app: &Application) {
     area.set_content_width(600);
     area.set_draw_func(move |_area, cr, _width, _height| {
         do_paint();
+        do_rasterize();
         do_compositing(cr);
     });
 
@@ -220,18 +223,51 @@ fn do_paint() {
         }
 
         // Paint the given tile
-        println!("Rendering tile");
-        let painter = Painter::new();
-        let texture_id = painter.paint(tile);
+        println!("Generarting painting commands for tile");
+        let paint_commands = Painter::paint(tile);
 
         let Some(tile) = binding.get_tile_mut(tile_id) else {
             log::warn!("Tile not found: {:?}", tile_id);
             println!("tile not found?");
             continue;
         };
+        tile.paint_commands = paint_commands;
+    }
+}
+
+fn do_rasterize() {
+    let binding = get_browser_state();
+    let state = binding.read().unwrap();
+
+    let tile_ids = state.tile_list.read().unwrap().get_intersecting_tiles(LayerId::new(0), state.viewport);
+    for tile_id in tile_ids {
+        // get tile
+        let mut binding = state.tile_list.write().unwrap();
+        let Some(tile) = binding.get_tile(tile_id) else {
+            log::warn!("Tile not found: {:?}", tile_id);
+            println!("tile not found?");
+            continue;
+        };
+
+        // if not dirty, no need to render and continue
+        if tile.state == TileState::Clean {
+            continue;
+        }
+
+        // Rasterize the tile into a texture
+        println!("Generarting painting commands for tile");
+        let texture_id = Rasterizer::rasterize(tile);
+
+        let Some(tile) = binding.get_tile_mut(tile_id) else {
+            log::warn!("Tile not found: {:?}", tile_id);
+            println!("tile not found?");
+            continue;
+        };
+
         tile.texture_id = Some(texture_id);
         tile.state = TileState::Clean;
     }
+
 }
 
 /// Composite all the viewable tiles onto the CR surface

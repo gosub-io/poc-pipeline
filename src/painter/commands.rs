@@ -8,8 +8,9 @@ mod border;
 mod rectangle;
 mod brush;
 
+/// Generic that defines a top, right, bottom, and left value.
 #[derive(Clone, Debug)]
-struct Trbl<T> {
+pub struct Trbl<T> {
     top: T,
     right: T,
     bottom: T,
@@ -17,17 +18,17 @@ struct Trbl<T> {
 }
 
 #[derive(Clone, Debug)]
-enum PaintCommands {
+pub enum PaintCommand {
     Text(Text),
     Rectangle(Rectangle),
 }
 
-impl PaintCommands {
+impl PaintCommand {
     pub fn text(text: Text) -> Self {
-        PaintCommands::Text(text)
+        PaintCommand::Text(text)
     }
 
     pub fn rectangle(rectangle: Rectangle) -> Self {
-        PaintCommands::Rectangle(rectangle)
+        PaintCommand::Rectangle(rectangle)
     }
 }

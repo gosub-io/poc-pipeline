@@ -4,7 +4,8 @@ use std::sync::{Arc, RwLock};
 use crate::geo::{Coordinate, Rect};
 use crate::layering::layer::{LayerId, LayerList};
 use crate::layouter::{LayoutElementId, LayoutElementNode};
-use crate::painter::{Texture, TextureId};
+use crate::painter::commands::PaintCommand;
+use crate::rasterize::texture::TextureId;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TileId(u64);
@@ -85,6 +86,8 @@ pub struct Tile {
     pub elements: Vec<TiledLayoutElement>,
     /// Texture that this tile is rendered to
     pub texture_id: Option<TextureId>,
+    /// List of paint commands to execute in order to draw the elements in this tile
+    pub paint_commands: Vec<PaintCommand>,
     /// State of the tile
     pub state: TileState,
     // Position and dimension of the tile in the layer
@@ -165,6 +168,7 @@ impl TileList {
                         id: tile_id,
                         elements: Vec::new(),
                         texture_id: None,
+                        paint_commands: Vec::new(),
                         state: TileState::Dirty,
                         rect: Rect::new(
                             x as f64 * self.tile_width as f64,

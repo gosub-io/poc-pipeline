@@ -1,6 +1,6 @@
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex, MutexGuard, OnceLock, RwLock, RwLockWriteGuard};
-use crate::painter::{Texture, TextureId};
+use std::sync::{Arc, OnceLock, RwLock};
+use crate::rasterize::texture::{Texture, TextureId};
 
 pub static TEXTURE_STORE: OnceLock<RwLock<TextureStore>> = OnceLock::new();
 
