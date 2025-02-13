@@ -109,8 +109,8 @@ pub struct  TileList {
     /// Next node ID
     next_node_id: Arc<RwLock<TileId>>,
 
-    pub tile_width: usize,
-    pub tile_height: usize,
+    pub default_tile_width: usize,
+    pub default_tile_height: usize,
 }
 
 impl TileList {
@@ -144,14 +144,14 @@ impl TileList {
             layers: HashMap::new(),
             arena: HashMap::new(),
             next_node_id: Arc::new(RwLock::new(TileId::new(0))),
-            tile_width: dimension,
-            tile_height: dimension,
+            default_tile_width: dimension,
+            default_tile_height: dimension,
         }
     }
 
     pub fn generate(&mut self) {
-        let rows = (self.layer_list.layout_tree.root_height / self.tile_height as f32).ceil() as usize;
-        let cols = (self.layer_list.layout_tree.root_width / self.tile_width as f32).ceil() as usize;
+        let rows = (self.layer_list.layout_tree.root_height / self.default_tile_height as f32).ceil() as usize;
+        let cols = (self.layer_list.layout_tree.root_width / self.default_tile_width as f32).ceil() as usize;
 
         let mut layer_list = self.layer_list.layers.read().unwrap();
 
@@ -171,10 +171,10 @@ impl TileList {
                         paint_commands: Vec::new(),
                         state: TileState::Dirty,
                         rect: Rect::new(
-                            x as f64 * self.tile_width as f64,
-                            y as f64 * self.tile_height as f64,
-                            self.tile_width as f64,
-                            self.tile_height as f64,
+                            x as f64 * self.default_tile_width as f64,
+                            y as f64 * self.default_tile_height as f64,
+                            self.default_tile_width as f64,
+                            self.default_tile_height as f64,
                         ),
                         layer_id: *layer_id,
                     };
@@ -224,7 +224,7 @@ impl TileList {
                         let tiled_element = TiledLayoutElement {
                             id: element_id,
                             rect: dimension,
-                            position: position,
+                            position,
                         };
 
                         tile.elements.push(tiled_element);

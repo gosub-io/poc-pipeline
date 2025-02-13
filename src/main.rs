@@ -14,7 +14,7 @@ use crate::compositor::cairo::{CairoCompositor, CairoCompositorConfig};
 use crate::rasterizer::cairo::CairoRasterizer;
 use crate::rasterizer::Rasterable;
 
-const TILE_DIMENSION : usize = 256 ;
+const TILE_DIMENSION : usize = 200;
 
 mod utils;
 #[allow(unused)]
@@ -42,7 +42,7 @@ fn main() {
 
     // --------------------------------------------------------------------
     // Convert the DOM tree into a render-tree that has all the non-visible elements removed
-    println!("\n\n\n\n\n--[ RENDER TREE ]----------------------------------");
+    println!("\n\n\n\n\n--[ BUILD sRENDER TREE ]----------------------------------");
     let mut render_tree = RenderTree::new(doc);
     render_tree.parse();
     render_tree.print();
@@ -224,7 +224,7 @@ fn do_paint() {
 
         // Paint the given tile
         println!("Generarting painting commands for tile");
-        let paint_commands = Painter::paint(tile);
+        let paint_commands = Painter::paint(tile, &binding.layer_list.clone());
         dbg!(&paint_commands);
 
         let Some(tile) = binding.get_tile_mut(tile_id) else {

@@ -172,7 +172,6 @@
 mod rectangle;
 
 use gtk4::cairo;
-use rand::Rng;
 use crate::painter::commands::PaintCommand;
 use crate::rasterizer::Rasterable;
 use crate::rasterizer::texture::TextureId;
@@ -182,7 +181,6 @@ use crate::tiler::Tile;
 pub struct CairoRasterizer {}
 
 impl Rasterable for CairoRasterizer {
-
     fn rasterize(tile: &Tile) -> TextureId {
         let mut surface = cairo::ImageSurface::create(cairo::Format::ARgb32, tile.rect.width as i32, tile.rect.height as i32).expect("Failed to create image surface");
 
@@ -191,7 +189,14 @@ impl Rasterable for CairoRasterizer {
             let cr = cairo::Context::new(&surface).unwrap();
 
             for command in &tile.paint_commands {
-                do_paint(cr.clone(), command);
+                match command {
+                    PaintCommand::Rectangle(command) => {
+                        rectangle::do_paint_rectangle(&cr.clone(), &tile, &command);
+                    }
+                    PaintCommand::Text(_command) => {
+                        unimplemented!("Text rendering is not yet implemented");
+                    }
+                }
             }
 
             surface.flush();
@@ -211,7 +216,9 @@ impl Rasterable for CairoRasterizer {
 
         texture_id
     }
+}
 
+/*
     // Rasterize the given tile with a new texture
     fn old_rasterize(tile: &Tile) -> TextureId {
         let mut surface = cairo::ImageSurface::create(cairo::Format::ARgb32, tile.rect.width as i32, tile.rect.height as i32).expect("Failed to create image surface");
@@ -264,11 +271,4 @@ impl Rasterable for CairoRasterizer {
 
         texture_id
     }
-}
-
-fn do_paint(cr: &cairo::Context, cmd: PaintCommand) {
-    match cmd {
-        PaintCommand::Text(_) => {}
-        PaintCommand::Rectangle(_) => {}
-    }
-}
+*/

@@ -49,29 +49,35 @@ For instance, the layering stage will take the layout tree and the render tree a
 Note that we have a wrapped layouttree, which in turn has a wrapped render tree which in turn has a wrapped DOM document.
 
 ```
-LayerList
-    - wrapped[layout_tree]
-        - wrapped[render_tree]: RenderTree
-            - wrapped[doc]: Document
-                - root: Node
-                    - node_id: NodeId
-                    - children: Vec<Node>
-                    - node_type: NodeType
-            - root: RenderNode
-                - node_id: NodeId
-                - children: Vec<RenderNode>
-        - taffy_tree
-        - taffy_root_id
-        - root_layout_element: LayoutElementNode
-            - node_id: LayoutElementId
-            - dom_node_id: DomNodeId
-            - taffy_node_id: TaffyNodeId
-            - children: Vec<LayoutElementNode>
-            - box_model: BoxModel
-        - node_mapping
-    - layers: Vec<Layer>
-            - id: LayerId
-            - order: isize
-            - elements: Vec<NodeId>
 
-```
+
+
+TileList
+    - layers: HashMap<LayerId, Vec<TileId>>
+    - default_tile_width
+    - default_tile_height
+    - wrapped[layer_list]
+        - layers: Vec<Layer>
+                - id: LayerId
+                - order: isize
+                - elements: Vec<NodeId>
+        - wrapped[layout_tree]
+            - taffy_tree
+            - taffy_root_id
+            - root_layout_element: LayoutElementNode
+                - node_id: LayoutElementId
+                - dom_node_id: DomNodeId
+                - taffy_node_id: TaffyNodeId
+                - children: Vec<LayoutElementNode>
+                - box_model: BoxModel
+            - node_mapping
+            - wrapped[render_tree]: RenderTree
+                - root: RenderNode
+                    - node_id: NodeId
+                    - children: Vec<RenderNode>
+                - wrapped[doc]: Document
+                    - root: Node
+                        - node_id: NodeId
+                        - children: Vec<Node>
+                        - node_type: NodeType
+

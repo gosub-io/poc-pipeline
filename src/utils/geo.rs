@@ -22,6 +22,7 @@ impl Rect {
     }
 
     /// Converts a size and dimension into a rectangle.
+    #[allow(unused)]
     pub fn from_size_dimension(size: Size, dimension: Coordinate) -> Self {
         Self {
             x: dimension.x,

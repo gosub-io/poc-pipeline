@@ -2,18 +2,19 @@ pub mod commands;
 
 use std::ops::AddAssign;
 use rand::Rng;
+use crate::layering::layer::LayerList;
 use crate::painter::commands::border::{Border, BorderStyle};
 use crate::painter::commands::brush::Brush;
 use crate::painter::commands::color::Color;
 use crate::painter::commands::rectangle::Rectangle;
 use crate::painter::commands::PaintCommand;
-use crate::tiler::Tile;
+use crate::tiler::{Tile, TileList};
 
 pub struct Painter {}
 
 impl Painter {
     // Generate paint commands for the given tile
-    pub(crate) fn paint(tile: &Tile) -> Vec<PaintCommand> {
+    pub(crate) fn paint(tile: &Tile, layer_list: &LayerList) -> Vec<PaintCommand> {
         let mut commands = Vec::new();
 
         // @TODO: Since we might paint the element partially on this tile, we want to
@@ -27,16 +28,15 @@ impl Painter {
         // 50x50 to 100x100. This way we can draw the border on the next tile as well, but we use a
         // negative offset.  This kind of clipping makes it easier to draw elements
 
-        for element in &tile.elements {
-            let c = Color::new(
-                rand::rng().random_range(0.0..1.0),
-                rand::rng().random_range(0.0..1.0),
-                rand::rng().random_range(0.0..1.0),
-                1.0,
-            );
+        for tle in &tile.elements {
+            let Some(element) = layer_list.layout_tree.get_node_by_id(tle.id) else {
+                continue;
+            };
+
+            let c = Color::new(0.75, 0.0, 0.73, 0.3);
             let brush = Brush::Solid(c);
-            let border = Border::new(1.0, BorderStyle::Dotted, Brush::Solid(Color::BLACK));
-            let r = Rectangle::new(element.rect).with_background(brush).with_border(border);
+            let border = Border::new(3.0, BorderStyle::Dotted, Brush::Solid(Color::BLACK));
+            let r = Rectangle::new(element.box_model.border_box()).with_background(brush).with_border(border);
             commands.push(PaintCommand::rectangle(r));
         }
 

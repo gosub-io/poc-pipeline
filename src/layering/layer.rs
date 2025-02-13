@@ -118,7 +118,7 @@ impl LayerList {
     }
 
     // Create a new layer to the list at the given order
-    fn new_layer(&self, order: isize) -> LayerId {
+    pub fn new_layer(&self, order: isize) -> LayerId {
         let layer = Layer::new(self.next_layer_id(), order);
         let layer_id = layer.layer_id;
         self.layer_ids.write().unwrap().push(layer_id);
@@ -129,18 +129,18 @@ impl LayerList {
 
     #[allow(unused)]
     fn get_layer(&self, layer_id: LayerId) -> Option<std::sync::RwLockReadGuard<HashMap<LayerId, Layer>>> {
-        let layers = self.layers.read().unwrap(); // ✅ Correctly uses RwLockReadGuard
+        let layers = self.layers.read().unwrap();
         if layers.contains_key(&layer_id) {
-            Some(layers) // Return read guard (keeps access)
+            Some(layers)
         } else {
             None
         }
     }
 
     fn get_layer_mut(&self, layer_id: LayerId) -> Option<std::sync::RwLockWriteGuard<HashMap<LayerId, Layer>>> {
-        let layers = self.layers.write().unwrap(); // ✅ Correctly uses RwLockWriteGuard
+        let layers = self.layers.write().unwrap();
         if layers.contains_key(&layer_id) {
-            Some(layers) // Return write guard (keeps access)
+            Some(layers)
         } else {
             None
         }
