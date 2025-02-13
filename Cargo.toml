@@ -13,6 +13,8 @@ image = "0.25.5"
 rand = "0.9.0"
 
 [features]
-default = ["pango"]
+default = ["pango", "backend_cairo"]
 pango = ["dep:pangocairo"]
 parley = ["dep:parley"]
+backend_cairo = []
+backend_vello = []

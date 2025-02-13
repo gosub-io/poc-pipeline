@@ -96,8 +96,8 @@ mod tests {
         let mut style = StylePropertyList::new();
 
         let val = StyleValue::Color(Color::Named("red".to_string()));
-        style.set_property("color", val.clone());
+        style.set_property(StyleProperty::Color, val.clone());
 
-        assert_eq!(style.get_property("color"), Some(&val.clone()));
+        assert_eq!(style.get_property(StyleProperty::Color), Some(&val.clone()));
     }
 }

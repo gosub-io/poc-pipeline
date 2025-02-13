@@ -1,4 +1,4 @@
-use crate::geo;
+use crate::utils::geo;
 
 /// Represents the thickness (or spacing) on each side.
 #[derive(Debug, Clone, Copy)]

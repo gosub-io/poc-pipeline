@@ -1,4 +1,4 @@
-use crate::geo::Rect;
+use crate::utils::geo::Rect;
 
 #[derive(Clone, Debug)]
 pub struct Text {

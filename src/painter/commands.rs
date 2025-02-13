@@ -1,12 +1,12 @@
 use crate::painter::commands::rectangle::Rectangle;
 use crate::painter::commands::text::Text;
 
-mod color;
-mod text;
-mod image;
-mod border;
-mod rectangle;
-mod brush;
+pub mod color;
+pub mod text;
+pub mod image;
+pub mod border;
+pub mod rectangle;
+pub mod brush;
 
 /// Generic that defines a top, right, bottom, and left value.
 #[derive(Clone, Debug)]

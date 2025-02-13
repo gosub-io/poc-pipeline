@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::sync::{Arc, OnceLock, RwLock};
-use crate::geo::Rect;
+use crate::utils::geo::Rect;
 use crate::layouter::LayoutElementId;
 use crate::tiler::TileList;
 

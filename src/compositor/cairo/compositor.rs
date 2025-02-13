@@ -1,10 +1,8 @@
-// This file contains all the stuff needed to composite through cairo
-
 use gtk4::cairo;
 use gtk4::cairo::ImageSurface;
-use crate::browser_state::get_browser_state;
+use crate::utils::browser_state::get_browser_state;
 use crate::layering::layer::LayerId;
-use crate::rasterize::texture_store::get_texture_store;
+use crate::rasterizer::texture_store::get_texture_store;
 
 pub fn cairo_compositor(cr: &cairo::Context) {
     let binding = get_browser_state();

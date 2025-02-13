@@ -1,4 +1,4 @@
-use crate::geo::Rect;
+use crate::utils::geo::Rect;
 use crate::painter::commands::border::Border;
 use crate::painter::commands::brush::Brush;
 

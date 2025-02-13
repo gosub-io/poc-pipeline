@@ -2,25 +2,25 @@ use std::sync::RwLock;
 use gtk4::{glib, Adjustment, Application, ApplicationWindow, DrawingArea, EventControllerMotion, ScrolledWindow};
 use gtk4::glib::clone;
 use gtk4::prelude::{AdjustmentExt, ApplicationExt, ApplicationExtManual, DrawingAreaExt, DrawingAreaExtManual, GtkWindowExt, WidgetExt};
-use render_tree::RenderTree;
-use crate::browser_state::{get_browser_state, init_browser_state, BrowserState};
-use crate::cairo_compositor::cairo_compositor;
-use crate::geo::Rect;
+use rendertree_builder::RenderTree;
+use crate::utils::browser_state::{get_browser_state, init_browser_state, BrowserState};
+use crate::utils::geo::Rect;
 use crate::layering::layer::{LayerId, LayerList};
 use crate::layouter::{generate_layout, ViewportSize};
 use crate::painter::Painter;
-use crate::rasterize::Rasterizer;
 use crate::tiler::{TileList, TileState};
+use crate::compositor::Composable;
+use crate::compositor::cairo::{CairoCompositor, CairoCompositorConfig};
+use crate::rasterizer::cairo::CairoRasterizer;
+use crate::rasterizer::Rasterable;
 
 const TILE_DIMENSION : usize = 256 ;
 
+mod utils;
 #[allow(unused)]
 mod document;
 #[allow(unused)]
-mod geo;
-mod browser_state;
-#[allow(unused)]
-mod render_tree;
+mod rendertree_builder;
 #[allow(unused)]
 mod layouter;
 mod layering;
@@ -28,10 +28,8 @@ mod layering;
 mod tiler;
 #[allow(unused)]
 mod painter;
-mod rasterize;
-
-mod cairo_renderer;
-mod cairo_compositor;
+mod rasterizer;
+mod compositor;
 
 fn main() {
     // --------------------------------------------------------------------
@@ -123,7 +121,9 @@ fn build_ui(app: &Application) {
     area.set_draw_func(move |_area, cr, _width, _height| {
         do_paint();
         do_rasterize();
-        cairo_compositor(cr);
+        CairoCompositor::compositor(CairoCompositorConfig{
+            cr: cr.clone(),
+        });
     });
 
     // When we move the mouse, we can detect which element is currently hovered upon
@@ -225,6 +225,7 @@ fn do_paint() {
         // Paint the given tile
         println!("Generarting painting commands for tile");
         let paint_commands = Painter::paint(tile);
+        dbg!(&paint_commands);
 
         let Some(tile) = binding.get_tile_mut(tile_id) else {
             log::warn!("Tile not found: {:?}", tile_id);
@@ -256,7 +257,7 @@ fn do_rasterize() {
 
         // Rasterize the tile into a texture
         println!("Generarting painting commands for tile");
-        let texture_id = Rasterizer::rasterize(tile);
+        let texture_id = CairoRasterizer::rasterize(tile);
 
         let Some(tile) = binding.get_tile_mut(tile_id) else {
             log::warn!("Tile not found: {:?}", tile_id);
