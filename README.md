@@ -2,23 +2,19 @@
 
 This repo contains a proof of concept for a render pipeline that can be used to render a webpage.
 
-The pipeline consists of multiple stages. Each stage is responsible for transforming the data from the previous stage into a new format.
-Depending on any changes in the data, the pipeline can be re-run to update the rendering. It's possible that not the whole pipeline needs
-to be re-run, but only a subset of the stages.
+The pipeline consists of multiple stages. Each stage is responsible for transforming the data from the previous stage into a new format or 
+updates on current data. Depending on any changes in the data, the pipeline can be re-run to update the rendering. It's possible that not 
+the whole pipeline needs to be re-run, but only a subset of the stages.
 
 The stages:
 
- - Rendertree generation
- - Layout tree generation
- - Layering
- - Tiling
- - Rendering
-    - every layer
-    - create render commands
-    - execute render commands onto "texture" for the given tile
-    - per tile either renderer, dirty, not rendered
- - Compositing
-   - combine the tiles into a final image
+ - Rendertree generation - Convert the DOM tree into a render tree
+ - Layout tree generation - Computing the layout of the elements
+ - Layering - Grouping elements into layers
+ - Tiling - Splitting the layout tree into tiles
+ - Painting - Generating paint commands
+ - Rasterizing - Executing paint commands onto tiles
+ - Compositing - combine the tiles into a final image
 
 The first step is generating the render tree. It will convert a DOM tree together with CSS styles into a tree of nodes that are needed for 
 generating layout. The node IDs in the render-tree are the same as the node IDs in the DOM tree.
@@ -27,17 +23,19 @@ The second step is to generate a layout. For this we use Taffy to compute all th
 for the layout tree.
 
 The third step is to generate layers. Layers are used to optimize rendering. They are used to group elements that can be rendered together.
-For now, images are stored on their own layer. All the other elements are stored in the same layer (layer 0)
+If there are elements with some kind of CSS animations, they can be moved to a separate layer, and let the compositor deal with this animation.
+This means that we do not need to rerender the layers or tiles, but merely update the position of the layers in the compositor.
 
-The next step is tiling. Here we convert the layout tree into elements of 256x256 pixels (tiles). This is done to optimize rendering. Only the
-tiles that are visible on the screen are rendered and cached. When the user scrolls, we only need to render the new tiles that are visible 
-on the screen. This however, can be done during idle time in the browser as well. Futhermore, if the user scrolls backwards, older tiles that are
-still valid do not have to be rerendered again.
+The next step is tiling. Here we convert the layout tree into elements of 256x256 pixels (tiles). This is done to optimize rendering dirty elements. 
+Only the tiles that are visible on the screen are rendered and cached. When the user scrolls, we only need to render the new tiles that are visible 
+on the screen. This however, can be done during idle time in the browser as well. Furthermore, if the user scrolls backwards, older tiles that are
+still valid do not have to be rendered again.
 
-[ not yet implemented ]
-The next step is actual painting of tiles. This is done by rendering the tiles that are visible on the screen.
+The painting generates commands that are needed to render pixels onto the tiles. However, it does not execute this painting. It merely generates
+the commands.
 
-[ not yet implemented ]
+The reastering phase will get the tiles and the paint commands and execute the painting per tile into textures.
+
 The final step is compositing. Here we combine the visible tiles in the layers onto the screen. When we have CSS animations like transitions, we
 do not need to repaint the tiles, but merely update the position of the tiles (or their opacity). The compositing will take care of this and returns 
 fully rendered frame.

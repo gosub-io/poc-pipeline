@@ -1,19 +1,18 @@
 use std::sync::RwLock;
-use gtk4::{cairo, glib, Adjustment, Application, ApplicationWindow, DrawingArea, EventControllerMotion, ScrolledWindow};
-use gtk4::cairo::{Context, ImageSurface};
+use gtk4::{glib, Adjustment, Application, ApplicationWindow, DrawingArea, EventControllerMotion, ScrolledWindow};
 use gtk4::glib::clone;
 use gtk4::prelude::{AdjustmentExt, ApplicationExt, ApplicationExtManual, DrawingAreaExt, DrawingAreaExtManual, GtkWindowExt, WidgetExt};
 use render_tree::RenderTree;
 use crate::browser_state::{get_browser_state, init_browser_state, BrowserState};
+use crate::cairo_compositor::cairo_compositor;
 use crate::geo::Rect;
 use crate::layering::layer::{LayerId, LayerList};
 use crate::layouter::{generate_layout, ViewportSize};
 use crate::painter::Painter;
 use crate::rasterize::Rasterizer;
-use crate::rasterize::texture_store::get_texture_store;
 use crate::tiler::{TileList, TileState};
 
-const TILE_DIMENSION : usize = 220;
+const TILE_DIMENSION : usize = 256 ;
 
 #[allow(unused)]
 mod document;
@@ -32,6 +31,7 @@ mod painter;
 mod rasterize;
 
 mod cairo_renderer;
+mod cairo_compositor;
 
 fn main() {
     // --------------------------------------------------------------------
@@ -123,7 +123,7 @@ fn build_ui(app: &Application) {
     area.set_draw_func(move |_area, cr, _width, _height| {
         do_paint();
         do_rasterize();
-        do_compositing(cr);
+        cairo_compositor(cr);
     });
 
     // When we move the mouse, we can detect which element is currently hovered upon
@@ -268,56 +268,6 @@ fn do_rasterize() {
         tile.state = TileState::Clean;
     }
 
-}
-
-/// Composite all the viewable tiles onto the CR surface
-fn do_compositing(cr: &Context) {
-    let binding = get_browser_state();
-    let state = binding.read().expect("Failed to get browser state");
-
-    let tile_ids = state.tile_list.read().unwrap().get_intersecting_tiles(LayerId::new(0), state.viewport);
-    for tile_id in tile_ids {
-        let binding = state.tile_list.write().unwrap();
-        let Some(tile) = binding.get_tile(tile_id) else {
-            log::warn!("Tile not found: {:?}", tile_id);
-            println!("tile not found?");
-            continue;
-        };
-
-        let Some(texture_id) = tile.texture_id else {
-            println!("No texture found for tile: {:?}", tile_id);
-            continue;
-        };
-
-        // Composite
-        println!("Compositing tile: {:?}", tile_id);
-
-        let binding = get_texture_store();
-        let texture_store = binding.read().expect("Failed to get texture store");
-
-        let Some(texture) = texture_store.get(texture_id) else {
-            println!("No texture found for tile: {:?}", tile_id);
-            continue;
-        };
-        drop(texture_store);
-
-        let surface = ImageSurface::create_for_data(
-            texture.data.clone(),       // Expensive, but we need to copy the data onto a new surface
-            cairo::Format::ARgb32,
-            texture.width as i32,
-            texture.height as i32,
-            texture.width as i32 * 4,
-        ).expect("Failed to create image surface");
-
-        cr.rectangle(
-            tile.rect.x,
-            tile.rect.y,
-            tile.rect.height,
-            tile.rect.width,
-        );
-        _ = cr.set_source_surface(surface, tile.rect.x, tile.rect.y);
-        _ = cr.fill();
-    }
 }
 
 // Function to set up viewport event listeners

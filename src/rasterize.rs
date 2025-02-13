@@ -26,7 +26,7 @@ impl Rasterizer {
                 rng.random_range(0.0..1.0),
                 0.75,
             );
-            cr.arc(100.0, 100.0, 50.0, 0.0, 2.0 * std::f64::consts::PI);
+            cr.arc(tile.rect.width / 2.0, tile.rect.height / 2.0, tile.rect.width / 4.0, 0.0, 2.0 * std::f64::consts::PI);
             _ = cr.fill();
 
             cr.set_source_rgba(
@@ -35,10 +35,24 @@ impl Rasterizer {
                 rng.random_range(0.0..1.0),
                 0.75,
             );
-            cr.move_to(100.0, 100.0);
-            cr.set_font_size(20.0);
-            _ = cr.show_text(format!("{}", tile.id).as_str());
-            // _ = cr.stroke();
+
+            let fs = 14.0;
+
+            let s = format!("{}", tile.id);
+            let extends = cr.text_extents(s.as_str()).unwrap();
+
+            let center_x = (tile.rect.width - extends.width()) / 2.0;
+            cr.move_to(center_x, tile.rect.height - fs - 2.0);
+            cr.set_font_size(fs);
+            cr.set_source_rgb(0.0, 0.0, 0.0);
+            _ = cr.show_text(s.as_str());
+
+            cr.text_extents(format!("{}", tile.id).as_str());
+
+            cr.rectangle(0.0, 0.0, tile.rect.width, tile.rect.height);
+            cr.set_line_width(1.0);
+            cr.set_dash(&[5.0, 5.0], 0.0);
+            _ = cr.stroke();
 
             surface.flush();
         }
