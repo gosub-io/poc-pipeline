@@ -8,6 +8,7 @@ pub fn get_texture_store() -> &'static RwLock<TextureStore> {
     TEXTURE_STORE.get_or_init(|| RwLock::new(TextureStore::new()))
 }
 
+
 /// Texture store stores all the textures. It can remove textures if needed (LRU / memory constraints for instance).
 pub struct TextureStore {
     textures: HashMap<TextureId, Arc<Texture>>,

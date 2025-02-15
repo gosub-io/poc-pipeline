@@ -170,12 +170,13 @@
 // }
 
 mod rectangle;
+mod brush;
 
 use gtk4::cairo;
 use crate::painter::commands::PaintCommand;
 use crate::rasterizer::Rasterable;
 use crate::rasterizer::texture::TextureId;
-use crate::rasterizer::texture_store::get_texture_store;
+use crate::store::texture::get_texture_store;
 use crate::tiler::Tile;
 
 pub struct CairoRasterizer {}

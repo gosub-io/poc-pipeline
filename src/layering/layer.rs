@@ -160,7 +160,7 @@ impl LayerList {
             return;
         };
 
-        let _is_image = self.layout_tree.render_tree.doc
+        let is_image = self.layout_tree.render_tree.doc
             .get_node_by_id(layout_element.dom_node_id)
             .and_then(|dom_node| match dom_node.node_type {
                 crate::document::node::NodeType::Element(ref element_data) => {
@@ -170,11 +170,7 @@ impl LayerList {
             })
             .unwrap_or(false);
 
-
-        // @TODO: remove me after debugging
-        let is_image = false;
-
-
+        // When we detect an image, we create a new layer for it
         if is_image {
             let image_layer_id = self.new_layer(1);
             if let Some(mut layers) = self.get_layer_mut(image_layer_id) {

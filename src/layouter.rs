@@ -9,7 +9,8 @@ use gtk4::pango::Layout;
 use crate::layouter::boxmodel::BoxModel;
 use crate::rendertree_builder::{RenderTree, RenderNodeId};
 use crate::document::node::{NodeId as DomNodeId, NodeId};
-use crate::layouter::taffy::{generate_with_taffy, NodeContext};
+use crate::layouter::taffy::{generate_with_taffy, TaffyContext};
+use crate::store::image::ImageId;
 
 pub mod taffy;
 mod boxmodel;
@@ -56,18 +57,12 @@ impl std::fmt::Display for LayoutElementId {
 pub enum LayoutContext {
     None,
     Text(Text),
-    Image(Image),
+    Image(ImageId),
 }
 
 #[derive(Clone, Debug)]
 pub struct Text {
     pub layout: Layout,
-}
-
-#[derive(Clone, Debug)]
-pub struct Image {
-    pub src: String,
-    pub alt: String,
 }
 
 #[derive(Clone, Debug)]
@@ -88,17 +83,17 @@ pub struct LayoutElementNode {
     pub children: Vec<LayoutElementId>,
     /// Generated boxmodel for this node
     pub box_model: BoxModel,
-    /// Node context for layouting
-    pub context: LayoutContext,
-    /// Node context for rendering
-    pub render_context: RenderContext,
+    // /// Node context for layouting
+    // pub context: LayoutContext,
+    // /// Node context for rendering
+    // pub render_context: RenderContext,
 }
 
 
 
 #[derive(Debug, Clone)]
 pub struct TaffyStruct {
-    pub tree: TaffyTree<NodeContext>,
+    pub tree: TaffyTree<TaffyContext>,
     pub root_id: TaffyNodeId,
 }
 

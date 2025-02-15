@@ -1,6 +1,4 @@
-use std::cell::RefCell;
 use std::collections::HashMap;
-use std::rc::Rc;
 use std::sync::{Arc, RwLock};
 use gtk4::pango;
 use crate::rendertree_builder::{RenderTree, RenderNodeId};
@@ -11,7 +9,9 @@ use crate::utils::geo;
 use crate::layouter::{boxmodel as BoxModel, LayoutElementNode, LayoutTree, TaffyStruct, TaffyNodeId, LayoutElementId, LayoutContext, RenderContext};
 use crate::layouter::pango_text::get_text_layout;
 use crate::layouter::ViewportSize;
+use crate::utils::geo::Coordinate;
 
+// Taffy context for a text node
 #[derive(Clone, Debug)]
 pub struct TextContext {
     text: String,
@@ -19,15 +19,14 @@ pub struct TextContext {
     size: f32,
 }
 
+// Taffy context for an image node (needed so we can define the width/height of the image)
 #[derive(Clone, Debug)]
 pub struct ImageContext {
     src: String,
-    alt: String,
 }
 
-// Contexts for certain nodes
 #[derive(Clone, Debug)]
-pub enum NodeContext {
+pub enum TaffyContext {
     Text(TextContext),
     Image(ImageContext),
 }
@@ -49,7 +48,7 @@ pub fn generate_with_taffy(render_tree: RenderTree, viewport: ViewportSize) -> L
     };
     layout_tree.taffy.tree.compute_layout_with_measure(layout_tree.taffy.root_id, size, |v_kd, v_as, v_ni, v_nc, v_s| {
         match v_nc {
-            Some(NodeContext::Text(text_ctx)) => {
+            Some(TaffyContext::Text(text_ctx)) => {
                 let font_size = text_ctx.size;
                 let font_family = text_ctx.family.as_str();
                 let text = text_ctx.text.as_str();
@@ -72,7 +71,7 @@ pub fn generate_with_taffy(render_tree: RenderTree, viewport: ViewportSize) -> L
         }
     }).unwrap();
 
-    fn generate_boxmodel(layout_tree: &mut LayoutTree, node_id: LayoutElementId, offset: (f32, f32)) {
+    fn generate_boxmodel(layout_tree: &mut LayoutTree, node_id: LayoutElementId, offset: Coordinate) {
         let el = layout_tree.get_node_by_id(node_id).unwrap();
         let layout = layout_tree.taffy.tree.layout(el.taffy_node_id).unwrap().clone();
 
@@ -81,16 +80,16 @@ pub fn generate_with_taffy(render_tree: RenderTree, viewport: ViewportSize) -> L
         let child_ids = el.children.clone();
 
         for child_id in child_ids {
-            generate_boxmodel(layout_tree, child_id, (
-                offset.0 + layout.location.x + layout.margin.left,
-                offset.1 + layout.location.y + layout.margin.top
+            generate_boxmodel(layout_tree, child_id, Coordinate::new(
+                offset.x + layout.location.x as f64 + layout.margin.left as f64,
+                offset.y + layout.location.y as f64 + layout.margin.top as f64
             ));
         }
     }
 
     // Generate box model for the whole layout tree
     let root_id = layout_tree.root_id;
-    generate_boxmodel(&mut layout_tree, root_id, (0.0, 0.0));
+    generate_boxmodel(&mut layout_tree, root_id, Coordinate::ZERO);
 
     // get dimension of the root node
     let root = layout_tree.get_node_by_id(root_id).unwrap();
@@ -114,7 +113,7 @@ fn has_margin(src: Rect<LengthPercentageAuto>) -> bool {
 
 
 fn generate_tree(render_tree: RenderTree, root_id: RenderNodeId) -> Option<LayoutTree> {
-    let mut tree: TaffyTree<NodeContext> = TaffyTree::new();
+    let mut tree: TaffyTree<TaffyContext> = TaffyTree::new();
 
     let mut layout_tree = LayoutTree {
         render_tree,
@@ -148,7 +147,7 @@ fn generate_node(layout_tree: &mut LayoutTree, render_node_id: RenderNodeId) -> 
     };
 
     // Context to set for text nodes
-    let mut context = None;
+    let mut taffy_context = None;
 
     // Find the DOM node in the DOM document that is wrapped in the render tree
     let dom_node_id = DomNodeId::from(render_node_id);   // DOM node IDs and render node IDs are interchangeable
@@ -333,6 +332,7 @@ fn generate_node(layout_tree: &mut LayoutTree, render_node_id: RenderNodeId) -> 
             }
         }
         NodeType::Text(text, style) => {
+            // @TODO: make sure font here is from the style property list
             let mut font_size = 16.0;
             let mut font_family = "Arial".to_string();
 
@@ -353,7 +353,7 @@ fn generate_node(layout_tree: &mut LayoutTree, render_node_id: RenderNodeId) -> 
                 _ => {},
             }
 
-            context = Some(NodeContext::Text(
+            taffy_context = Some(TaffyContext::Text(
                 TextContext {
                     text: text.clone(),
                     family: font_family,
@@ -364,8 +364,8 @@ fn generate_node(layout_tree: &mut LayoutTree, render_node_id: RenderNodeId) -> 
     }
 
     if dom_node.children.is_empty() {
-        let result = match context {
-            Some(context) => layout_tree.taffy.tree.new_leaf_with_context(style, context),
+        let result = match taffy_context {
+            Some(taffy_context) => layout_tree.taffy.tree.new_leaf_with_context(style, taffy_context),
             None => layout_tree.taffy.tree.new_leaf(style),
         };
 
@@ -378,8 +378,8 @@ fn generate_node(layout_tree: &mut LayoutTree, render_node_id: RenderNodeId) -> 
                     taffy_node_id: leaf_id,
                     box_model: BoxModel::BoxModel::ZERO,
                     children: vec![],
-                    context: LayoutContext::None,
-                    render_context: RenderContext::None,
+                    // context: LayoutContext::None,
+                    // render_context: RenderContext::None,
                 };
 
                 let id = el.id;
@@ -417,8 +417,8 @@ fn generate_node(layout_tree: &mut LayoutTree, render_node_id: RenderNodeId) -> 
                 taffy_node_id: leaf_id,
                 box_model: BoxModel::BoxModel::ZERO,
                 children: children_el_ids,
-                context: LayoutContext::None,
-                render_context: RenderContext::None,
+                // context: LayoutContext::None,
+                // render_context: RenderContext::None,
             };
 
             let id = el.id;
@@ -430,11 +430,11 @@ fn generate_node(layout_tree: &mut LayoutTree, render_node_id: RenderNodeId) -> 
 }
 
 /// Converts a taffy layout to our own BoxModel structure
-pub fn to_boxmodel(layout: &Layout, offset: (f32, f32)) -> BoxModel::BoxModel {
+pub fn to_boxmodel(layout: &Layout, offset: Coordinate) -> BoxModel::BoxModel {
     BoxModel::BoxModel {
         margin_box: geo::Rect {
-            x: offset.0 as f64 + layout.location.x as f64,
-            y: offset.1  as f64 + layout.location.y as f64,
+            x: offset.x + layout.location.x as f64,
+            y: offset.y + layout.location.y as f64,
             width: layout.size.width as f64 + layout.margin.left as f64 + layout.margin.right as f64,
             height: layout.size.height as f64 + layout.margin.top as f64 + layout.margin.bottom as f64,
         },

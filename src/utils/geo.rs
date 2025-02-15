@@ -48,13 +48,15 @@ impl Into<Size> for Rect {
 
 /// A coordinate is an X/Y position. Could be negative if needed.
 #[allow(unused)]
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct Coordinate {
     pub x: f64,
     pub y: f64,
 }
 
 impl Coordinate {
+    pub const ZERO : Coordinate = Coordinate { x: 0.0, y: 0.0 };
+
     pub fn new(x: f64, y: f64) -> Self {
         Self { x, y }
     }

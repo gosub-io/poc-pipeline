@@ -196,7 +196,7 @@ impl TileList {
             for &element_id in &layer.elements {
                 // Get element
                 let Some(element) = self.layer_list.layout_tree.get_node_by_id(element_id) else {
-                    println!("Warning: Element {:?} not found in layout tree!", element_id);
+                    log::warn!("Warning: Element {:?} not found in layout tree!", element_id);
                     continue;
                 };
 

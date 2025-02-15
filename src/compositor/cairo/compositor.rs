@@ -2,7 +2,7 @@ use gtk4::cairo;
 use gtk4::cairo::ImageSurface;
 use crate::utils::browser_state::get_browser_state;
 use crate::layering::layer::LayerId;
-use crate::rasterizer::texture_store::get_texture_store;
+use crate::store::texture::get_texture_store;
 
 pub fn cairo_compositor(cr: &cairo::Context) {
     let binding = get_browser_state();

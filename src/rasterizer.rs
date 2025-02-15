@@ -12,8 +12,6 @@ pub mod cairo;
 #[cfg(feature="backend_vello")]
 pub mod vello;
 
-#[allow(unused)]
-pub mod texture_store;
 pub mod texture;
 
 pub trait Rasterable {

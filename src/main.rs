@@ -30,6 +30,7 @@ mod tiler;
 mod painter;
 mod rasterizer;
 mod compositor;
+mod store;
 
 fn main() {
     // --------------------------------------------------------------------
