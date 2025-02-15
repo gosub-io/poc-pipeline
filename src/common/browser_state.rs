@@ -1,7 +1,6 @@
 use std::fmt::Debug;
-use std::marker::PhantomData;
 use std::sync::{Arc, OnceLock, RwLock};
-use crate::common::geo::Rect;
+use crate::Rect;
 use crate::layouter::LayoutElementId;
 use crate::tiler::TileList;
 
@@ -22,14 +21,7 @@ pub struct BrowserState {
     pub tile_list: RwLock<TileList>,
     /// Current viewport offset + size
     pub viewport: Rect,
-
-    pub _marker: PhantomData<*mut ()>,
 }
-
-// What could possibly go wrong??
-unsafe impl Send for BrowserState {}
-unsafe impl Sync for BrowserState {}
-
 
 impl Debug for BrowserState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

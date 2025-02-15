@@ -3,33 +3,18 @@ use std::collections::HashMap;
 use std::ops::AddAssign;
 use std::rc::Rc;
 use std::sync::{Arc, RwLock};
-use ::taffy::{NodeId as TaffyNodeId, TaffyTree};
+use ::taffy::{Dimension, NodeId as TaffyNodeId, TaffyTree};
 use ::taffy::prelude::TaffyMaxContent;
 use gtk4::pango::Layout;
 use crate::layouter::boxmodel::BoxModel;
-use crate::layouter::taffy::{generate_with_taffy, TaffyContext};
+use crate::layouter::taffy::TaffyContext;
 use crate::rendertree_builder::{RenderTree, RenderNodeId};
 use crate::common::document::node::{NodeId as DomNodeId, NodeId};
 use crate::common::image::ImageId;
 
 pub mod taffy;
+pub mod text;
 mod boxmodel;
-
-#[cfg(not(any(feature = "parley", feature = "pango")))]
-compile_error!("Either the 'parley' or 'pango' feature must be enabled");
-
-#[cfg(all(feature = "parley", feature = "pango"))]
-compile_error!("Only one of the 'parley' or 'pango' features can be enabled");
-
-#[cfg(feature = "parley")]
-pub mod parley_text;
-#[cfg(feature = "pango")]
-pub mod pango_text;
-
-pub(crate) struct ViewportSize {
-    pub(crate) width: f64,
-    pub(crate) height: f64,
-}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct LayoutElementId(u64);
@@ -101,8 +86,8 @@ pub struct TaffyStruct {
 pub struct LayoutTree {
     /// Wrapped render tree
     pub render_tree: RenderTree,
-    /// Wrapped taffy tree
-    pub taffy: TaffyStruct,
+    // /// Wrapped taffy tree
+    // pub taffy: TaffyStruct,
     /// Arena of layout nodes
     pub arena : HashMap<LayoutElementId, LayoutElementNode>,
     /// Root node of the layout tree
@@ -137,10 +122,12 @@ impl std::fmt::Debug for LayoutTree {
         f.debug_struct("LayoutTree")
             .field("arena", &self.arena)
             .field("root_id", &self.root_id)
+            .field("root_width", &self.root_width)
+            .field("root_height", &self.root_height)
             .finish()
     }
 }
 
-pub fn generate_layout(render_tree: RenderTree, viewport: ViewportSize) -> LayoutTree {
-    generate_with_taffy(render_tree, viewport)
+pub trait CanLayout {
+    fn layout(&mut self, render_tree: RenderTree, viewport: crate::common::geo::Dimension) -> LayoutTree;
 }

@@ -3,14 +3,16 @@ use gtk4::{glib, Adjustment, Application, ApplicationWindow, DrawingArea, EventC
 use gtk4::glib::clone;
 use gtk4::prelude::{AdjustmentExt, ApplicationExt, ApplicationExtManual, DrawingAreaExt, DrawingAreaExtManual, GtkWindowExt, WidgetExt};
 use rendertree_builder::RenderTree;
-pub use crate::common::browser_state::{get_browser_state, init_browser_state, BrowserState};
-pub use crate::common::geo::Rect;
+use crate::common::browser_state::{get_browser_state, init_browser_state, BrowserState};
+use crate::common::geo;
+use crate::common::geo::Rect;
 use crate::layering::layer::{LayerId, LayerList};
-use crate::layouter::{generate_layout, ViewportSize};
 use crate::painter::Painter;
 use crate::tiler::{TileList, TileState};
 use crate::compositor::Composable;
 use crate::compositor::cairo::{CairoCompositor, CairoCompositorConfig};
+use crate::layouter::taffy::TaffyLayouter;
+use crate::layouter::CanLayout;
 use crate::rasterizer::cairo::CairoRasterizer;
 use crate::rasterizer::Rasterable;
 
@@ -52,7 +54,8 @@ fn main() {
     // --------------------------------------------------------------------
     // Layout the render-tree into a layout-tree
     // println!("\n\n\n\n\n--[ LAYOUT TREE ]----------------------------------");
-    let layout_tree = generate_layout(render_tree, ViewportSize { width: 800.0, height: 600.0 });
+    let mut layouter = TaffyLayouter::new();
+    let layout_tree = layouter.layout(render_tree, geo::Dimension::new(800.0, 600.0));
     // layout_tree.taffy.tree.print_tree(layout_tree.taffy.root_id);
     // println!("Layout width: {}, height: {}", layout_tree.root_width, layout_tree.root_height);
 
@@ -92,7 +95,6 @@ fn main() {
         tile_list: RwLock::new(tile_list),
         show_tilegrid: true,
         viewport: Rect::new(0.0, 0.0, 800.0, 600.0),
-        _marker: Default::default(),
     };
     init_browser_state(browser_state);
 

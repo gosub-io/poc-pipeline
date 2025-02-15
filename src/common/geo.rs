@@ -23,12 +23,12 @@ impl Rect {
 
     /// Converts a size and dimension into a rectangle.
     #[allow(unused)]
-    pub fn from_size_dimension(size: Size, dimension: Coordinate) -> Self {
+    pub fn from_coord_dimension(coord: Coordinate, dimension: Dimension) -> Self {
         Self {
-            x: dimension.x,
-            y: dimension.y,
-            width: size.width,
-            height: size.height,
+            x: coord.x,
+            y: coord.y,
+            width: dimension.width,
+            height: dimension.height,
         }
     }
 }
@@ -39,9 +39,9 @@ impl Into<Coordinate> for Rect {
     }
 }
 
-impl Into<Size> for Rect {
-    fn into(self) -> Size {
-        Size::new(self.width, self.height)
+impl Into<Dimension> for Rect {
+    fn into(self) -> Dimension {
+        Dimension::new(self.width, self.height)
     }
 }
 
@@ -62,15 +62,15 @@ impl Coordinate {
     }
 }
 
-/// Size is a dimension in width and height. Together with a Dimension it forms a Rect.
+/// Dimension in width and height. Together with a Dimension it forms a Rect.
 #[allow(unused)]
 #[derive(Clone, Debug)]
-pub struct Size {
+pub struct Dimension {
     pub width: f64,
     pub height: f64,
 }
 
-impl Size {
+impl Dimension {
     #[allow(unused)]
     pub fn new(width: f64, height: f64) -> Self {
         Self { width, height }
@@ -90,10 +90,10 @@ mod tests {
     }
 
     #[test]
-    fn test_rect_from_size_dimension() {
-        let size = Size::new(10.0, 10.0);
-        let dimension = Coordinate::new(5.0, 5.0);
-        let rect = Rect::from_size_dimension(size, dimension);
+    fn test_rect_from_coord_dimension() {
+        let coord = Coordinate::new(5.0, 5.0);
+        let dimension = Dimension::new(10.0, 10.0);
+        let rect = Rect::from_coord_dimension(coord, dimension);
         assert_eq!(rect.x, 5.0);
         assert_eq!(rect.y, 5.0);
         assert_eq!(rect.width, 10.0);
@@ -109,11 +109,11 @@ mod tests {
     }
 
     #[test]
-    fn test_into_size() {
+    fn test_into_dimension() {
         let rect = Rect::new(0.0, 0.0, 10.0, 10.0);
-        let size: Size = rect.into();
-        assert_eq!(size.width, 10.0);
-        assert_eq!(size.height, 10.0);
+        let dimension: Dimension = rect.into();
+        assert_eq!(dimension.width, 10.0);
+        assert_eq!(dimension.height, 10.0);
     }
 
     #[test]
@@ -124,9 +124,9 @@ mod tests {
     }
 
     #[test]
-    fn test_size_new() {
-        let size = Size::new(10.0, 20.0);
-        assert_eq!(size.width, 10.0);
-        assert_eq!(size.height, 20.0);
+    fn test_dimension_new() {
+        let dimension = Dimension::new(10.0, 20.0);
+        assert_eq!(dimension.width, 10.0);
+        assert_eq!(dimension.height, 20.0);
     }
 }
