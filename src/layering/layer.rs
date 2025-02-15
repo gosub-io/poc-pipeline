@@ -160,7 +160,7 @@ impl LayerList {
             return;
         };
 
-        let is_image = self.layout_tree.render_tree.doc
+        let _is_image = self.layout_tree.render_tree.doc
             .get_node_by_id(layout_element.dom_node_id)
             .and_then(|dom_node| match dom_node.node_type {
                 crate::document::node::NodeType::Element(ref element_data) => {
@@ -170,13 +170,18 @@ impl LayerList {
             })
             .unwrap_or(false);
 
+
+        // @TODO: remove me after debugging
+        let is_image = false;
+
+
         if is_image {
             let image_layer_id = self.new_layer(1);
             if let Some(mut layers) = self.get_layer_mut(image_layer_id) {
                 if let Some(image_layer) = layers.get_mut(&image_layer_id) {
                     image_layer.add_element(layout_element.id);
                 } else {
-                    println!("Warning: Image layer {} not found in HashMap", image_layer_id);
+                    log::warn!("Image layer {} not found in HashMap", image_layer_id);
                 }
             }
         } else {
@@ -184,7 +189,7 @@ impl LayerList {
                 if let Some(layer) = layers.get_mut(&layer_id) {
                     layer.add_element(layout_element.id);
                 } else {
-                    println!("Warning: Layer {} not found in HashMap", layer_id);
+                    log::warn!("Layer {} not found in HashMap", layer_id);
                 }
             }
         }

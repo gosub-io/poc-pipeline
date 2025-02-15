@@ -2,6 +2,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::sync::{Arc, RwLock};
+use gtk4::pango;
 use crate::rendertree_builder::{RenderTree, RenderNodeId};
 use taffy::prelude::*;
 use crate::document::node::{NodeType, NodeId as DomNodeId};
@@ -56,9 +57,12 @@ pub fn generate_with_taffy(render_tree: RenderTree, viewport: ViewportSize) -> L
                 let layout = get_text_layout(text, font_family, font_size as f64, v_as.width.unwrap() as f64);
                 match layout {
                     Ok(layout) => {
+                        // @TODO: Somehow, layout.width() and layout.height() do not seem to work anymore
+                        let (_, logical_rect) = layout.extents();
+
                         Size {
-                            width: layout.width() as f32,
-                            height: layout.height() as f32,
+                            width: logical_rect.width() as f32 / pango::SCALE as f32,
+                            height: logical_rect.height() as f32 / pango::SCALE as f32,
                         }
                     },
                     Err(_) => Size::ZERO

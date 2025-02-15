@@ -13,23 +13,22 @@ pub fn cairo_compositor(cr: &cairo::Context) {
         let binding = state.tile_list.write().unwrap();
         let Some(tile) = binding.get_tile(tile_id) else {
             log::warn!("Tile not found: {:?}", tile_id);
-            println!("tile not found?");
             continue;
         };
 
         let Some(texture_id) = tile.texture_id else {
-            println!("No texture found for tile: {:?}", tile_id);
+            log::error!("No texture found for tile: {:?}", tile_id);
             continue;
         };
 
         // Composite
-        println!("Compositing tile: {:?}", tile_id);
+        // println!("Compositing tile: {:?}", tile_id);
 
         let binding = get_texture_store();
         let texture_store = binding.read().expect("Failed to get texture store");
 
         let Some(texture) = texture_store.get(texture_id) else {
-            println!("No texture found for tile: {:?}", tile_id);
+            log::error!("No texture found for tile: {:?}", tile_id);
             continue;
         };
         drop(texture_store);

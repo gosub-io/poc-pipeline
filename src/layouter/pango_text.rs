@@ -12,9 +12,18 @@ pub fn get_text_layout(text: &str, font_family: &str, font_size: f64, width: f64
     layout.set_text(text);
     let font = FontDescription::from_string(&format!("{} {}", font_family, font_size));
     layout.set_font_description(Some(&font));
-    layout.set_width(width as i32 * SCALE);
+    layout.set_width((width * SCALE as f64) as i32);
     // layout.set_wrap(gtk4::pango::WrapMode::Word);
     layout.set_wrap(gtk4::pango::WrapMode::Char);
+
+    layout.context_changed();
+    cr.move_to(0.0, 0.0);
+    pangocairo::functions::show_layout(&cr, &layout);
+
+    let height = layout.height();
+
+    let (_, logical_rect) = layout.extents();
+    let height = logical_rect.height() / SCALE;
 
     Ok(layout)
 }

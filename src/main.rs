@@ -34,48 +34,47 @@ mod compositor;
 fn main() {
     // --------------------------------------------------------------------
     // Generate a DOM tree
-    println!("\n\n\n\n\n--[ DOM TREE ]----------------------------------");
+    // println!("\n\n\n\n\n--[ DOM TREE ]----------------------------------");
     let doc = document::create_document();
-    let mut output = String::new();
-    doc.print_tree(&mut output).unwrap();
-    println!("{}", output);
+    // let mut output = String::new();
+    // doc.print_tree(&mut output).unwrap();
+    // println!("{}", output);
 
     // --------------------------------------------------------------------
     // Convert the DOM tree into a render-tree that has all the non-visible elements removed
-    println!("\n\n\n\n\n--[ BUILD sRENDER TREE ]----------------------------------");
+    // println!("\n\n\n\n\n--[ BUILD sRENDER TREE ]----------------------------------");
     let mut render_tree = RenderTree::new(doc);
     render_tree.parse();
-    render_tree.print();
+    // render_tree.print();
 
-    let doc_element_count = render_tree.doc.count_elements();
-    let render_tree_element_count = render_tree.count_elements();
-
-    println!("{:.2}% of the dom elements removed", (1.0 - (render_tree_element_count as f64 / doc_element_count as f64)) * 100.0);
+    // let doc_element_count = render_tree.doc.count_elements();
+    // let render_tree_element_count = render_tree.count_elements();
+    // println!("{:.2}% of the dom elements removed", (1.0 - (render_tree_element_count as f64 / doc_element_count as f64)) * 100.0);
 
     // --------------------------------------------------------------------
     // Layout the render-tree into a layout-tree
-    println!("\n\n\n\n\n--[ LAYOUT TREE ]----------------------------------");
-    let mut layout_tree = generate_layout(render_tree, ViewportSize { width: 800.0, height: 600.0 });
-    layout_tree.taffy.tree.print_tree(layout_tree.taffy.root_id);
-    println!("Layout width: {}, height: {}", layout_tree.root_width, layout_tree.root_height);
+    // println!("\n\n\n\n\n--[ LAYOUT TREE ]----------------------------------");
+    let layout_tree = generate_layout(render_tree, ViewportSize { width: 800.0, height: 600.0 });
+    // layout_tree.taffy.tree.print_tree(layout_tree.taffy.root_id);
+    // println!("Layout width: {}, height: {}", layout_tree.root_width, layout_tree.root_height);
 
     // --------------------------------------------------------------------
     // Generate render layers
-    println!("\n\n\n\n\n--[ LAYER LIST ]----------------------------------");
+    // println!("\n\n\n\n\n--[ LAYER LIST ]----------------------------------");
     let layer_list = LayerList::new(layout_tree);
-    for (layer_id, layer) in layer_list.layers.read().unwrap().iter() {
-        println!("Layer: {} (order: {})", layer_id, layer.order);
-        for element in layer.elements.iter() {
-            println!("  Element: {}", element);
-        }
-    }
+    // for (layer_id, layer) in layer_list.layers.read().unwrap().iter() {
+    //     println!("Layer: {} (order: {})", layer_id, layer.order);
+    //     for element in layer.elements.iter() {
+    //         println!("  Element: {}", element);
+    //     }
+    // }
 
     // --------------------------------------------------------------------
     // Tiling phase
-    println!("\n\n\n\n\n--[ TILING ]----------------------------------");
+    // println!("\n\n\n\n\n--[ TILING ]----------------------------------");
     let mut tile_list = TileList::new(layer_list, TILE_DIMENSION);
     tile_list.generate();
-    tile_list.print_list();
+    // tile_list.print_list();
 
     // --------------------------------------------------------------------
     // At this point, we have done everything we can before painting. The rest
@@ -138,18 +137,18 @@ fn build_ui(app: &Application) {
         let el = state.tile_list.read().unwrap().layer_list.find_element_at(x, y).clone();
         match (state.current_hovered_element, el) {
             (Some(current_id), Some(new_id)) if current_id != new_id => {
-                println!("OnElementLeave({})", current_id);
-                println!("OnElementEnter({})", new_id);
+                // println!("OnElementLeave({})", current_id);
+                // println!("OnElementEnter({})", new_id);
                 state.current_hovered_element = Some(new_id);
                 area_clone.queue_draw();
             }
             (None, Some(new_id)) => {
-                println!("OnElementEnter({})", new_id);
+                // println!("OnElementEnter({})", new_id);
                 state.current_hovered_element = Some(new_id);
                 area_clone.queue_draw();
             }
-            (Some(current_id), None) => {
-                println!("OnElementLeave({})", current_id);
+            (Some(_current_id), None) => {
+                // println!("OnElementLeave({})", current_id);
                 state.current_hovered_element = None;
                 area_clone.queue_draw();
             }
@@ -213,7 +212,6 @@ fn do_paint() {
         let mut binding = state.tile_list.write().unwrap();
         let Some(tile) = binding.get_tile(tile_id) else {
             log::warn!("Tile not found: {:?}", tile_id);
-            println!("tile not found?");
             continue;
         };
 
@@ -223,13 +221,12 @@ fn do_paint() {
         }
 
         // Paint the given tile
-        println!("Generarting painting commands for tile");
+        // println!("Generarting painting commands for tile");
         let paint_commands = Painter::paint(tile, &binding.layer_list.clone());
-        dbg!(&paint_commands);
+        // dbg!(&paint_commands);
 
         let Some(tile) = binding.get_tile_mut(tile_id) else {
             log::warn!("Tile not found: {:?}", tile_id);
-            println!("tile not found?");
             continue;
         };
         tile.paint_commands = paint_commands;
@@ -242,11 +239,11 @@ fn do_rasterize() {
 
     let tile_ids = state.tile_list.read().unwrap().get_intersecting_tiles(LayerId::new(0), state.viewport);
     for tile_id in tile_ids {
+
         // get tile
         let mut binding = state.tile_list.write().unwrap();
         let Some(tile) = binding.get_tile(tile_id) else {
             log::warn!("Tile not found: {:?}", tile_id);
-            println!("tile not found?");
             continue;
         };
 
@@ -256,12 +253,11 @@ fn do_rasterize() {
         }
 
         // Rasterize the tile into a texture
-        println!("Generarting painting commands for tile");
+        // println!("Generarting painting commands for tile");
         let texture_id = CairoRasterizer::rasterize(tile);
 
         let Some(tile) = binding.get_tile_mut(tile_id) else {
             log::warn!("Tile not found: {:?}", tile_id);
-            println!("tile not found?");
             continue;
         };
 

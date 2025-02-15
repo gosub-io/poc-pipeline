@@ -1,14 +1,17 @@
 pub mod commands;
 
+use std::fs::File;
+use std::io::BufReader;
 use std::ops::AddAssign;
 use rand::Rng;
 use crate::layering::layer::LayerList;
+use crate::layouter::LayoutContext;
 use crate::painter::commands::border::{Border, BorderStyle};
 use crate::painter::commands::brush::Brush;
 use crate::painter::commands::color::Color;
 use crate::painter::commands::rectangle::Rectangle;
 use crate::painter::commands::PaintCommand;
-use crate::tiler::{Tile, TileList};
+use crate::tiler::Tile;
 
 pub struct Painter {}
 
@@ -33,11 +36,35 @@ impl Painter {
                 continue;
             };
 
-            let c = Color::new(0.75, 0.0, 0.73, 0.3);
-            let brush = Brush::Solid(c);
-            let border = Border::new(3.0, BorderStyle::Dotted, Brush::Solid(Color::BLACK));
-            let r = Rectangle::new(element.box_model.border_box()).with_background(brush).with_border(border);
-            commands.push(PaintCommand::rectangle(r));
+            match &element.context {
+                LayoutContext::Text(text) => {
+                    // // @TODO No need to load them over and over again
+                    // let font = Font::new("Arial", 24.0);
+                    // let layout = Layout::new(&font, &text.layout);
+                    // let brush = Brush::solid(Color::BLACK);
+                    // let r = Rectangle::new(element.box_model.border_box()).with_background(brush);
+                    // commands.push(PaintCommand::text(r, layout));
+                }
+                LayoutContext::Image(image) => {
+                    // @TODO No need to load them over and over again. We need some image store of some kind
+                    let file = File::open("sub.png").unwrap();
+                    let reader = BufReader::new(file);
+                    let img = image::load(reader, image::ImageFormat::from_path("sub.png").unwrap()).unwrap().to_rgba8();
+
+                    let brush = Brush::image(img.as_raw().clone(), img.width(), img.height());
+                    let border = Border::new(3.0, BorderStyle::Double, Brush::Solid(Color::BLACK));
+                    let r = Rectangle::new(element.box_model.border_box()).with_background(brush).with_border(border);
+                    commands.push(PaintCommand::rectangle(r));
+
+                }
+                LayoutContext::None => {
+                    let c = Color::new(0.75, 0.0, 0.73, 0.15);
+                    let brush = Brush::Solid(c);
+                    let border = Border::new(1.0, BorderStyle::Double, Brush::Solid(Color::BLACK));
+                    let r = Rectangle::new(element.box_model.border_box()).with_background(brush).with_border(border);
+                    commands.push(PaintCommand::rectangle(r));
+                }
+            }
         }
 
         commands

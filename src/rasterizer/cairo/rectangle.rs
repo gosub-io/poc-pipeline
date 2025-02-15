@@ -21,7 +21,17 @@ fn set_brush(cr: &Context, brush: &Brush) {
 }
 
 pub(crate) fn do_paint_rectangle(cr: &Context, tile: &Tile, rectangle: &Rectangle) {
+    println!("{:?}", &rectangle.rect());
+    println!("{} {:?}", &tile.id, tile.rect);
+
+    // Save the context state. This allows us to do clipping and translation without worrying about
+    // the state of the context.
+    _ = cr.save();
+
+    // Translate the context to the tile's position and clip it.
     cr.translate(-tile.rect.x, -tile.rect.y);
+    cr.rectangle(tile.rect.x, tile.rect.y, tile.rect.width, tile.rect.height);
+    cr.clip();
 
     // Create initial rect
     match rectangle.background() {
@@ -68,14 +78,12 @@ pub(crate) fn do_paint_rectangle(cr: &Context, tile: &Tile, rectangle: &Rectangl
                 let gap_size = 1.0;
 
                 // inner border
-                let width = (rectangle.border().width() / 2.0).floor();
                 cr.rectangle(
                     rectangle.rect().x + width as f64 + gap_size,
                     rectangle.rect().y + width as f64 + gap_size,
                     rectangle.rect().width - width as f64 - gap_size,
                     rectangle.rect().height - width as f64 - gap_size
                 );
-                cr.set_line_width(width as f64);
                 _ = cr.stroke();
             } else {
                 // When the width is less than 3.0, we just draw a single line as there is no room for
@@ -93,4 +101,7 @@ pub(crate) fn do_paint_rectangle(cr: &Context, tile: &Tile, rectangle: &Rectangl
         }
     }
     cr.rectangle(rectangle.rect().x, rectangle.rect().y, rectangle.rect().width, rectangle.rect().height);
+
+    // Restore the context state
+    _ = cr.restore();
 }
