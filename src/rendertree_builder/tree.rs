@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use std::ops::AddAssign;
-use crate::document::document::Document;
-use crate::document::node::{Node, NodeType, NodeId};
-use crate::document::style::{StyleProperty, StyleValue};
+use crate::common::document::document::Document;
+use crate::common::document::node::{Node, NodeType, NodeId};
+use crate::common::document::style::{StyleProperty, StyleValue};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct RenderNodeId(u64);

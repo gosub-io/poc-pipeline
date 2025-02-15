@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 use std::ops::AddAssign;
 use std::sync::{Arc, RwLock};
-use crate::utils::geo::{Coordinate, Rect};
+use crate::common::geo::{Coordinate, Rect};
 use crate::layering::layer::{LayerId, LayerList};
 use crate::layouter::{LayoutElementId, LayoutElementNode};
 use crate::painter::commands::PaintCommand;
-use crate::rasterizer::texture::TextureId;
+use crate::common::texture::TextureId;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TileId(u64);

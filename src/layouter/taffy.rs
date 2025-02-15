@@ -3,13 +3,13 @@ use std::sync::{Arc, RwLock};
 use gtk4::pango;
 use crate::rendertree_builder::{RenderTree, RenderNodeId};
 use taffy::prelude::*;
-use crate::document::node::{NodeType, NodeId as DomNodeId};
-use crate::document::style::{StyleProperty, StyleValue, Unit};
-use crate::utils::geo;
+use crate::common::document::node::{NodeType, NodeId as DomNodeId};
+use crate::common::document::style::{StyleProperty, StyleValue, Unit};
+use crate::common::geo;
 use crate::layouter::{boxmodel as BoxModel, LayoutElementNode, LayoutTree, TaffyStruct, TaffyNodeId, LayoutElementId, LayoutContext, RenderContext};
 use crate::layouter::pango_text::get_text_layout;
 use crate::layouter::ViewportSize;
-use crate::utils::geo::Coordinate;
+use crate::common::geo::Coordinate;
 
 // Taffy context for a text node
 #[derive(Clone, Debug)]
@@ -220,7 +220,7 @@ fn generate_node(layout_tree: &mut LayoutTree, render_node_id: RenderNodeId) -> 
                     _ => {}
                 }
             }
-            if let Some(margin_inline_end) = data.get_style(crate::document::style::StyleProperty::MarginRight) {
+            if let Some(margin_inline_end) = data.get_style(StyleProperty::MarginRight) {
                 match margin_inline_end {
                     StyleValue::Unit(value, unit) => {
                         match unit {

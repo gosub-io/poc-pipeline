@@ -1,7 +1,5 @@
 pub mod commands;
 
-use std::fs::File;
-use std::io::BufReader;
 use std::ops::AddAssign;
 use rand::Rng;
 use crate::layering::layer::LayerList;
@@ -11,8 +9,7 @@ use crate::painter::commands::brush::Brush;
 use crate::painter::commands::color::Color;
 use crate::painter::commands::rectangle::Rectangle;
 use crate::painter::commands::PaintCommand;
-use crate::store::image::get_image_store;
-use crate::store::texture::get_texture_store;
+use crate::common::get_image_store;
 use crate::tiler::Tile;
 
 pub struct Painter {}

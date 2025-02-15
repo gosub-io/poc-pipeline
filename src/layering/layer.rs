@@ -163,7 +163,7 @@ impl LayerList {
         let is_image = self.layout_tree.render_tree.doc
             .get_node_by_id(layout_element.dom_node_id)
             .and_then(|dom_node| match dom_node.node_type {
-                crate::document::node::NodeType::Element(ref element_data) => {
+                crate::common::document::node::NodeType::Element(ref element_data) => {
                     Some(element_data.tag_name.eq_ignore_ascii_case("img"))
                 },
                 _ => None,

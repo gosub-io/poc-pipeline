@@ -7,10 +7,10 @@ use ::taffy::{NodeId as TaffyNodeId, TaffyTree};
 use ::taffy::prelude::TaffyMaxContent;
 use gtk4::pango::Layout;
 use crate::layouter::boxmodel::BoxModel;
-use crate::rendertree_builder::{RenderTree, RenderNodeId};
-use crate::document::node::{NodeId as DomNodeId, NodeId};
 use crate::layouter::taffy::{generate_with_taffy, TaffyContext};
-use crate::store::image::ImageId;
+use crate::rendertree_builder::{RenderTree, RenderNodeId};
+use crate::common::document::node::{NodeId as DomNodeId, NodeId};
+use crate::common::image::ImageId;
 
 pub mod taffy;
 mod boxmodel;

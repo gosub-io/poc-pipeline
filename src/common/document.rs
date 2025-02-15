@@ -1,6 +1,6 @@
-use crate::document::document::Document;
-use crate::document::node::{AttrMap, Node};
-use crate::document::style::{Color, Display, FontWeight, StyleProperty, StylePropertyList, StyleValue, Unit};
+use crate::common::document::document::Document;
+use crate::common::document::node::AttrMap;
+use crate::common::document::style::{Color, Display, FontWeight, StyleProperty, StylePropertyList, StyleValue, Unit};
 
 pub mod node;
 pub mod style;

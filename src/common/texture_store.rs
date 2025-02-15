@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::sync::{Arc, OnceLock, RwLock};
-use crate::rasterizer::texture::{Texture, TextureId};
+use crate::common::texture::{Texture, TextureId};
 
 pub static TEXTURE_STORE: OnceLock<RwLock<TextureStore>> = OnceLock::new();
 

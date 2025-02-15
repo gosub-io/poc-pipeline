@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::ops::AddAssign;
-use crate::document::document::Document;
-use crate::document::style::{StylePropertyList, StyleValue, StyleProperty};
+use crate::common::document::document::Document;
+use crate::common::document::style::{StylePropertyList, StyleValue, StyleProperty};
 use crate::rendertree_builder::RenderNodeId;
 
 #[derive(Debug, Clone)]

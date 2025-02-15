@@ -3,8 +3,8 @@ use gtk4::{glib, Adjustment, Application, ApplicationWindow, DrawingArea, EventC
 use gtk4::glib::clone;
 use gtk4::prelude::{AdjustmentExt, ApplicationExt, ApplicationExtManual, DrawingAreaExt, DrawingAreaExtManual, GtkWindowExt, WidgetExt};
 use rendertree_builder::RenderTree;
-use crate::utils::browser_state::{get_browser_state, init_browser_state, BrowserState};
-use crate::utils::geo::Rect;
+pub use crate::common::browser_state::{get_browser_state, init_browser_state, BrowserState};
+pub use crate::common::geo::Rect;
 use crate::layering::layer::{LayerId, LayerList};
 use crate::layouter::{generate_layout, ViewportSize};
 use crate::painter::Painter;
@@ -16,9 +16,6 @@ use crate::rasterizer::Rasterable;
 
 const TILE_DIMENSION : usize = 200;
 
-mod utils;
-#[allow(unused)]
-mod document;
 #[allow(unused)]
 mod rendertree_builder;
 #[allow(unused)]
@@ -30,13 +27,13 @@ mod tiler;
 mod painter;
 mod rasterizer;
 mod compositor;
-mod store;
+mod common;
 
 fn main() {
     // --------------------------------------------------------------------
     // Generate a DOM tree
     // println!("\n\n\n\n\n--[ DOM TREE ]----------------------------------");
-    let doc = document::create_document();
+    let doc = common::document::create_document();
     // let mut output = String::new();
     // doc.print_tree(&mut output).unwrap();
     // println!("{}", output);

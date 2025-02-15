@@ -1,5 +1,5 @@
 use gtk4::pango::FontDescription;
-use crate::utils::geo::Rect;
+use crate::common::geo::Rect;
 
 #[derive(Clone, Debug)]
 pub struct Text {

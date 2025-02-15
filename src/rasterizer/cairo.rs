@@ -175,8 +175,8 @@ mod brush;
 use gtk4::cairo;
 use crate::painter::commands::PaintCommand;
 use crate::rasterizer::Rasterable;
-use crate::rasterizer::texture::TextureId;
-use crate::store::texture::get_texture_store;
+use crate::common::texture::TextureId;
+use crate::common::get_texture_store;
 use crate::tiler::Tile;
 
 pub struct CairoRasterizer {}

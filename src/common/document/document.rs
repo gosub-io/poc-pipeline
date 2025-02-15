@@ -1,10 +1,7 @@
-use std::cell::RefCell;
 use std::collections::HashMap;
-use std::ops::AddAssign;
-use std::rc::Rc;
 use std::sync::{Arc, RwLock};
-use crate::document::node::{Node, NodeType, NodeId, AttrMap};
-use crate::document::style::StylePropertyList;
+use crate::common::document::node::{Node, NodeType, NodeId, AttrMap};
+use crate::common::document::style::StylePropertyList;
 
 #[derive(Clone)]
 pub struct Document {
