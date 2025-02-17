@@ -4,16 +4,19 @@ use gtk4::pango;
 use crate::rendertree_builder::{RenderTree, RenderNodeId};
 use crate::common::document::node::{NodeType, NodeId as DomNodeId};
 use crate::common::document::style::{StyleProperty, StyleValue, Unit};
-use crate::layouter::{boxmodel as BoxModel, LayoutElementNode, LayoutTree, TaffyStruct, TaffyNodeId, LayoutElementId, CanLayout};
+use crate::layouter::{boxmodel as BoxModel, LayoutElementNode, LayoutTree, TaffyNodeId, LayoutElementId, CanLayout};
 use taffy::prelude::*;
 use crate::layouter::text::pango::get_text_layout;
+
+const DEFAULT_FONT_SIZE: f64 = 12.0;
+const DEFAULT_FONT_FAMILY: &str = "Arial";
 
 // Taffy context for a text node
 #[derive(Clone, Debug)]
 pub struct TextContext {
     text: String,
     family: String,
-    size: f32,
+    size: f64,
 }
 
 // Taffy context for an image node (needed so we can define the width/height of the image)
@@ -32,6 +35,7 @@ pub enum TaffyContext {
 pub struct TaffyLayouter {
     tree: TaffyTree<TaffyContext>,
     root_id: TaffyNodeId,
+    layout_taffy_mapping: HashMap<LayoutElementId, TaffyNodeId>,
 }
 
 impl TaffyLayouter {
@@ -39,14 +43,12 @@ impl TaffyLayouter {
         Self {
             tree: TaffyTree::new(),
             root_id: TaffyNodeId::new(0),
+            layout_taffy_mapping: HashMap::new(),
         }
     }
 }
 
 impl CanLayout for TaffyLayouter {
-    /// Generates a layout tree based on taffy. Note that the layout tree current holds taffy information (like styles)
-    /// that we probably want to convert to our own style system. We already do this with the taffy layout through the
-    /// BoxModel structure.
     fn layout(&mut self, render_tree: RenderTree, viewport: crate::common::geo::Dimension) -> LayoutTree {
         let root_id = render_tree.root_id.unwrap();
         let Some(mut layout_tree) = self.generate_tree(render_tree, root_id) else {
@@ -101,11 +103,11 @@ impl CanLayout for TaffyLayouter {
 
 impl TaffyLayouter {
     // Populate the layout tree with the boxmodels that we now can generate
-    fn populate_boxmodel(&self, layout_tree: &mut LayoutTree, node_id: LayoutElementId, offset: crate::common::geo::Coordinate) {
-        let el = layout_tree.get_node_by_id(node_id).unwrap();
-        let layout = self.tree.layout(el.taffy_node_id).unwrap().clone();
+    fn populate_boxmodel(&self, layout_tree: &mut LayoutTree, layout_node_id: LayoutElementId, offset: crate::common::geo::Coordinate) {
+        let taffy_node_id = self.layout_taffy_mapping.get(&layout_node_id).unwrap();
+        let layout = self.tree.layout(*taffy_node_id).unwrap().clone();
 
-        let el = layout_tree.get_node_by_id_mut(node_id).unwrap();
+        let el = layout_tree.get_node_by_id_mut(layout_node_id).unwrap();
         el.box_model = taffy_layout_to_boxmodel(&layout, offset);
         let child_ids = el.children.clone();
 
@@ -131,8 +133,13 @@ impl TaffyLayouter {
         };
 
         let ids = {
-            let temp_el = self.generate_node(&mut layout_tree, root_id).unwrap();
-            (temp_el.taffy_node_id, temp_el.id)
+            let layout_element_id = {
+                let el = self.generate_node(&mut layout_tree, root_id).unwrap();
+                el.id
+            };
+
+            let taffy_node_id = self.layout_taffy_mapping.get(&layout_element_id).unwrap().clone();
+            (taffy_node_id, layout_element_id)
         };
 
         self.root_id = ids.0;
@@ -141,13 +148,13 @@ impl TaffyLayouter {
         Some(layout_tree)
     }
 
-    fn generate_node(&mut self, layout_tree: &mut LayoutTree, render_node_id: RenderNodeId) -> Option<&LayoutElementNode> {
+    fn generate_node<'a>(&mut self, layout_tree: &'a mut LayoutTree, render_node_id: RenderNodeId) -> Option<&'a LayoutElementNode> {
         let mut style = Style {
             display: Display::Block,
             ..Default::default()
         };
 
-        // Context to set for text nodes
+        // Additional taffy context based on the DOM node
         let mut taffy_context = None;
 
         // Find the DOM node in the DOM document that is wrapped in the render tree
@@ -183,7 +190,6 @@ impl TaffyLayouter {
                         _ => {}
                     }
                 }
-
                 // --- Margin ---
                 if let Some(margin_block_start) = data.get_style(StyleProperty::MarginTop) {
                     match margin_block_start {
@@ -333,14 +339,14 @@ impl TaffyLayouter {
                 }
             }
             NodeType::Text(text, style) => {
-                // @TODO: make sure font here is from the style property list
-                let mut font_size = 16.0;
-                let mut font_family = "Arial".to_string();
+                // Default font
+                let mut font_size = DEFAULT_FONT_SIZE;
+                let mut font_family = DEFAULT_FONT_FAMILY.to_string();
 
                 match style.get_property(StyleProperty::FontSize) {
                     Some(StyleValue::Unit(value, unit)) => {
                         match unit {
-                            Unit::Px => font_size = *value,
+                            Unit::Px => font_size = *value as f64,
                             Unit::Em => panic!("Don't know how to deal with em units for fonts"),
                             Unit::Rem => panic!("Don't know how to deal with rem units for fonts"),
                             _ => panic!("Incorrect font-size property unit"),
@@ -376,12 +382,12 @@ impl TaffyLayouter {
                         id: layout_tree.next_node_id(),
                         dom_node_id,
                         render_node_id,
-                        taffy_node_id: leaf_id,
+                        // taffy_node_id: leaf_id,
                         box_model: BoxModel::BoxModel::ZERO,
                         children: vec![],
-                        // context: LayoutContext::None,
-                        // render_context: RenderContext::None,
                     };
+
+                    self.layout_taffy_mapping.insert(el.id, leaf_id);
 
                     let id = el.id;
                     layout_tree.arena.insert(id, el);
@@ -400,9 +406,30 @@ impl TaffyLayouter {
         let children = render_node.children.clone();
 
         for child_render_node_id in &children {
-            match self.generate_node(layout_tree, *child_render_node_id) {
+            let result = {
+                let res = self.generate_node(layout_tree, *child_render_node_id);
+                match res {
+                    Some(el) => {
+                        let taffy_node_id = self.layout_taffy_mapping.get(&el.id).unwrap().clone();
+                        Some((taffy_node_id, el.id))
+                    },
+                    None => None,
+                }
+            };
+
+            match result {
+                Some(ids) => {
+                    children_taffy_ids.push(ids.0);
+                    children_el_ids.push(ids.1);
+                },
+                None => continue,
+            }
+
+            let res = self.generate_node(layout_tree, *child_render_node_id);
+            match res {
                 Some(el) => {
-                    children_taffy_ids.push(el.taffy_node_id);
+                    let taffy_node_id = self.layout_taffy_mapping.get(&el.id).unwrap().clone();
+                    children_taffy_ids.push(taffy_node_id);
                     children_el_ids.push(el.id);
                 },
                 None => continue,
@@ -415,11 +442,8 @@ impl TaffyLayouter {
                     id: layout_tree.next_node_id(),
                     dom_node_id,
                     render_node_id,
-                    taffy_node_id: leaf_id,
                     box_model: BoxModel::BoxModel::ZERO,
                     children: children_el_ids,
-                    // context: LayoutContext::None,
-                    // render_context: RenderContext::None,
                 };
 
                 let id = el.id;

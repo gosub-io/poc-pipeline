@@ -39,7 +39,7 @@ impl std::fmt::Display for LayoutElementId {
 
 
 #[derive(Debug, Clone)]
-pub enum LayoutContext {
+pub enum ElementContext {
     None,
     Text(Text),
     Image(ImageId),
@@ -47,12 +47,9 @@ pub enum LayoutContext {
 
 #[derive(Clone, Debug)]
 pub struct Text {
-    pub layout: Layout,
-}
-
-#[derive(Clone, Debug)]
-pub enum RenderContext {
-    None
+    pub font_family: String,
+    pub font_size: f32,
+    pub text: String,
 }
 
 #[derive(Debug, Clone)]
@@ -62,16 +59,12 @@ pub struct LayoutElementNode {
     pub dom_node_id: DomNodeId,
     /// Id of the node in the render tree. This is normally the same node ID as the dom node ID
     pub render_node_id: RenderNodeId,
-    /// Id of the node in the layout tree. Contains all layout information
-    pub taffy_node_id: TaffyNodeId,
     /// Children of this node
     pub children: Vec<LayoutElementId>,
     /// Generated boxmodel for this node
     pub box_model: BoxModel,
-    // /// Node context for layouting
-    // pub context: LayoutContext,
-    // /// Node context for rendering
-    // pub render_context: RenderContext,
+    /// Layoutcontext. Used by different parts of the render engine
+    pub context: ElementContext,
 }
 
 
