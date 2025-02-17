@@ -5,7 +5,7 @@ use gtk4::prelude::{AdjustmentExt, ApplicationExt, ApplicationExtManual, Drawing
 use rendertree_builder::RenderTree;
 use crate::common::browser_state::{get_browser_state, init_browser_state, BrowserState};
 use crate::common::geo;
-use crate::common::geo::Rect;
+use crate::common::geo::{Dimension, Rect};
 use crate::layering::layer::{LayerId, LayerList};
 use crate::painter::Painter;
 use crate::tiler::{TileList, TileState};
@@ -16,7 +16,7 @@ use crate::layouter::CanLayout;
 use crate::rasterizer::cairo::CairoRasterizer;
 use crate::rasterizer::Rasterable;
 
-const TILE_DIMENSION : usize = 200;
+const TILE_DIMENSION : f64 = 200.0;
 
 #[allow(unused)]
 mod rendertree_builder;
@@ -73,7 +73,7 @@ fn main() {
     // --------------------------------------------------------------------
     // Tiling phase
     // println!("\n\n\n\n\n--[ TILING ]----------------------------------");
-    let mut tile_list = TileList::new(layer_list, TILE_DIMENSION);
+    let mut tile_list = TileList::new(layer_list, Dimension::new(TILE_DIMENSION, TILE_DIMENSION));
     tile_list.generate();
     // tile_list.print_list();
 

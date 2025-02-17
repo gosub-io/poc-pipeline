@@ -55,16 +55,14 @@ impl Document {
     }
 }
 
+#[allow(unused)]
 pub enum NodeVisit {
     Enter,      // Callback enters the node
     Exit,       // Callback exists the node
 }
 
 impl Document {
-    pub fn count_elements(&self) -> usize {
-        self.arena.len()
-    }
-
+    #[allow(unused)]
     pub fn walk_depth_first<F>(&self, node_id: NodeId, cb: &mut F)
     where
         F: FnMut(NodeId, usize, NodeVisit),
@@ -72,6 +70,7 @@ impl Document {
         self.walk_depth_first_helper(node_id, 0, cb);
     }
 
+    #[allow(unused)]
     fn walk_depth_first_helper<F>(&self, node_id: NodeId, level: usize, cb: &mut F)
     where
         F: FnMut(NodeId, usize, NodeVisit),
@@ -84,6 +83,7 @@ impl Document {
         cb(node_id, level, NodeVisit::Exit);
     }
 
+    #[allow(unused)]
     pub fn print_tree(&self, writer: &mut dyn std::fmt::Write) -> Result<(), std::fmt::Error> {
         if self.root_id.is_none() {
             return Ok(());
@@ -128,7 +128,7 @@ impl Document {
 
 #[cfg(test)]
 mod tests {
-    use crate::document;
+    use crate::common::document;
 
     #[test]
     fn test_walk_depth_first() {

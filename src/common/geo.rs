@@ -71,6 +71,8 @@ pub struct Dimension {
 }
 
 impl Dimension {
+    pub const ZERO : Dimension = Dimension { width: 0.0, height: 0.0 };
+
     #[allow(unused)]
     pub fn new(width: f64, height: f64) -> Self {
         Self { width, height }

@@ -37,6 +37,7 @@ impl TextureStore {
         id
     }
 
+    #[allow(unused)]
     pub fn has(&self, texture_id: TextureId) -> bool {
         self.textures.contains_key(&texture_id)
     }
@@ -45,6 +46,7 @@ impl TextureStore {
         self.textures.get(&texture_id).cloned()
     }
 
+    #[allow(unused)]
     pub fn remove(&mut self, texture_id: TextureId) {
         self.textures.remove(&texture_id);
     }

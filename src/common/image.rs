@@ -33,6 +33,7 @@ pub struct Image {
 }
 
 impl Image {
+    #[allow(unused)]
     pub fn new(width: usize, height: usize, data: Vec<u8>, format: ImageFormat) -> Image {
         let mut hasher = Sha256::new();
         hasher.update(data.as_slice());

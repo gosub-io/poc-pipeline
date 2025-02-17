@@ -121,11 +121,11 @@ impl RenderTree {
                 }
 
                 // Check attributes
-                if let Some(attr) = element.get_attribute("hidden") {
-                    if attr == "true" {
-                        return false;
-                    }
-                }
+                // if let Some(attr) = element.get_attribute("hidden") {
+                //     if attr == "true" {
+                //         return false;
+                //     }
+                // }
 
                 if element.get_style(StyleProperty::Display) == Some(&StyleValue::None) {
                     return false;

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::ops::AddAssign;
 use std::sync::{Arc, RwLock};
-use crate::common::geo::{Coordinate, Rect};
+use crate::common::geo::{Coordinate, Dimension, Rect};
 use crate::layering::layer::{LayerId, LayerList};
 use crate::layouter::{LayoutElementId, LayoutElementNode};
 use crate::painter::commands::PaintCommand;
@@ -109,8 +109,7 @@ pub struct  TileList {
     /// Next node ID
     next_node_id: Arc<RwLock<TileId>>,
 
-    pub default_tile_width: usize,
-    pub default_tile_height: usize,
+    pub default_tile_dimension: Dimension,
 }
 
 impl TileList {
@@ -138,20 +137,19 @@ impl TileList {
 }
 
 impl TileList {
-    pub fn new(layer_list: LayerList, dimension: usize) -> Self {
+    pub fn new(layer_list: LayerList, dimension: Dimension) -> Self {
         Self {
             layer_list: Arc::new(layer_list),
             layers: HashMap::new(),
             arena: HashMap::new(),
             next_node_id: Arc::new(RwLock::new(TileId::new(0))),
-            default_tile_width: dimension,
-            default_tile_height: dimension,
+            default_tile_dimension: dimension,
         }
     }
 
     pub fn generate(&mut self) {
-        let rows = (self.layer_list.layout_tree.root_height / self.default_tile_height as f32).ceil() as usize;
-        let cols = (self.layer_list.layout_tree.root_width / self.default_tile_width as f32).ceil() as usize;
+        let rows = (self.layer_list.layout_tree.root_dimension.height / self.default_tile_dimension.height).ceil() as usize;
+        let cols = (self.layer_list.layout_tree.root_dimension.width / self.default_tile_dimension.width).ceil() as usize;
 
         let mut layer_list = self.layer_list.layers.read().unwrap();
 
@@ -171,10 +169,10 @@ impl TileList {
                         paint_commands: Vec::new(),
                         state: TileState::Dirty,
                         rect: Rect::new(
-                            x as f64 * self.default_tile_width as f64,
-                            y as f64 * self.default_tile_height as f64,
-                            self.default_tile_width as f64,
-                            self.default_tile_height as f64,
+                            x as f64 * self.default_tile_dimension.width,
+                            y as f64 * self.default_tile_dimension.height,
+                            self.default_tile_dimension.width,
+                            self.default_tile_dimension.height,
                         ),
                         layer_id: *layer_id,
                     };

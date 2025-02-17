@@ -25,6 +25,7 @@ pub enum StyleProperty {
     FontFamily,
 }
 
+#[allow(unused)]
 #[derive(Clone, Debug, PartialEq)]
 pub enum Unit {
     Px,
@@ -33,6 +34,7 @@ pub enum Unit {
     Percent,
 }
 
+#[allow(unused)]
 #[derive(Clone, Debug, PartialEq)]
 pub enum Color {
     Rgb(u8, u8, u8),
@@ -40,6 +42,7 @@ pub enum Color {
     Named(String),
 }
 
+#[allow(unused)]
 #[derive(Clone, Debug, PartialEq)]
 pub enum Display {
     Block,
@@ -47,6 +50,7 @@ pub enum Display {
     None,
 }
 
+#[allow(unused)]
 #[derive(Debug, Clone, PartialEq)]
 pub enum FontWeight {
     Normal,

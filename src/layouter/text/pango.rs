@@ -20,10 +20,8 @@ pub fn get_text_layout(text: &str, font_family: &str, font_size: f64, width: f64
     cr.move_to(0.0, 0.0);
     pangocairo::functions::show_layout(&cr, &layout);
 
-    let height = layout.height();
-
-    let (_, logical_rect) = layout.extents();
-    let height = logical_rect.height() / SCALE;
+    // let (_, logical_rect) = layout.extents();
+    // let height = logical_rect.height() / SCALE;
 
     Ok(layout)
 }

@@ -24,10 +24,12 @@ impl AttrMap {
         self.attributes.insert(key.to_string(), value.to_string());
     }
 
+    #[allow(unused)]
     pub fn all(&self) -> &HashMap<String, String> {
         &self.attributes
     }
 
+    #[allow(unused)]
     pub fn to_string(&self) -> String {
         let mut result = String::new();
 
@@ -52,6 +54,7 @@ pub struct ElementData {
     /// Element attributes (src, href, class etc)
     pub attributes: AttrMap,
     /// Is this element self closing (ie: <img />)
+    #[allow(unused)]
     pub self_closing: bool,
     /// Element styles (color, font-size etc)
     pub styles: StylePropertyList,
@@ -81,6 +84,7 @@ impl ElementData {
         self.attributes.set(key, value);
     }
 
+    #[allow(unused)]
     pub fn is_self_closing(&self) -> bool {
         self.self_closing
     }

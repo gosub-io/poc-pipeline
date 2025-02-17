@@ -1,41 +1,54 @@
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use gtk4::pango;
+use taffy::prelude::*;
+use taffy::NodeId as TaffyNodeId;
 use crate::rendertree_builder::{RenderTree, RenderNodeId};
 use crate::common::document::node::{NodeType, NodeId as DomNodeId};
 use crate::common::document::style::{StyleProperty, StyleValue, Unit};
-use crate::layouter::{boxmodel as BoxModel, LayoutElementNode, LayoutTree, TaffyNodeId, LayoutElementId, CanLayout};
-use taffy::prelude::*;
+use crate::common::get_image_store;
+use crate::common::image::ImageId;
+use crate::layouter::{LayoutElementNode, LayoutTree, LayoutElementId, CanLayout, ElementContext, box_model, ElementContextText, ElementContextImage};
 use crate::layouter::text::pango::get_text_layout;
 
 const DEFAULT_FONT_SIZE: f64 = 12.0;
 const DEFAULT_FONT_FAMILY: &str = "Arial";
 
-// Taffy context for a text node
-#[derive(Clone, Debug)]
-pub struct TextContext {
-    text: String,
-    family: String,
-    size: f64,
+pub struct TaffyLayouter {
+    /// Generated taffy tree
+    tree: TaffyTree<TaffyContext>,
+    /// Root id of the taffy tree
+    root_id: TaffyNodeId,
+    /// Mapping of layout element id to taffy node id
+    layout_taffy_mapping: HashMap<LayoutElementId, TaffyNodeId>,
 }
 
-// Taffy context for an image node (needed so we can define the width/height of the image)
-#[derive(Clone, Debug)]
-pub struct ImageContext {
-    src: String,
-}
-
+/// @TODO: we have taffy context structures, which contains information for layouting with taffy. But
+/// the information is probably also needed in other parts. For this we also have the ElementContext
+/// in the layout node. We probably want to merge these two structures into one, so we don't have to
+/// duplicate the information.
 #[derive(Clone, Debug)]
 pub enum TaffyContext {
-    Text(TextContext),
-    Image(ImageContext),
+    Text(ElementContextText),
+    Image(ElementContextImage),
 }
 
+impl TaffyContext {
+    fn text(font_family: &str, font_size: f64, text: &str) -> TaffyContext {
+        TaffyContext::Text(ElementContextText{
+            font_family: font_family.to_string(),
+            font_size,
+            text: text.to_string(),
+        })
+    }
 
-pub struct TaffyLayouter {
-    tree: TaffyTree<TaffyContext>,
-    root_id: TaffyNodeId,
-    layout_taffy_mapping: HashMap<LayoutElementId, TaffyNodeId>,
+    fn image(src: &str, image_id: ImageId, dimension: crate::common::geo::Dimension) -> TaffyContext {
+        TaffyContext::Image(ElementContextImage{
+            src: src.to_string(),
+            image_id,
+            dimension,
+        })
+    }
 }
 
 impl TaffyLayouter {
@@ -64,11 +77,11 @@ impl CanLayout for TaffyLayouter {
         self.tree.compute_layout_with_measure(self.root_id, size, |v_kd, v_as, v_ni, v_nc, v_s| {
             match v_nc {
                 Some(TaffyContext::Text(text_ctx)) => {
-                    let font_size = text_ctx.size;
-                    let font_family = text_ctx.family.as_str();
+                    let font_size = text_ctx.font_size;
+                    let font_family = text_ctx.font_family.as_str();
                     let text = text_ctx.text.as_str();
 
-                    let layout = get_text_layout(text, font_family, font_size as f64, v_as.width.unwrap() as f64);
+                    let layout = get_text_layout(text, font_family, font_size, v_as.width.unwrap() as f64);
                     match layout {
                         Ok(layout) => {
                             // @TODO: Somehow, layout.width() and layout.height() do not seem to work anymore
@@ -94,8 +107,7 @@ impl CanLayout for TaffyLayouter {
         let root = layout_tree.get_node_by_id(root_id).unwrap();
         let w = root.box_model.margin_box.width as f32;
         let h = root.box_model.margin_box.height as f32;
-        layout_tree.root_width = w;
-        layout_tree.root_height = h;
+        layout_tree.root_dimension = crate::common::geo::Dimension::new(w as f64, h as f64);
 
         layout_tree
     }
@@ -128,8 +140,7 @@ impl TaffyLayouter {
             arena: HashMap::new(),
             root_id: LayoutElementId::new(0), // Will be filled in later
             next_node_id: Arc::new(RwLock::new(LayoutElementId::new(0))),
-            root_width: 0.0,
-            root_height: 0.0,
+            root_dimension: crate::common::geo::Dimension::ZERO,
         };
 
         let ids = {
@@ -149,12 +160,14 @@ impl TaffyLayouter {
     }
 
     fn generate_node<'a>(&mut self, layout_tree: &'a mut LayoutTree, render_node_id: RenderNodeId) -> Option<&'a LayoutElementNode> {
-        let mut style = Style {
+        // Default taffy style
+        // @TODO: We only deal with blocks now
+        let mut taffy_style = Style {
             display: Display::Block,
             ..Default::default()
         };
 
-        // Additional taffy context based on the DOM node
+        // Additional taffy context based on the DOM node.
         let mut taffy_context = None;
 
         // Find the DOM node in the DOM document that is wrapped in the render tree
@@ -170,8 +183,8 @@ impl TaffyLayouter {
                     match width {
                         StyleValue::Unit(value, unit) => {
                             match unit {
-                                Unit::Px => style.size.width = Dimension::Length(*value),
-                                Unit::Percent => style.size.width = Dimension::Percent(*value),
+                                Unit::Px => taffy_style.size.width = Dimension::Length(*value),
+                                Unit::Percent => taffy_style.size.width = Dimension::Percent(*value),
                                 _ => {}
                             }
                         }
@@ -182,8 +195,8 @@ impl TaffyLayouter {
                     match height {
                         StyleValue::Unit(value, unit) => {
                             match unit {
-                                Unit::Px => style.size.height = Dimension::Length(*value),
-                                Unit::Percent => style.size.height = Dimension::Percent(*value),
+                                Unit::Px => taffy_style.size.height = Dimension::Length(*value),
+                                Unit::Percent => taffy_style.size.height = Dimension::Percent(*value),
                                 _ => {}
                             }
                         }
@@ -195,8 +208,8 @@ impl TaffyLayouter {
                     match margin_block_start {
                         StyleValue::Unit(value, unit) => {
                             match unit {
-                                Unit::Px => style.margin.top = LengthPercentageAuto::Length(*value),
-                                Unit::Percent => style.margin.top = LengthPercentageAuto::Percent(*value),
+                                Unit::Px => taffy_style.margin.top = LengthPercentageAuto::Length(*value),
+                                Unit::Percent => taffy_style.margin.top = LengthPercentageAuto::Percent(*value),
                                 _ => {}
                             }
                         }
@@ -207,8 +220,8 @@ impl TaffyLayouter {
                     match margin_block_end {
                         StyleValue::Unit(value, unit) => {
                             match unit {
-                                Unit::Px => style.margin.bottom = LengthPercentageAuto::Length(*value),
-                                Unit::Percent => style.margin.bottom = LengthPercentageAuto::Percent(*value),
+                                Unit::Px => taffy_style.margin.bottom = LengthPercentageAuto::Length(*value),
+                                Unit::Percent => taffy_style.margin.bottom = LengthPercentageAuto::Percent(*value),
                                 _ => {}
                             }
                         }
@@ -219,8 +232,8 @@ impl TaffyLayouter {
                     match margin_inline_start {
                         StyleValue::Unit(value, unit) => {
                             match unit {
-                                Unit::Px => style.margin.left = LengthPercentageAuto::Length(*value),
-                                Unit::Percent => style.margin.left = LengthPercentageAuto::Percent(*value),
+                                Unit::Px => taffy_style.margin.left = LengthPercentageAuto::Length(*value),
+                                Unit::Percent => taffy_style.margin.left = LengthPercentageAuto::Percent(*value),
                                 _ => {}
                             }
                         }
@@ -231,8 +244,8 @@ impl TaffyLayouter {
                     match margin_inline_end {
                         StyleValue::Unit(value, unit) => {
                             match unit {
-                                Unit::Px => style.margin.right = LengthPercentageAuto::Length(*value),
-                                Unit::Percent => style.margin.right = LengthPercentageAuto::Percent(*value),
+                                Unit::Px => taffy_style.margin.right = LengthPercentageAuto::Length(*value),
+                                Unit::Percent => taffy_style.margin.right = LengthPercentageAuto::Percent(*value),
                                 _ => {}
                             }
                         }
@@ -244,8 +257,8 @@ impl TaffyLayouter {
                     match padding_block_start {
                         StyleValue::Unit(value, unit) => {
                             match unit {
-                                Unit::Px => style.padding.top = LengthPercentage::Length(*value),
-                                Unit::Percent => style.padding.top = LengthPercentage::Percent(*value),
+                                Unit::Px => taffy_style.padding.top = LengthPercentage::Length(*value),
+                                Unit::Percent => taffy_style.padding.top = LengthPercentage::Percent(*value),
                                 _ => {}
                             }
                         }
@@ -256,8 +269,8 @@ impl TaffyLayouter {
                     match padding_block_end {
                         StyleValue::Unit(value, unit) => {
                             match unit {
-                                Unit::Px => style.padding.bottom = LengthPercentage::Length(*value),
-                                Unit::Percent => style.padding.bottom = LengthPercentage::Percent(*value),
+                                Unit::Px => taffy_style.padding.bottom = LengthPercentage::Length(*value),
+                                Unit::Percent => taffy_style.padding.bottom = LengthPercentage::Percent(*value),
                                 _ => {}
                             }
                         }
@@ -268,8 +281,8 @@ impl TaffyLayouter {
                     match padding_inline_start {
                         StyleValue::Unit(value, unit) => {
                             match unit {
-                                Unit::Px => style.padding.left = LengthPercentage::Length(*value),
-                                Unit::Percent => style.padding.left = LengthPercentage::Percent(*value),
+                                Unit::Px => taffy_style.padding.left = LengthPercentage::Length(*value),
+                                Unit::Percent => taffy_style.padding.left = LengthPercentage::Percent(*value),
                                 _ => {}
                             }
                         }
@@ -280,8 +293,8 @@ impl TaffyLayouter {
                     match padding_inline_end {
                         StyleValue::Unit(value, unit) => {
                             match unit {
-                                Unit::Px => style.padding.right = LengthPercentage::Length(*value),
-                                Unit::Percent => style.padding.right = LengthPercentage::Percent(*value),
+                                Unit::Px => taffy_style.padding.right = LengthPercentage::Length(*value),
+                                Unit::Percent => taffy_style.padding.right = LengthPercentage::Percent(*value),
                                 _ => {}
                             }
                         }
@@ -293,8 +306,8 @@ impl TaffyLayouter {
                     match border_top_width {
                         StyleValue::Unit(value, unit) => {
                             match unit {
-                                Unit::Px => style.border.top = LengthPercentage::Length(*value),
-                                Unit::Percent => style.border.top = LengthPercentage::Percent(*value),
+                                Unit::Px => taffy_style.border.top = LengthPercentage::Length(*value),
+                                Unit::Percent => taffy_style.border.top = LengthPercentage::Percent(*value),
                                 _ => {}
                             }
                         }
@@ -305,8 +318,8 @@ impl TaffyLayouter {
                     match border_bottom_width {
                         StyleValue::Unit(value, unit) => {
                             match unit {
-                                Unit::Px => style.border.bottom = LengthPercentage::Length(*value),
-                                Unit::Percent => style.border.bottom = LengthPercentage::Percent(*value),
+                                Unit::Px => taffy_style.border.bottom = LengthPercentage::Length(*value),
+                                Unit::Percent => taffy_style.border.bottom = LengthPercentage::Percent(*value),
                                 _ => {}
                             }
                         }
@@ -317,8 +330,8 @@ impl TaffyLayouter {
                     match border_left_width {
                         StyleValue::Unit(value, unit) => {
                             match unit {
-                                Unit::Px => style.border.left = LengthPercentage::Length(*value),
-                                Unit::Percent => style.border.left = LengthPercentage::Percent(*value),
+                                Unit::Px => taffy_style.border.left = LengthPercentage::Length(*value),
+                                Unit::Percent => taffy_style.border.left = LengthPercentage::Percent(*value),
                                 _ => {}
                             }
                         }
@@ -329,21 +342,35 @@ impl TaffyLayouter {
                     match border_right_width {
                         StyleValue::Unit(value, unit) => {
                             match unit {
-                                Unit::Px => style.border.right = LengthPercentage::Length(*value),
-                                Unit::Percent => style.border.right = LengthPercentage::Percent(*value),
+                                Unit::Px => taffy_style.border.right = LengthPercentage::Length(*value),
+                                Unit::Percent => taffy_style.border.right = LengthPercentage::Percent(*value),
                                 _ => {}
                             }
                         }
                         _ => {}
                     }
                 }
+
+                // Check if element type is an image
+                if data.tag_name.eq_ignore_ascii_case("img") {
+                    let src = data.get_attribute("src").unwrap();
+                    println!("Loading image: {}", src);
+
+                    let store = get_image_store();
+                    let image_id = store.read().unwrap().store_from_path(src.as_str());
+
+                    let image = store.read().unwrap().get(image_id).unwrap();
+                    let dimension = crate::common::geo::Dimension::new(image.width as f64, image.height as f64);
+
+                    taffy_context = Some(TaffyContext::image(src.as_str(), image_id, dimension));
+                }
             }
-            NodeType::Text(text, style) => {
+            NodeType::Text(text, node_style) => {
                 // Default font
                 let mut font_size = DEFAULT_FONT_SIZE;
                 let mut font_family = DEFAULT_FONT_FAMILY.to_string();
 
-                match style.get_property(StyleProperty::FontSize) {
+                match node_style.get_property(StyleProperty::FontSize) {
                     Some(StyleValue::Unit(value, unit)) => {
                         match unit {
                             Unit::Px => font_size = *value as f64,
@@ -355,25 +382,25 @@ impl TaffyLayouter {
                     _ => {},
                 }
 
-                match style.get_property(StyleProperty::FontFamily) {
+                match node_style.get_property(StyleProperty::FontFamily) {
                     Some(StyleValue::Keyword(value)) => font_family = value.clone(),
                     _ => {},
                 }
 
-                taffy_context = Some(TaffyContext::Text(
-                    TextContext {
-                        text: text.clone(),
-                        family: font_family,
-                        size: font_size,
-                    }
+                taffy_context = Some(TaffyContext::text(
+                    font_family.as_str(),
+                    font_size,
+                    text,
                 ));
             }
         }
 
         if dom_node.children.is_empty() {
+            let element_context = to_element_context(taffy_context.as_ref());
+
             let result = match taffy_context {
-                Some(taffy_context) => self.tree.new_leaf_with_context(style, taffy_context),
-                None => self.tree.new_leaf(style),
+                Some(taffy_context) => self.tree.new_leaf_with_context(taffy_style, taffy_context),
+                None => self.tree.new_leaf(taffy_style),
             };
 
             match result {
@@ -383,10 +410,12 @@ impl TaffyLayouter {
                         dom_node_id,
                         render_node_id,
                         // taffy_node_id: leaf_id,
-                        box_model: BoxModel::BoxModel::ZERO,
+                        box_model: box_model::BoxModel::ZERO,
                         children: vec![],
+                        context: element_context,
                     };
 
+                    println!("Adding to layout taffy mapping: {} -> {:?}", el.id, leaf_id);
                     self.layout_taffy_mapping.insert(el.id, leaf_id);
 
                     let id = el.id;
@@ -410,6 +439,7 @@ impl TaffyLayouter {
                 let res = self.generate_node(layout_tree, *child_render_node_id);
                 match res {
                     Some(el) => {
+                        println!("Fetching layout taffy mapping: {}", el.id);
                         let taffy_node_id = self.layout_taffy_mapping.get(&el.id).unwrap().clone();
                         Some((taffy_node_id, el.id))
                     },
@@ -436,14 +466,15 @@ impl TaffyLayouter {
             }
         }
 
-        match self.tree.new_with_children(style, &children_taffy_ids) {
-            Ok(leaf_id) => {
+        match self.tree.new_with_children(taffy_style, &children_taffy_ids) {
+            Ok(_leaf_id) => {
                 let el = LayoutElementNode {
                     id: layout_tree.next_node_id(),
                     dom_node_id,
                     render_node_id,
-                    box_model: BoxModel::BoxModel::ZERO,
+                    box_model: box_model::BoxModel::ZERO,
                     children: children_el_ids,
+                    context: ElementContext::None,
                 };
 
                 let id = el.id;
@@ -454,6 +485,24 @@ impl TaffyLayouter {
         }
     }
 
+}
+
+/// Convert a taffy context to an element context. Optiomally, these two structures should be merged
+/// and only ElementContext should be used.
+fn to_element_context(taffy_context: Option<&TaffyContext>) -> ElementContext {
+    match taffy_context {
+        Some(TaffyContext::Text(text_ctx)) => ElementContext::text(
+            text_ctx.font_family.as_str(),
+            text_ctx.font_size,
+            text_ctx.text.as_str()
+        ),
+        Some(TaffyContext::Image(image_ctx)) => ElementContext::image(
+            image_ctx.src.as_str(),
+            image_ctx.image_id,
+            image_ctx.dimension.clone(),
+        ),
+        None => ElementContext::None,
+    }
 }
 
 // Returns true if there is a margin on the rect (basically, if the rect is non-zero)
@@ -467,27 +516,27 @@ fn has_margin(src: Rect<LengthPercentageAuto>) -> bool {
 }
 
 /// Converts a taffy layout to our own BoxModel structure
-pub fn taffy_layout_to_boxmodel(layout: &Layout, offset: crate::common::geo::Coordinate) -> BoxModel::BoxModel {
-    BoxModel::BoxModel {
+pub fn taffy_layout_to_boxmodel(layout: &Layout, offset: crate::common::geo::Coordinate) -> box_model::BoxModel {
+    box_model::BoxModel {
         margin_box: crate::common::geo::Rect {
             x: offset.x + layout.location.x as f64,
             y: offset.y + layout.location.y as f64,
             width: layout.size.width as f64 + layout.margin.left as f64 + layout.margin.right as f64,
             height: layout.size.height as f64 + layout.margin.top as f64 + layout.margin.bottom as f64,
         },
-        padding: BoxModel::Edges {
+        padding: box_model::Edges {
             top: layout.padding.top as f64,
             right: layout.padding.right as f64,
             bottom: layout.padding.bottom as f64,
             left: layout.padding.left as f64,
         },
-        border: BoxModel::Edges {
+        border: box_model::Edges {
             top: layout.border.top as f64,
             right: layout.border.right as f64,
             bottom: layout.border.bottom as f64,
             left: layout.border.left as f64,
         },
-        margin: BoxModel::Edges {
+        margin: box_model::Edges {
             top: layout.margin.top as f64,
             right: layout.margin.right as f64,
             bottom: layout.margin.bottom as f64,
