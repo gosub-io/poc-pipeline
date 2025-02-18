@@ -61,7 +61,7 @@ async def fetch_and_parse_html(url):
         dom_tree = await page.evaluate(computed_styles_script)
 
         await browser.close()
-        return {"tag": "DocumentRoot", "attributes": [], "styles": {}, "children": [dom_tree]}
+        return {"tag": "DocumentRoot", "attributes": {}, "styles": {}, "children": [dom_tree]}
 
 
 async def main():
