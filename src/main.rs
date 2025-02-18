@@ -53,7 +53,7 @@ fn main() {
     // --------------------------------------------------------------------
     // Layout the render-tree into a layout-tree
     let mut layouter = TaffyLayouter::new();
-    let layout_tree = layouter.layout(render_tree, geo::Dimension::new(1200.0, 600.0));
+    let layout_tree = layouter.layout(render_tree, geo::Dimension::new(1024.0, 768.0));
     // println!("Layout width: {}, height: {}", layout_tree.root_dimension.width, layout_tree.root_dimension.height);
 
     // --------------------------------------------------------------------
@@ -88,7 +88,7 @@ fn main() {
         current_hovered_element: None,
         tile_list: RwLock::new(tile_list),
         show_tilegrid: true,
-        viewport: Rect::new(0.0, 0.0, 800.0, 600.0),
+        viewport: Rect::new(0.0, 0.0, 1024.0, 768.0),
     };
     init_browser_state(browser_state);
 
@@ -104,13 +104,13 @@ fn build_ui(app: &Application) {
     let window = ApplicationWindow::builder()
         .application(app)
         .title("Renderer")
-        .default_width(800)
-        .default_height(600)
+        .default_width(1024)
+        .default_height(768)
         .build();
 
     let area = DrawingArea::new();
-    area.set_content_height(800);
-    area.set_content_width(600);
+    area.set_content_height(1024);
+    area.set_content_width(768);
     area.set_draw_func(move |_area, cr, _width, _height| {
         do_paint(LayerId::new(0));
         do_rasterize(LayerId::new(0));
