@@ -34,12 +34,20 @@ impl Painter {
 
             match &layout_element.context {
                 ElementContext::Text(ctx) => {
-                    // let font = Font::new("Arial", 24.0);
-                    // let layout = Layout::new(&font, &text.layout);
-                    // let brush = Brush::solid(Color::BLACK);
-                    // let r = Rectangle::new(element.box_model.border_box()).with_background(brush);
-                    let t = Text::new(layout_element.box_model.content_box(), &ctx.text, FontDescription::from_string("Arial 12"), 12.0);
+                    let brush = Brush::solid(Color::BLACK);
+                    let t = Text::new(
+                        layout_element.box_model.content_box(),
+                        &ctx.text,
+                        FontDescription::from_string(&format!("{} {}", ctx.font_family, ctx.font_size)),
+                        ctx.font_size,
+                        brush
+                    );
                     commands.push(PaintCommand::text(t));
+
+                    let border = Border::new(1.0, BorderStyle::Solid, Brush::Solid(Color::RED));
+                    let r = Rectangle::new(layout_element.box_model.border_box()).with_border(border);
+                    commands.push(PaintCommand::rectangle(r));
+
                 }
                 ElementContext::Image(image_ctx) => {
                     let binding = get_image_store();
@@ -50,12 +58,10 @@ impl Painter {
                     let border = Border::new(3.0, BorderStyle::Dashed, Brush::Solid(Color::GREEN));
                     let r = Rectangle::new(layout_element.box_model.border_box()).with_background(brush).with_border(border);
                     commands.push(PaintCommand::rectangle(r));
-
                 }
                 ElementContext::None => {
-                    let c = Color::new(1.0, 1.0, 0.0, 0.25);
-                    let brush = Brush::Solid(c);
-                    let r = Rectangle::new(layout_element.box_model.border_box()).with_background(brush);
+                    let border = Border::new(1.0, BorderStyle::Dotted, Brush::Solid(Color::BLUE));
+                    let r = Rectangle::new(layout_element.box_model.border_box()).with_border(border);
                     commands.push(PaintCommand::rectangle(r));
                 }
             }

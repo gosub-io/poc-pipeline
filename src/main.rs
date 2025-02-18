@@ -36,9 +36,9 @@ fn main() {
     // Generate a DOM tree
     // println!("\n\n\n\n\n--[ DOM TREE ]----------------------------------");
     let doc = common::document::create_document();
-    // let mut output = String::new();
-    // doc.print_tree(&mut output).unwrap();
-    // println!("{}", output);
+    let mut output = String::new();
+    doc.print_tree(&mut output).unwrap();
+    println!("{}", output);
 
     // --------------------------------------------------------------------
     // Convert the DOM tree into a render-tree that has all the non-visible elements removed
@@ -47,17 +47,12 @@ fn main() {
     render_tree.parse();
     // render_tree.print();
 
-    // let doc_element_count = render_tree.doc.count_elements();
-    // let render_tree_element_count = render_tree.count_elements();
-    // println!("{:.2}% of the dom elements removed", (1.0 - (render_tree_element_count as f64 / doc_element_count as f64)) * 100.0);
-
     // --------------------------------------------------------------------
     // Layout the render-tree into a layout-tree
     // println!("\n\n\n\n\n--[ LAYOUT TREE ]----------------------------------");
     let mut layouter = TaffyLayouter::new();
     let layout_tree = layouter.layout(render_tree, geo::Dimension::new(800.0, 600.0));
-    // layout_tree.taffy.tree.print_tree(layout_tree.taffy.root_id);
-    // println!("Layout width: {}, height: {}", layout_tree.root_width, layout_tree.root_height);
+    println!("Layout width: {}, height: {}", layout_tree.root_dimension.width, layout_tree.root_dimension.height);
 
     // --------------------------------------------------------------------
     // Generate render layers

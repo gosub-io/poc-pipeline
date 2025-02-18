@@ -21,7 +21,7 @@ pub(crate) fn create_document() -> Document {
     style.set_property(StyleProperty::BorderBottomWidth, StyleValue::Unit(4.0, Unit::Px));
 
     let mut attrs = AttrMap::new();
-    attrs.set("src", "image.jpg");
+    attrs.set("src", "sub.png");
     attrs.set("alt", "image");
 
     let img_node_id = doc.new_element("img", Some(attrs), true, Some(style));
@@ -43,7 +43,8 @@ pub(crate) fn create_document() -> Document {
     style.set_property(StyleProperty::Display, StyleValue::Display(Display::Block));
     style.set_property(StyleProperty::MarginBlockStart, StyleValue::Unit(1.0, Unit::Em));
     style.set_property(StyleProperty::MarginBlockEnd, StyleValue::Unit(1.0, Unit::Em));
-    style.set_property(StyleProperty::FontSize, StyleValue::Unit(32.0, Unit::Px));
+    style.set_property(StyleProperty::FontSize, StyleValue::Unit(8.0, Unit::Px));
+    style.set_property(StyleProperty::FontFamily, StyleValue::Keyword("Comic Sans ms".into()));
 
     let mut attrs = AttrMap::new();
     attrs.set("class", "paragraph");
@@ -57,7 +58,7 @@ pub(crate) fn create_document() -> Document {
     // --------------
     let mut style = StylePropertyList::new();
     style.set_property(StyleProperty::Display, StyleValue::Display(Display::Block));
-    style.set_property(StyleProperty::FontSize, StyleValue::Unit(48.0, Unit::Px));
+    style.set_property(StyleProperty::FontSize, StyleValue::Unit(14.0, Unit::Px));
     style.set_property(StyleProperty::FontWeight, StyleValue::FontWeight(FontWeight::Bold));
     style.set_property(StyleProperty::FontFamily, StyleValue::Keyword("Verdana".into()));
     // style.set_property("margin-block-end", StyleValue::Unit(0.67, Unit::Em));
@@ -81,7 +82,7 @@ pub(crate) fn create_document() -> Document {
     attrs.set("data-alpine", "x-wrap");
 
     let h1_node_id = doc.new_element("h1", Some(attrs.clone()), false, Some(style.clone()));
-    let h1_text_node_id = doc.new_text("header with some extra long text to see how it wraps", Some(style.clone()));
+    let h1_text_node_id = doc.new_text("header with some extra long text to see how it wraps. It contains a big chunk of data so hopefully this will be enough for some wrapping.", Some(style.clone()));
     doc.add_child(h1_node_id, h1_text_node_id);
 
     // --------------

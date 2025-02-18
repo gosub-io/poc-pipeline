@@ -86,7 +86,6 @@ impl CanLayout for TaffyLayouter {
                         Ok(layout) => {
                             // @TODO: Somehow, layout.width() and layout.height() do not seem to work anymore
                             let (_, logical_rect) = layout.extents();
-
                             Size {
                                 width: logical_rect.width() as f32 / pango::SCALE as f32,
                                 height: logical_rect.height() as f32 / pango::SCALE as f32,
@@ -108,6 +107,8 @@ impl CanLayout for TaffyLayouter {
         let w = root.box_model.margin_box.width as f32;
         let h = root.box_model.margin_box.height as f32;
         layout_tree.root_dimension = crate::common::geo::Dimension::new(w as f64, h as f64);
+
+        self.tree.print_tree(self.root_id);
 
         layout_tree
     }
@@ -160,6 +161,8 @@ impl TaffyLayouter {
     }
 
     fn generate_node<'a>(&mut self, layout_tree: &'a mut LayoutTree, render_node_id: RenderNodeId) -> Option<&'a LayoutElementNode> {
+        println!("Generating node: {}", render_node_id);
+        
         // Default taffy style
         // @TODO: We only deal with blocks now
         let mut taffy_style = Style {
@@ -415,7 +418,6 @@ impl TaffyLayouter {
                         context: element_context,
                     };
 
-                    println!("Adding to layout taffy mapping: {} -> {:?}", el.id, leaf_id);
                     self.layout_taffy_mapping.insert(el.id, leaf_id);
 
                     let id = el.id;
@@ -467,7 +469,7 @@ impl TaffyLayouter {
         }
 
         match self.tree.new_with_children(taffy_style, &children_taffy_ids) {
-            Ok(_leaf_id) => {
+            Ok(leaf_id) => {
                 let el = LayoutElementNode {
                     id: layout_tree.next_node_id(),
                     dom_node_id,
@@ -477,9 +479,12 @@ impl TaffyLayouter {
                     context: ElementContext::None,
                 };
 
+                self.layout_taffy_mapping.insert(el.id, leaf_id);
+
                 let id = el.id;
                 layout_tree.arena.insert(id, el);
                 layout_tree.arena.get(&id)
+
             }
             Err(_) => None,
         }

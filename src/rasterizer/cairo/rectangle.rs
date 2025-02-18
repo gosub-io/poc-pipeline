@@ -81,7 +81,9 @@ pub(crate) fn do_paint_rectangle(cr: &Context, tile: &Tile, rectangle: &Rectangl
             // calculated in the boxmodel by the layouter.
         }
     }
-    cr.rectangle(rectangle.rect().x, rectangle.rect().y, rectangle.rect().width, rectangle.rect().height);
+
+
+    // cr.rectangle(rectangle.rect().x, rectangle.rect().y, rectangle.rect().width, rectangle.rect().height);
 
     // Restore the context state
     _ = cr.restore();

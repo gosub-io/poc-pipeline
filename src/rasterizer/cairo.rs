@@ -171,12 +171,14 @@
 
 mod rectangle;
 mod brush;
+mod text;
 
 use gtk4::cairo;
 use crate::painter::commands::PaintCommand;
 use crate::rasterizer::Rasterable;
 use crate::common::texture::TextureId;
 use crate::common::get_texture_store;
+use crate::rasterizer::cairo::text::pango::do_paint_text;
 use crate::tiler::Tile;
 
 pub struct CairoRasterizer {}
@@ -194,8 +196,13 @@ impl Rasterable for CairoRasterizer {
                     PaintCommand::Rectangle(command) => {
                         rectangle::do_paint_rectangle(&cr.clone(), &tile, &command);
                     }
-                    PaintCommand::Text(_command) => {
-                        unimplemented!("Text rendering is not yet implemented");
+                    PaintCommand::Text(command) => {
+                        match do_paint_text(&cr.clone(), &tile, &command) {
+                            Ok(_) => {}
+                            Err(e) => {
+                                println!("Failed to paint text: {:?}", e);
+                            }
+                        }
                     }
                 }
             }

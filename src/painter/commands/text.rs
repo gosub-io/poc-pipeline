@@ -1,38 +1,25 @@
 use gtk4::pango::FontDescription;
 use crate::common::geo::Rect;
+use crate::painter::commands::brush::Brush;
 
 #[derive(Clone, Debug)]
 pub struct Text {
-    rect: Rect,
-    font_description: FontDescription,
-    font_size: f64,
-    text: String,
+    pub rect: Rect,
+    pub font_description: FontDescription,
+    pub font_size: f64,
+    pub text: String,
+    pub brush: Brush,
 }
 
 impl Text {
-    pub fn new(rect: Rect, text: &str, font_description: FontDescription, font_size: f64) -> Self {
+    pub fn new(rect: Rect, text: &str, font_description: FontDescription, font_size: f64, brush: Brush) -> Self {
         Text {
             rect,
             font_description,
             font_size,
             text: text.to_string(),
+            brush,
         }
-    }
-
-    pub fn rect(&self) -> Rect {
-        self.rect
-    }
-
-    pub fn font_description(&self) -> FontDescription {
-        self.font_description.clone()
-    }
-
-    pub fn font_size(&self) -> f64 {
-        self.font_size
-    }
-
-    pub fn text(&self) -> &str {
-        &self.text
     }
 }
 
