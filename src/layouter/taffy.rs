@@ -369,6 +369,8 @@ impl TaffyLayouter {
                 let mut font_size = DEFAULT_FONT_SIZE;
                 let mut font_family = DEFAULT_FONT_FAMILY.to_string();
 
+                println!("{:?}", &node_style.get_property(StyleProperty::FontSize));
+
                 match node_style.get_property(StyleProperty::FontSize) {
                     Some(StyleValue::Unit(value, unit)) => {
                         match unit {

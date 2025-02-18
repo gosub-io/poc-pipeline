@@ -131,23 +131,26 @@ impl std::fmt::Display for NodeId {
 #[derive(Clone, Debug)]
 pub struct Node {
     pub node_id: NodeId,
-    pub children: Vec<NodeId>,
+    pub parent_id: Option<NodeId>,
     pub node_type: NodeType,
+    pub children: Vec<NodeId>,
 }
 
 impl Node {
     /// Text nodes also have styles. Normally this is taken from the parent element that the text resides in.
-    pub fn new_text(doc: &Document, text: String, style: Option<StylePropertyList>) -> Node {
+    pub fn new_text(doc: &Document, parent_id: Option<NodeId>, text: String, style: Option<StylePropertyList>) -> Node {
         Node {
             node_id: doc.next_node_id(),
+            parent_id,
             children: vec![],
             node_type: NodeType::Text(text, style.unwrap_or(StylePropertyList::new())),
         }
     }
 
-    pub fn new_comment(doc: &Document, comment: String) -> Node {
+    pub fn new_comment(doc: &Document, parent_id: Option<NodeId>, comment: String) -> Node {
         Node {
             node_id: doc.next_node_id(),
+            parent_id,
             children: vec![],
             node_type: NodeType::Comment(comment),
         }
@@ -155,6 +158,7 @@ impl Node {
 
     pub fn new_element(
         doc: &Document,
+        parent_id: Option<NodeId>,
         tag_name: String,
         attributes: Option<AttrMap>,
         self_closing: bool,
@@ -162,6 +166,7 @@ impl Node {
     ) -> Node {
         Node {
             node_id: doc.next_node_id(),
+            parent_id,
             children: vec![],
             node_type: NodeType::Element(
                 ElementData::new(tag_name, attributes, self_closing, style)

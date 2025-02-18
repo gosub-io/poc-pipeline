@@ -27,8 +27,10 @@ impl ImageStore {
         }
     }
 
-    pub fn store_from_path(&self, filepath: &str) -> ImageId {
+    pub fn store_from_path(&self, _filepath: &str) -> ImageId {
+        // @TODO: Overwrite the file with a placeholder image found locally
         let filepath = "sub.png";
+
         // println!("Store from path: {}", filepath);
         let fmt = ImageFormat::from_path(filepath).unwrap();
 

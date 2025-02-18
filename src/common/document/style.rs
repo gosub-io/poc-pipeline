@@ -3,6 +3,7 @@ use std::collections::HashMap;
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum StyleProperty {
     Color,
+    BackgroundColor,
     FontSize,
     FontWeight,
     Display,

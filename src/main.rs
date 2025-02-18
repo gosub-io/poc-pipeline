@@ -37,9 +37,9 @@ fn main() {
     // let doc = common::document::create_document();
     // let doc = common::document::parser::document_from_json("gosub.io.json");
     let doc = common::document::parser::document_from_json("news.ycombinator.com.json");
-    let mut output = String::new();
-    doc.print_tree(&mut output).unwrap();
-    println!("{}", output);
+    // let mut output = String::new();
+    // doc.print_tree(&mut output).unwrap();
+    // println!("{}", output);
 
     // --------------------------------------------------------------------
     // Convert the DOM tree into a render-tree that has all the non-visible elements removed
@@ -62,6 +62,8 @@ fn main() {
     //         println!("  Element: {}", element);
     //     }
     // }
+
+    return;
 
     // --------------------------------------------------------------------
     // Tiling phase
@@ -217,7 +219,8 @@ fn do_paint(layer_id: LayerId) {
 
         // Paint the given tile
         // println!("Generarting painting commands for tile");
-        let paint_commands = Painter::paint(tile, &binding.layer_list.clone());
+        let painter = Painter::new(binding.layer_list.clone());
+        let paint_commands = painter.paint(tile);
         // dbg!(&paint_commands);
 
         let Some(tile) = binding.get_tile_mut(tile_id) else {

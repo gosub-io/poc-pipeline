@@ -12,22 +12,22 @@ pub struct Document {
 
 impl Document {
 
-    pub fn new_element(&mut self, tag_name: &str, attributes: Option<AttrMap>, self_closing: bool, style: Option<StylePropertyList>) -> NodeId {
-        let node = Node::new_element(self, tag_name.to_string(), attributes, self_closing, style);
+    pub fn new_element(&mut self, parent_id: Option<NodeId>, tag_name: &str, attributes: Option<AttrMap>, self_closing: bool, style: Option<StylePropertyList>) -> NodeId {
+        let node = Node::new_element(self, parent_id, tag_name.to_string(), attributes, self_closing, style);
         let node_id = node.node_id.clone();
         self.arena.insert(node_id.clone(), node);
         node_id
     }
 
-    pub fn new_comment(&mut self, comment: &str) -> NodeId {
-        let node = Node::new_comment(self, comment.to_string());
+    pub fn new_comment(&mut self, parent_id: Option<NodeId>, comment: &str) -> NodeId {
+        let node = Node::new_comment(self, parent_id, comment.to_string());
         let node_id = node.node_id.clone();
         self.arena.insert(node_id.clone(), node);
         node_id
     }
 
-    pub fn new_text(&mut self, text: &str, style: Option<StylePropertyList>) -> NodeId {
-        let node = Node::new_text(self, text.to_string(), style);
+    pub fn new_text(&mut self, parent_id: Option<NodeId>, text: &str, style: Option<StylePropertyList>) -> NodeId {
+        let node = Node::new_text(self, parent_id, text.to_string(), style);
         let node_id = node.node_id.clone();
         self.arena.insert(node_id.clone(), node);
         node_id
