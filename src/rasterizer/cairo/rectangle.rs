@@ -18,7 +18,7 @@ pub(crate) fn do_paint_rectangle(cr: &Context, tile: &Tile, rectangle: &Rectangl
     match rectangle.background() {
         Some(brush) => {
             cr.rectangle(rectangle.rect().x, rectangle.rect().y, rectangle.rect().width, rectangle.rect().height);
-            set_brush(cr, brush);
+            set_brush(cr, brush, rectangle.rect().into());
             _ = cr.fill();
         }
         None => {}
@@ -27,7 +27,7 @@ pub(crate) fn do_paint_rectangle(cr: &Context, tile: &Tile, rectangle: &Rectangl
     // Create border
     cr.rectangle(rectangle.rect().x, rectangle.rect().y, rectangle.rect().width, rectangle.rect().height);
     cr.set_line_width(rectangle.border().width() as f64);
-    set_brush(cr, &rectangle.border().brush());
+    set_brush(cr, &rectangle.border().brush(), rectangle.rect().into());
     match rectangle.border().style() {
         BorderStyle::None => {
             // No border to draw. Note that the border does not take up any space. This is already
@@ -81,7 +81,6 @@ pub(crate) fn do_paint_rectangle(cr: &Context, tile: &Tile, rectangle: &Rectangl
             // calculated in the boxmodel by the layouter.
         }
     }
-
 
     // cr.rectangle(rectangle.rect().x, rectangle.rect().y, rectangle.rect().width, rectangle.rect().height);
 

@@ -113,19 +113,13 @@ impl RenderTree {
 
     fn is_visible(&self, node: &Node) -> bool {
         match &node.node_type {
+            NodeType::Comment(..) => false,
             NodeType::Text(..) => true,
             NodeType::Element(element) => {
                 // Check element name
                 if INVISIBLE_ELEMENTS.contains(&element.tag_name.as_str()) {
                     return false;
                 }
-
-                // Check attributes
-                // if let Some(attr) = element.get_attribute("hidden") {
-                //     if attr == "true" {
-                //         return false;
-                //     }
-                // }
 
                 if element.get_style(StyleProperty::Display) == Some(&StyleValue::None) {
                     return false;

@@ -34,29 +34,27 @@ mod common;
 fn main() {
     // --------------------------------------------------------------------
     // Generate a DOM tree
-    // println!("\n\n\n\n\n--[ DOM TREE ]----------------------------------");
-    let doc = common::document::create_document();
+    // let doc = common::document::create_document();
+    // let doc = common::document::parser::document_from_json("gosub.io.json");
+    let doc = common::document::parser::document_from_json("news.ycombinator.com.json");
     let mut output = String::new();
     doc.print_tree(&mut output).unwrap();
     println!("{}", output);
 
     // --------------------------------------------------------------------
     // Convert the DOM tree into a render-tree that has all the non-visible elements removed
-    // println!("\n\n\n\n\n--[ BUILD sRENDER TREE ]----------------------------------");
     let mut render_tree = RenderTree::new(doc);
     render_tree.parse();
     // render_tree.print();
 
     // --------------------------------------------------------------------
     // Layout the render-tree into a layout-tree
-    // println!("\n\n\n\n\n--[ LAYOUT TREE ]----------------------------------");
     let mut layouter = TaffyLayouter::new();
     let layout_tree = layouter.layout(render_tree, geo::Dimension::new(800.0, 600.0));
-    println!("Layout width: {}, height: {}", layout_tree.root_dimension.width, layout_tree.root_dimension.height);
+    // println!("Layout width: {}, height: {}", layout_tree.root_dimension.width, layout_tree.root_dimension.height);
 
     // --------------------------------------------------------------------
     // Generate render layers
-    // println!("\n\n\n\n\n--[ LAYER LIST ]----------------------------------");
     let layer_list = LayerList::new(layout_tree);
     // for (layer_id, layer) in layer_list.layers.read().unwrap().iter() {
     //     println!("Layer: {} (order: {})", layer_id, layer.order);
@@ -67,7 +65,6 @@ fn main() {
 
     // --------------------------------------------------------------------
     // Tiling phase
-    // println!("\n\n\n\n\n--[ TILING ]----------------------------------");
     let mut tile_list = TileList::new(layer_list, Dimension::new(TILE_DIMENSION, TILE_DIMENSION));
     tile_list.generate();
     // tile_list.print_list();
@@ -75,7 +72,6 @@ fn main() {
     // --------------------------------------------------------------------
     // At this point, we have done everything we can before painting. The rest
     // is completed in the draw function of the UI.
-
 
     // Render the layout-tree into a GTK window
     let app = Application::builder()
@@ -113,9 +109,13 @@ fn build_ui(app: &Application) {
     area.set_content_height(800);
     area.set_content_width(600);
     area.set_draw_func(move |_area, cr, _width, _height| {
-        do_paint();
-        do_rasterize();
-        CairoCompositor::compositor(CairoCompositorConfig{
+        do_paint(LayerId::new(0));
+        do_rasterize(LayerId::new(0));
+
+        do_paint(LayerId::new(1));
+        do_rasterize(LayerId::new(1));
+
+        CairoCompositor::compose(CairoCompositorConfig{
             cr: cr.clone(),
         });
     });
@@ -197,11 +197,11 @@ fn build_ui(app: &Application) {
 }
 
 /// Paint all the dirty tiles that are in view
-fn do_paint() {
+fn do_paint(layer_id: LayerId) {
     let binding = get_browser_state();
     let state = binding.read().unwrap();
 
-    let tile_ids = state.tile_list.read().unwrap().get_intersecting_tiles(LayerId::new(0), state.viewport);
+    let tile_ids = state.tile_list.read().unwrap().get_intersecting_tiles(layer_id, state.viewport);
     for tile_id in tile_ids {
         // get tile
         let mut binding = state.tile_list.write().unwrap();
@@ -228,11 +228,11 @@ fn do_paint() {
     }
 }
 
-fn do_rasterize() {
+fn do_rasterize(layer_id: LayerId) {
     let binding = get_browser_state();
     let state = binding.read().unwrap();
 
-    let tile_ids = state.tile_list.read().unwrap().get_intersecting_tiles(LayerId::new(0), state.viewport);
+    let tile_ids = state.tile_list.read().unwrap().get_intersecting_tiles(layer_id, state.viewport);
     for tile_id in tile_ids {
 
         // get tile

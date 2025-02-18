@@ -92,6 +92,7 @@ impl ElementData {
 
 #[derive(Clone, Debug)]
 pub enum NodeType {
+    Comment(String),
     Text(String, StylePropertyList),
     Element(ElementData),
 }
@@ -141,6 +142,14 @@ impl Node {
             node_id: doc.next_node_id(),
             children: vec![],
             node_type: NodeType::Text(text, style.unwrap_or(StylePropertyList::new())),
+        }
+    }
+
+    pub fn new_comment(doc: &Document, comment: String) -> Node {
+        Node {
+            node_id: doc.next_node_id(),
+            children: vec![],
+            node_type: NodeType::Comment(comment),
         }
     }
 

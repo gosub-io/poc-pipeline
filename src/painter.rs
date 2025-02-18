@@ -25,12 +25,6 @@ impl Painter {
             let Some(layout_element) = layer_list.layout_tree.get_node_by_id(tile_element.id) else {
                 continue;
             };
-            // let Some(render_element) = layer_list.layout_tree.render_tree.get_node_by_id(layout_element.render_node_id) else {
-            //     continue;
-            // };
-            // let Some(node) = layer_list.layout_tree.render_tree.doc.get_node_by_id(layout_element.dom_node_id) else {
-            //     continue;
-            // };
 
             match &layout_element.context {
                 ElementContext::Text(ctx) => {
@@ -44,8 +38,8 @@ impl Painter {
                     );
                     commands.push(PaintCommand::text(t));
 
-                    let border = Border::new(1.0, BorderStyle::Solid, Brush::Solid(Color::RED));
-                    let r = Rectangle::new(layout_element.box_model.border_box()).with_border(border);
+                    // let border = Border::new(1.0, BorderStyle::Solid, Brush::Solid(Color::RED));
+                    let r = Rectangle::new(layout_element.box_model.border_box()); // .with_border(border);
                     commands.push(PaintCommand::rectangle(r));
 
                 }
@@ -55,13 +49,13 @@ impl Painter {
                     let image = image_store.get(image_ctx.image_id).unwrap();
 
                     let brush = Brush::image(image.data.clone(), image.width as u32, image.height as u32);
-                    let border = Border::new(3.0, BorderStyle::Dashed, Brush::Solid(Color::GREEN));
-                    let r = Rectangle::new(layout_element.box_model.border_box()).with_background(brush).with_border(border);
+                    // let border = Border::new(3.0, BorderStyle::None, Brush::Solid(Color::GREEN));
+                    let r = Rectangle::new(layout_element.box_model.border_box()).with_background(brush);
                     commands.push(PaintCommand::rectangle(r));
                 }
                 ElementContext::None => {
-                    let border = Border::new(1.0, BorderStyle::Dotted, Brush::Solid(Color::BLUE));
-                    let r = Rectangle::new(layout_element.box_model.border_box()).with_border(border);
+                    // let border = Border::new(1.0, BorderStyle::Dotted, Brush::Solid(Color::BLUE));
+                    let r = Rectangle::new(layout_element.box_model.border_box()); // .with_border(border);
                     commands.push(PaintCommand::rectangle(r));
                 }
             }

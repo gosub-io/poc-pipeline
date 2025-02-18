@@ -36,7 +36,7 @@ fn create_text_layout(cmd: &Text) -> Result<ImageSurface, Error> {
     layout.set_wrap(gtk4::pango::WrapMode::Word);
     // layout.set_wrap(gtk4::pango::WrapMode::Char);
 
-    set_brush(&cr, &cmd.brush);
+    set_brush(&cr, &cmd.brush, cmd.rect.into());
     cr.move_to(0.0, 0.0);
     pangocairo::functions::show_layout(&cr, &layout);
 

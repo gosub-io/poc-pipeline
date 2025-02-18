@@ -4,11 +4,17 @@ use crate::common::browser_state::get_browser_state;
 use crate::layering::layer::LayerId;
 use crate::common::get_texture_store;
 
-pub fn cairo_compositor(cr: &cairo::Context) {
+pub fn cairo_compositor(cr: &cairo::Context, layer_ids: Vec<LayerId>) {
+    for layer_id in layer_ids {
+        compose_layer(cr, layer_id);
+    }
+}
+
+pub fn compose_layer(cr: &cairo::Context, layer_id: LayerId) {
     let binding = get_browser_state();
     let state = binding.read().expect("Failed to get browser state");
 
-    let tile_ids = state.tile_list.read().unwrap().get_intersecting_tiles(LayerId::new(0), state.viewport);
+    let tile_ids = state.tile_list.read().unwrap().get_intersecting_tiles(layer_id, state.viewport);
     for tile_id in tile_ids {
         let binding = state.tile_list.write().unwrap();
         let Some(tile) = binding.get_tile(tile_id) else {
@@ -50,4 +56,5 @@ pub fn cairo_compositor(cr: &cairo::Context) {
         _ = cr.set_source_surface(surface, tile.rect.x, tile.rect.y);
         _ = cr.fill();
     }
+
 }

@@ -12,5 +12,5 @@ pub mod vello;
 pub trait Composable {
     type Config;
 
-    fn compositor(config: Self::Config);
+    fn compose(config: Self::Config);
 }

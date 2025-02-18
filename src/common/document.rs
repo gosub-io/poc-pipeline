@@ -5,9 +5,10 @@ use crate::common::document::style::{Color, Display, FontWeight, StyleProperty, 
 pub mod node;
 pub mod style;
 pub mod document;
-
+pub mod parser;
 
 /// Creates an example HTML document with nodes, invisible nodes, attributes and style properties.
+#[allow(unused)]
 pub(crate) fn create_document() -> Document {
     let mut doc = Document::new();
 
@@ -19,6 +20,8 @@ pub(crate) fn create_document() -> Document {
     style.set_property(StyleProperty::BorderRightWidth, StyleValue::Unit(4.0, Unit::Px));
     style.set_property(StyleProperty::BorderTopWidth, StyleValue::Unit(4.0, Unit::Px));
     style.set_property(StyleProperty::BorderBottomWidth, StyleValue::Unit(4.0, Unit::Px));
+    style.set_property(StyleProperty::MarginTop, StyleValue::Unit(20.0, Unit::Px));
+    style.set_property(StyleProperty::MarginLeft, StyleValue::Unit(20.0, Unit::Px));
 
     let mut attrs = AttrMap::new();
     attrs.set("src", "sub.png");
@@ -29,7 +32,8 @@ pub(crate) fn create_document() -> Document {
     // --------------
     let mut style = StylePropertyList::new();
     style.set_property(StyleProperty::Color, StyleValue::Color(Color::Named("red".to_string())));
-    style.set_property(StyleProperty::Display, StyleValue::None);
+    // style.set_property(StyleProperty::Display, StyleValue::None);
+    style.set_property(StyleProperty::Display, StyleValue::Keyword("hidden".into()));
     style.set_property(StyleProperty::FontWeight, StyleValue::FontWeight(FontWeight::Bolder));
     style.set_property(StyleProperty::FontSize, StyleValue::Unit(32.0, Unit::Px));
     style.set_property(StyleProperty::FontFamily, StyleValue::Keyword("Comic Sans MS".into()));

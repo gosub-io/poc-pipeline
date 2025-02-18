@@ -108,8 +108,6 @@ impl CanLayout for TaffyLayouter {
         let h = root.box_model.margin_box.height as f32;
         layout_tree.root_dimension = crate::common::geo::Dimension::new(w as f64, h as f64);
 
-        self.tree.print_tree(self.root_id);
-
         layout_tree
     }
 }
@@ -161,8 +159,6 @@ impl TaffyLayouter {
     }
 
     fn generate_node<'a>(&mut self, layout_tree: &'a mut LayoutTree, render_node_id: RenderNodeId) -> Option<&'a LayoutElementNode> {
-        println!("Generating node: {}", render_node_id);
-        
         // Default taffy style
         // @TODO: We only deal with blocks now
         let mut taffy_style = Style {
@@ -396,6 +392,7 @@ impl TaffyLayouter {
                     text,
                 ));
             }
+            NodeType::Comment(_) => {}
         }
 
         if dom_node.children.is_empty() {
@@ -441,7 +438,6 @@ impl TaffyLayouter {
                 let res = self.generate_node(layout_tree, *child_render_node_id);
                 match res {
                     Some(el) => {
-                        println!("Fetching layout taffy mapping: {}", el.id);
                         let taffy_node_id = self.layout_taffy_mapping.get(&el.id).unwrap().clone();
                         Some((taffy_node_id, el.id))
                     },
@@ -456,27 +452,18 @@ impl TaffyLayouter {
                 },
                 None => continue,
             }
-
-            let res = self.generate_node(layout_tree, *child_render_node_id);
-            match res {
-                Some(el) => {
-                    let taffy_node_id = self.layout_taffy_mapping.get(&el.id).unwrap().clone();
-                    children_taffy_ids.push(taffy_node_id);
-                    children_el_ids.push(el.id);
-                },
-                None => continue,
-            }
         }
 
         match self.tree.new_with_children(taffy_style, &children_taffy_ids) {
             Ok(leaf_id) => {
+                let element_context = to_element_context(taffy_context.as_ref());
                 let el = LayoutElementNode {
                     id: layout_tree.next_node_id(),
                     dom_node_id,
                     render_node_id,
                     box_model: box_model::BoxModel::ZERO,
                     children: children_el_ids,
-                    context: ElementContext::None,
+                    context: element_context,
                 };
 
                 self.layout_taffy_mapping.insert(el.id, leaf_id);
