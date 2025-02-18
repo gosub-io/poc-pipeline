@@ -36,7 +36,10 @@ fn main() {
     // Generate a DOM tree
     // let doc = common::document::create_document();
     // let doc = common::document::parser::document_from_json("gosub.io.json");
-    let doc = common::document::parser::document_from_json("news.ycombinator.com.json");
+    // let doc = common::document::parser::document_from_json("news.ycombinator.com.json");
+    let doc = common::document::parser::document_from_json("codemusings.nl.json");
+    // let doc = common::document::parser::document_from_json("adayinthelifeof.nl.json");
+    // let doc = common::document::parser::document_from_json("example.org.json");
     // let mut output = String::new();
     // doc.print_tree(&mut output).unwrap();
     // println!("{}", output);
@@ -50,7 +53,7 @@ fn main() {
     // --------------------------------------------------------------------
     // Layout the render-tree into a layout-tree
     let mut layouter = TaffyLayouter::new();
-    let layout_tree = layouter.layout(render_tree, geo::Dimension::new(800.0, 600.0));
+    let layout_tree = layouter.layout(render_tree, geo::Dimension::new(1200.0, 600.0));
     // println!("Layout width: {}, height: {}", layout_tree.root_dimension.width, layout_tree.root_dimension.height);
 
     // --------------------------------------------------------------------
@@ -62,8 +65,6 @@ fn main() {
     //         println!("  Element: {}", element);
     //     }
     // }
-
-    return;
 
     // --------------------------------------------------------------------
     // Tiling phase

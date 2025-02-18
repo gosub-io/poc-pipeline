@@ -9,6 +9,7 @@ use crate::common::document::style::{StyleProperty, StyleValue, Unit};
 use crate::common::get_image_store;
 use crate::common::image::ImageId;
 use crate::layouter::{LayoutElementNode, LayoutTree, LayoutElementId, CanLayout, ElementContext, box_model, ElementContextText, ElementContextImage};
+use crate::layouter::css_taffy_converter::CssTaffyConverter;
 use crate::layouter::text::pango::get_text_layout;
 
 const DEFAULT_FONT_SIZE: f64 = 12.0;
@@ -81,7 +82,7 @@ impl CanLayout for TaffyLayouter {
                     let font_family = text_ctx.font_family.as_str();
                     let text = text_ctx.text.as_str();
 
-                    let layout = get_text_layout(text, font_family, font_size, v_as.width.unwrap() as f64);
+                    let layout = get_text_layout(text, font_family, font_size, v_as.width.unwrap_or(100.0) as f64);
                     match layout {
                         Ok(layout) => {
                             // @TODO: Somehow, layout.width() and layout.height() do not seem to work anymore
@@ -160,7 +161,6 @@ impl TaffyLayouter {
 
     fn generate_node<'a>(&mut self, layout_tree: &'a mut LayoutTree, render_node_id: RenderNodeId) -> Option<&'a LayoutElementNode> {
         // Default taffy style
-        // @TODO: We only deal with blocks now
         let mut taffy_style = Style {
             display: Display::Block,
             ..Default::default()
@@ -177,178 +177,8 @@ impl TaffyLayouter {
 
         match &dom_node.node_type {
             NodeType::Element(data) => {
-                // --- Width and Height styles ---
-                if let Some(width) = data.get_style(StyleProperty::Width) {
-                    match width {
-                        StyleValue::Unit(value, unit) => {
-                            match unit {
-                                Unit::Px => taffy_style.size.width = Dimension::Length(*value),
-                                Unit::Percent => taffy_style.size.width = Dimension::Percent(*value),
-                                _ => {}
-                            }
-                        }
-                        _ => {}
-                    }
-                }
-                if let Some(height) = data.get_style(StyleProperty::Height) {
-                    match height {
-                        StyleValue::Unit(value, unit) => {
-                            match unit {
-                                Unit::Px => taffy_style.size.height = Dimension::Length(*value),
-                                Unit::Percent => taffy_style.size.height = Dimension::Percent(*value),
-                                _ => {}
-                            }
-                        }
-                        _ => {}
-                    }
-                }
-                // --- Margin ---
-                if let Some(margin_block_start) = data.get_style(StyleProperty::MarginTop) {
-                    match margin_block_start {
-                        StyleValue::Unit(value, unit) => {
-                            match unit {
-                                Unit::Px => taffy_style.margin.top = LengthPercentageAuto::Length(*value),
-                                Unit::Percent => taffy_style.margin.top = LengthPercentageAuto::Percent(*value),
-                                _ => {}
-                            }
-                        }
-                        _ => {}
-                    }
-                }
-                if let Some(margin_block_end) = data.get_style(StyleProperty::MarginBottom) {
-                    match margin_block_end {
-                        StyleValue::Unit(value, unit) => {
-                            match unit {
-                                Unit::Px => taffy_style.margin.bottom = LengthPercentageAuto::Length(*value),
-                                Unit::Percent => taffy_style.margin.bottom = LengthPercentageAuto::Percent(*value),
-                                _ => {}
-                            }
-                        }
-                        _ => {}
-                    }
-                }
-                if let Some(margin_inline_start) = data.get_style(StyleProperty::MarginLeft) {
-                    match margin_inline_start {
-                        StyleValue::Unit(value, unit) => {
-                            match unit {
-                                Unit::Px => taffy_style.margin.left = LengthPercentageAuto::Length(*value),
-                                Unit::Percent => taffy_style.margin.left = LengthPercentageAuto::Percent(*value),
-                                _ => {}
-                            }
-                        }
-                        _ => {}
-                    }
-                }
-                if let Some(margin_inline_end) = data.get_style(StyleProperty::MarginRight) {
-                    match margin_inline_end {
-                        StyleValue::Unit(value, unit) => {
-                            match unit {
-                                Unit::Px => taffy_style.margin.right = LengthPercentageAuto::Length(*value),
-                                Unit::Percent => taffy_style.margin.right = LengthPercentageAuto::Percent(*value),
-                                _ => {}
-                            }
-                        }
-                        _ => {}
-                    }
-                }
-                // --- Padding ---
-                if let Some(padding_block_start) = data.get_style(StyleProperty::PaddingTop) {
-                    match padding_block_start {
-                        StyleValue::Unit(value, unit) => {
-                            match unit {
-                                Unit::Px => taffy_style.padding.top = LengthPercentage::Length(*value),
-                                Unit::Percent => taffy_style.padding.top = LengthPercentage::Percent(*value),
-                                _ => {}
-                            }
-                        }
-                        _ => {}
-                    }
-                }
-                if let Some(padding_block_end) = data.get_style(StyleProperty::PaddingBottom) {
-                    match padding_block_end {
-                        StyleValue::Unit(value, unit) => {
-                            match unit {
-                                Unit::Px => taffy_style.padding.bottom = LengthPercentage::Length(*value),
-                                Unit::Percent => taffy_style.padding.bottom = LengthPercentage::Percent(*value),
-                                _ => {}
-                            }
-                        }
-                        _ => {}
-                    }
-                }
-                if let Some(padding_inline_start) = data.get_style(StyleProperty::PaddingLeft) {
-                    match padding_inline_start {
-                        StyleValue::Unit(value, unit) => {
-                            match unit {
-                                Unit::Px => taffy_style.padding.left = LengthPercentage::Length(*value),
-                                Unit::Percent => taffy_style.padding.left = LengthPercentage::Percent(*value),
-                                _ => {}
-                            }
-                        }
-                        _ => {}
-                    }
-                }
-                if let Some(padding_inline_end) = data.get_style(StyleProperty::PaddingRight) {
-                    match padding_inline_end {
-                        StyleValue::Unit(value, unit) => {
-                            match unit {
-                                Unit::Px => taffy_style.padding.right = LengthPercentage::Length(*value),
-                                Unit::Percent => taffy_style.padding.right = LengthPercentage::Percent(*value),
-                                _ => {}
-                            }
-                        }
-                        _ => {}
-                    }
-                }
-                // --- Border ---
-                if let Some(border_top_width) = data.get_style(StyleProperty::BorderTopWidth) {
-                    match border_top_width {
-                        StyleValue::Unit(value, unit) => {
-                            match unit {
-                                Unit::Px => taffy_style.border.top = LengthPercentage::Length(*value),
-                                Unit::Percent => taffy_style.border.top = LengthPercentage::Percent(*value),
-                                _ => {}
-                            }
-                        }
-                        _ => {}
-                    }
-                }
-                if let Some(border_bottom_width) = data.get_style(StyleProperty::BorderBottomWidth) {
-                    match border_bottom_width {
-                        StyleValue::Unit(value, unit) => {
-                            match unit {
-                                Unit::Px => taffy_style.border.bottom = LengthPercentage::Length(*value),
-                                Unit::Percent => taffy_style.border.bottom = LengthPercentage::Percent(*value),
-                                _ => {}
-                            }
-                        }
-                        _ => {}
-                    }
-                }
-                if let Some(border_left_width) = data.get_style(StyleProperty::BorderLeftWidth) {
-                    match border_left_width {
-                        StyleValue::Unit(value, unit) => {
-                            match unit {
-                                Unit::Px => taffy_style.border.left = LengthPercentage::Length(*value),
-                                Unit::Percent => taffy_style.border.left = LengthPercentage::Percent(*value),
-                                _ => {}
-                            }
-                        }
-                        _ => {}
-                    }
-                }
-                if let Some(border_right_width) = data.get_style(StyleProperty::BorderRightWidth) {
-                    match border_right_width {
-                        StyleValue::Unit(value, unit) => {
-                            match unit {
-                                Unit::Px => taffy_style.border.right = LengthPercentage::Length(*value),
-                                Unit::Percent => taffy_style.border.right = LengthPercentage::Percent(*value),
-                                _ => {}
-                            }
-                        }
-                        _ => {}
-                    }
-                }
+                let conv = CssTaffyConverter::new(&data.styles);
+                conv.convert(&mut taffy_style);
 
                 // Check if element type is an image
                 if data.tag_name.eq_ignore_ascii_case("img") {
@@ -368,8 +198,6 @@ impl TaffyLayouter {
                 // Default font
                 let mut font_size = DEFAULT_FONT_SIZE;
                 let mut font_family = DEFAULT_FONT_FAMILY.to_string();
-
-                println!("{:?}", &node_style.get_property(StyleProperty::FontSize));
 
                 match node_style.get_property(StyleProperty::FontSize) {
                     Some(StyleValue::Unit(value, unit)) => {

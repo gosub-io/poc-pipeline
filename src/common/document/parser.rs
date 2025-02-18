@@ -1,7 +1,7 @@
 use serde::Deserialize;
 use std::collections::HashMap;
 use crate::common::document::document::Document;
-use crate::common::document::node::{AttrMap, NodeId};
+use crate::common::document::node::{AttrMap, NodeId, NodeType};
 use crate::common::document::style::{Color, Display, FontWeight, StyleProperty, StylePropertyList, StyleValue, Unit};
 
 // This parses uses the tools/souper.py to load a JSON file and create a DOM from it. This allows us to render
@@ -43,10 +43,57 @@ fn create_dom_from_json(doc: &mut Document, node: &DomNode, parent_id: Option<No
         attrs.set(key, value);
     }
 
+    if let Some(text) = &node.text {
+        // When we encounter text, we don't have any style, but we need to use the styles from the parent.
+        let parent_node = doc.get_node_by_id(parent_id.unwrap()).unwrap();
+        let parent_styles = match &parent_node.node_type {
+            NodeType::Element(parent_element) => Some(parent_element.styles.clone()),
+            _ => None,
+        };
+        return Some(doc.new_text(parent_id, text, parent_styles));
+    }
+
+    if let Some(comment) = &node.comment {
+        return Some(doc.new_comment(parent_id, comment));
+    }
+
+    let Some(tag) = &node.tag else {
+        eprintln!("Warning: Encountered node without a tag! {:?}", node);
+        return None;
+    };
+
+    let style = get_style_from_node(node);
+    let node_id = doc.new_element(parent_id, &tag, Some(attrs), node.self_closing, Some(style.clone()));
+
+    for child in &node.children {
+        match create_dom_from_json(doc, child, Some(node_id)) {
+            Some(child_node_id) => doc.add_child(node_id, child_node_id),
+            None => {}
+        }
+    }
+
+    Some(node_id)
+}
+
+fn get_style_from_node(node: &DomNode) -> StylePropertyList {
     let mut style = StylePropertyList::new();
+
     for (key, value) in &node.styles {
         match key.as_str() {
+            "flex-basis" => style.set_property(StyleProperty::FlexBasis, parse_style_str(value)),
+            "flex-grow" => style.set_property(StyleProperty::FlexGrow, parse_style_num(value)),
+            "flex-shrink" => style.set_property(StyleProperty::FlexShrink, parse_style_num(value)),
+            "flex-direction" => style.set_property(StyleProperty::FlexDirection, parse_style_str(value)),
+            "flex-wrap" => style.set_property(StyleProperty::FlexWrap, parse_style_str(value)),
+
             "display" => style.set_property(StyleProperty::Display, parse_display(value)),
+            "position" => style.set_property(StyleProperty::Position, parse_position(value)),
+
+            "max_width" => style.set_property(StyleProperty::MaxWidth, parse_style_value(value)),
+            "min_width" => style.set_property(StyleProperty::MinWidth, parse_style_value(value)),
+            "max_height" => style.set_property(StyleProperty::MaxHeight, parse_style_value(value)),
+            "min_height" => style.set_property(StyleProperty::MinHeight, parse_style_value(value)),
+
             "width" => style.set_property(StyleProperty::Width, parse_style_value(value)),
             "height" => style.set_property(StyleProperty::Height, parse_style_value(value)),
             "border-left-width" => style.set_property(StyleProperty::BorderLeftWidth, parse_style_value(value)),
@@ -64,29 +111,23 @@ fn create_dom_from_json(doc: &mut Document, node: &DomNode, parent_id: Option<No
         }
     }
 
-    if let Some(text) = &node.text {
-        return Some(doc.new_text(parent_id, text, Some(style)));
+    style
+}
+
+fn parse_position(position: &str) -> StyleValue {
+    StyleValue::Keyword(position.to_string())
+}
+
+fn parse_style_str(val: &str) -> StyleValue {
+    StyleValue::Keyword(val.to_string())
+}
+
+fn parse_style_num(val: &str) -> StyleValue {
+    if let Ok(num) = val.parse::<f32>() {
+        StyleValue::Number(num)
+    } else {
+        StyleValue::Keyword(val.to_string())
     }
-
-    if let Some(comment) = &node.comment {
-        return Some(doc.new_comment(parent_id, comment));
-    }
-
-    let Some(tag) = &node.tag else {
-        eprintln!("Warning: Encountered node without a tag! {:?}", node);
-        return None;
-    };
-
-    let node_id = doc.new_element(parent_id, &tag, Some(attrs), node.self_closing, Some(style.clone()));
-
-    for child in &node.children {
-        match create_dom_from_json(doc, child, Some(node_id)) {
-            Some(child_node_id) => doc.add_child(node_id, child_node_id),
-            None => {}
-        }
-    }
-
-    Some(node_id)
 }
 
 fn parse_display(value: &String) -> StyleValue {
@@ -94,6 +135,7 @@ fn parse_display(value: &String) -> StyleValue {
         "block" => StyleValue::Display(Display::Block),
         "inline" => StyleValue::Display(Display::Inline),
         "none" => StyleValue::Display(Display::None),
+        "flex" => StyleValue::Display(Display::Flex),
         _ => StyleValue::Keyword(value.to_string()),
     }
 }

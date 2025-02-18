@@ -125,7 +125,11 @@ impl TileList {
     /// Return all the tiles for the specific layer that intersects with the given viewport
     pub(crate) fn get_intersecting_tiles(&self, layer_id: LayerId, viewport: Rect) -> Vec<TileId> {
         let mut matching_tiles = vec![];
-        let tile_ids = self.layers.get(&layer_id).unwrap();
+
+        let Some(tile_ids) = self.layers.get(&layer_id) else {
+            return matching_tiles
+        };
+
         for tile_id in tile_ids {
             let tile = self.arena.get(tile_id).unwrap();
             if tile.rect.intersects(viewport) {

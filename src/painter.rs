@@ -42,12 +42,12 @@ impl Painter {
 
             match &layout_element.context {
                 ElementContext::Text(ctx) => {
-                    // let brush = self.get_parent_brush(dom_node, Brush::solid(Color::BLACK));
-                    let brush = Brush::solid(Color::from_rgb8(130, 130, 130));
+                    let brush = self.get_parent_brush(dom_node, StyleProperty::Color, Brush::solid(Color::BLACK));
+                    // let brush = Brush::solid(Color::from_rgb8(130, 130, 130));
                     let t = Text::new(
                         layout_element.box_model.content_box(),
                         &ctx.text,
-                        FontDescription::from_string(&format!("{} {}", ctx.font_family, ctx.font_size)),
+                        &ctx.font_family,
                         ctx.font_size,
                         brush
                     );
@@ -69,7 +69,7 @@ impl Painter {
                     commands.push(PaintCommand::rectangle(r));
                 }
                 ElementContext::None => {
-                    let brush = self.get_brush(dom_node, Brush::solid(Color::BLACK));
+                    let brush = self.get_brush(dom_node, StyleProperty::BackgroundColor, Brush::solid(Color::TRANSPARENT));
                     // let border = Border::new(3.0, BorderStyle::None, Brush::Solid(Color::RED));
                     let r = Rectangle::new(layout_element.box_model.border_box()).with_background(brush); // .with_border(border);
                     commands.push(PaintCommand::rectangle(r));
@@ -81,31 +81,37 @@ impl Painter {
     }
 
     // Returns a brush for the color found in the given dom node
-    fn get_brush(&self, node: &Node, default: Brush) -> Brush {
+    fn get_brush(&self, node: &Node, css_prop: StyleProperty, default: Brush) -> Brush {
         let NodeType::Element(element_data) = &node.node_type else {
+            log::warn!("Failed to get brush for node: {:?}", node.node_id);
             return default;
         };
-        element_data.get_style(StyleProperty::BackgroundColor).map_or(default.clone(), |value| {
-            dbg!(&value);
+        element_data.get_style(css_prop).map_or(default.clone(), |value| {
             match value {
                 StyleValue::Color(css_color) => Brush::solid(convert_css_color(css_color)),
-                _ => default.clone()
+                _ => {
+                    log::warn!("Failed to get brush for node: {:?}", node.node_id);
+                    default.clone()
+                }
             }
         })
     }
 
     // Returns a brush for the color found in the PARENT of the given dom node
-    fn get_parent_brush(&self, node: &Node, default: Brush) -> Brush {
+    fn get_parent_brush(&self, node: &Node, css_prop: StyleProperty, default: Brush) -> Brush {
         let parent = match &node.parent_id {
             Some(parent_id) => self.layer_list.layout_tree.render_tree.doc.get_node_by_id(*parent_id).expect("Failed to get parent node"),
-            None => return default,
+            None => {
+                log::warn!("Failed to get parent brush for node: {:?}", node.node_id);
+                return default
+            },
         };
 
-        self.get_brush(parent, default)
+        self.get_brush(parent, css_prop, default)
     }
 }
 
-/// Converts a stylecolor to a paint command color
+/// Converts a css style color to a paint command color
 fn convert_css_color(css_color: &StyleColor) -> Color {
     log::info!("Converting css color: {:?}", css_color);
     match css_color {

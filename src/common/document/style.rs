@@ -21,9 +21,20 @@ pub enum StyleProperty {
     BorderTopWidth,
     BorderLeftWidth,
     BorderRightWidth,
-    MarginBlockStart,
-    MarginBlockEnd,
+    // MarginBlockStart,
+    // MarginBlockEnd,
     FontFamily,
+    FlexBasis,
+    FlexDirection,
+    FlexGrow,
+    FlexShrink,
+    FlexWrap,
+    ScrollbarWidth,
+    Position,
+    MinWidth,
+    MinHeight,
+    MaxWidth,
+    MaxHeight,
 }
 
 #[allow(unused)]
@@ -49,6 +60,7 @@ pub enum Display {
     Block,
     Inline,
     None,
+    Flex,
 }
 
 #[allow(unused)]
@@ -65,6 +77,7 @@ pub enum FontWeight {
 pub enum StyleValue {
     Keyword(String),
     Unit(f32, Unit),
+    Number(f32),
     Color(Color),
     None,
     Display(Display),
