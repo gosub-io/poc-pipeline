@@ -1,4 +1,5 @@
 import json
+import sys
 import asyncio
 from bs4 import BeautifulSoup, Comment
 from playwright.async_api import async_playwright
@@ -64,14 +65,18 @@ async def fetch_and_parse_html(url):
 
 
 async def main():
-    url = "https://news.ycombinator.com"
-    dom_tree = await fetch_and_parse_html(url)
+    if len(sys.argv) != 2:
+        print("Usage: souper.py <url>")
+        sys.exit(1)
+
+    url = sys.argv[1]
+    dom_tree = await fetch_and_parse_html("https://" + url)
 
     # Save to JSON file
-    with open("dom_tree_with_styles.json", "w", encoding="utf-8") as f:
+    with open(url + ".json", "w", encoding="utf-8") as f:
         json.dump(dom_tree, f, indent=2, ensure_ascii=False)
 
-    print("DOM tree with computed styles saved to dom_tree_with_styles.json")
+    print(f"DOM tree with computed styles saved to {url}.json")
 
 
 # Run the async function
