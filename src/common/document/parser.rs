@@ -1,3 +1,4 @@
+use regex::Regex;
 use serde::Deserialize;
 use std::collections::HashMap;
 use crate::common::document::document::Document;
@@ -37,6 +38,13 @@ struct DomRoot {
     children: Vec<DomNode>,
 }
 
+// Text is "as-is" from the JSON, but we don't want text with multiple spaces and newlines.
+fn clean_text(input: &str) -> String {
+    let no_newlines = input.replace('\n', " ");
+    let space_regex = Regex::new(r"\s{2,}").unwrap();
+    space_regex.replace_all(&no_newlines, " ").to_string()
+}
+
 fn create_dom_from_json(doc: &mut Document, node: &DomNode, parent_id: Option<NodeId>) -> Option<NodeId> {
     let mut attrs = AttrMap::new();
     for (key, value) in &node.attributes {
@@ -50,7 +58,7 @@ fn create_dom_from_json(doc: &mut Document, node: &DomNode, parent_id: Option<No
             NodeType::Element(parent_element) => Some(parent_element.styles.clone()),
             _ => None,
         };
-        return Some(doc.new_text(parent_id, text, parent_styles));
+        return Some(doc.new_text(parent_id, clean_text(text).as_str(), parent_styles));
     }
 
     if let Some(comment) = &node.comment {
@@ -80,33 +88,67 @@ fn get_style_from_node(node: &DomNode) -> StylePropertyList {
 
     for (key, value) in &node.styles {
         match key.as_str() {
+            "display" => style.set_property(StyleProperty::Display, parse_display(value)),
+            "position" => style.set_property(StyleProperty::Position, parse_position(value)),
+
+            "width" => style.set_property(StyleProperty::Width, parse_style_value(value)),
+            "height" => style.set_property(StyleProperty::Height, parse_style_value(value)),
+            "max_width" => style.set_property(StyleProperty::MaxWidth, parse_style_value(value)),
+            "min_width" => style.set_property(StyleProperty::MinWidth, parse_style_value(value)),
+            "max_height" => style.set_property(StyleProperty::MaxHeight, parse_style_value(value)),
+            "min_height" => style.set_property(StyleProperty::MinHeight, parse_style_value(value)),
+
+            "border-top-width" => style.set_property(StyleProperty::BorderTopWidth, parse_style_value(value)),
+            "border-left-width" => style.set_property(StyleProperty::BorderLeftWidth, parse_style_value(value)),
+            "border-right-width" => style.set_property(StyleProperty::BorderRightWidth, parse_style_value(value)),
+            "border-bottom-width" => style.set_property(StyleProperty::BorderBottomWidth, parse_style_value(value)),
+            "border-bottom-left-radius" => style.set_property(StyleProperty::BorderBottomLeftRadius, parse_style_value(value)),
+            "border-bottom-right-radius" => style.set_property(StyleProperty::BorderBottomRightRadius, parse_style_value(value)),
+            "border-top-left-radius" => style.set_property(StyleProperty::BorderTopLeftRadius, parse_style_value(value)),
+            "border-top-right-radius" => style.set_property(StyleProperty::BorderTopRightRadius, parse_style_value(value)),
+
+            "margin-top" => style.set_property(StyleProperty::MarginTop, parse_style_value(value)),
+            "margin-left" => style.set_property(StyleProperty::MarginLeft, parse_style_value(value)),
+            "margin-right" => style.set_property(StyleProperty::MarginRight, parse_style_value(value)),
+            "margin-bottom" => style.set_property(StyleProperty::MarginBottom, parse_style_value(value)),
+
+            "padding-top" => style.set_property(StyleProperty::PaddingTop, parse_style_value(value)),
+            "padding-left" => style.set_property(StyleProperty::PaddingLeft, parse_style_value(value)),
+            "padding-right" => style.set_property(StyleProperty::PaddingRight, parse_style_value(value)),
+            "padding-bottom" => style.set_property(StyleProperty::PaddingBottom, parse_style_value(value)),
+
+            "color" => style.set_property(StyleProperty::Color, StyleValue::Color(Color::Named(value.to_string()))),
+            "background-color" => style.set_property(StyleProperty::BackgroundColor, StyleValue::Color(Color::Named(value.to_string()))),
+
+            "font-weight" => style.set_property(StyleProperty::FontWeight, parse_font_weight(value)),
+            "font-size" => style.set_property(StyleProperty::FontSize, parse_style_value(value)),
+            "font-family" => style.set_property(StyleProperty::FontFamily, StyleValue::Keyword(value.to_string())),
+
             "flex-basis" => style.set_property(StyleProperty::FlexBasis, parse_style_str(value)),
             "flex-grow" => style.set_property(StyleProperty::FlexGrow, parse_style_num(value)),
             "flex-shrink" => style.set_property(StyleProperty::FlexShrink, parse_style_num(value)),
             "flex-direction" => style.set_property(StyleProperty::FlexDirection, parse_style_str(value)),
             "flex-wrap" => style.set_property(StyleProperty::FlexWrap, parse_style_str(value)),
 
-            "display" => style.set_property(StyleProperty::Display, parse_display(value)),
-            "position" => style.set_property(StyleProperty::Position, parse_position(value)),
+            "aspect_ratio" => style.set_property(StyleProperty::AspectRatio, parse_style_num(value)),
+            "gap" => style.set_property(StyleProperty::Gap, parse_style_value(value)),
+            "align-items" => style.set_property(StyleProperty::AlignItems, parse_style_str(value)),
+            "align-self" => style.set_property(StyleProperty::AlignSelf, parse_style_str(value)),
+            "align-content" => style.set_property(StyleProperty::AlignContent, parse_style_str(value)),
+            "text-align" => style.set_property(StyleProperty::TextAlign, parse_style_str(value)),
 
-            "max_width" => style.set_property(StyleProperty::MaxWidth, parse_style_value(value)),
-            "min_width" => style.set_property(StyleProperty::MinWidth, parse_style_value(value)),
-            "max_height" => style.set_property(StyleProperty::MaxHeight, parse_style_value(value)),
-            "min_height" => style.set_property(StyleProperty::MinHeight, parse_style_value(value)),
+            "inset-block-end" => style.set_property(StyleProperty::InsetBlockEnd, parse_style_value(value)),
+            "inset-block-start" => style.set_property(StyleProperty::InsetBlockStart, parse_style_value(value)),
+            "inset-inline-end" => style.set_property(StyleProperty::InsetInlineEnd, parse_style_value(value)),
+            "inset-inline-start" => style.set_property(StyleProperty::InsetInlineStart, parse_style_value(value)),
 
-            "width" => style.set_property(StyleProperty::Width, parse_style_value(value)),
-            "height" => style.set_property(StyleProperty::Height, parse_style_value(value)),
-            "border-left-width" => style.set_property(StyleProperty::BorderLeftWidth, parse_style_value(value)),
-            "border-right-width" => style.set_property(StyleProperty::BorderRightWidth, parse_style_value(value)),
-            "border-top-width" => style.set_property(StyleProperty::BorderTopWidth, parse_style_value(value)),
-            "border-bottom-width" => style.set_property(StyleProperty::BorderBottomWidth, parse_style_value(value)),
-            "margin-top" => style.set_property(StyleProperty::MarginTop, parse_style_value(value)),
-            "margin-left" => style.set_property(StyleProperty::MarginLeft, parse_style_value(value)),
-            "color" => style.set_property(StyleProperty::Color, StyleValue::Color(Color::Named(value.to_string()))),
-            "background-color" => style.set_property(StyleProperty::BackgroundColor, StyleValue::Color(Color::Named(value.to_string()))),
-            "font-weight" => style.set_property(StyleProperty::FontWeight, parse_font_weight(value)),
-            "font-size" => style.set_property(StyleProperty::FontSize, parse_style_value(value)),
-            "font-family" => style.set_property(StyleProperty::FontFamily, StyleValue::Keyword(value.to_string())),
+            "justify_items" => style.set_property(StyleProperty::JustifyItems, parse_style_str(value)),
+            "justify_self" => style.set_property(StyleProperty::JustifySelf, parse_style_str(value)),
+
+            "overflow-x" => style.set_property(StyleProperty::OverflowX, parse_style_str(value)),
+            "overflow-y" => style.set_property(StyleProperty::OverflowY, parse_style_str(value)),
+            "box-sizing" => style.set_property(StyleProperty::BoxSizing, parse_style_str(value)),
+
             _ => {}
         }
     }

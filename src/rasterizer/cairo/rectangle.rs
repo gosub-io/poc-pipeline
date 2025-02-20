@@ -17,7 +17,7 @@ pub(crate) fn do_paint_rectangle(cr: &Context, tile: &Tile, rectangle: &Rectangl
     // Create initial rect
     match rectangle.background() {
         Some(brush) => {
-            cr.rectangle(rectangle.rect().x, rectangle.rect().y, rectangle.rect().width, rectangle.rect().height);
+            setup_rectangle_path(cr, rectangle);
             set_brush(cr, brush, rectangle.rect().into());
             _ = cr.fill();
         }
@@ -25,7 +25,8 @@ pub(crate) fn do_paint_rectangle(cr: &Context, tile: &Tile, rectangle: &Rectangl
     }
 
     // Create border
-    cr.rectangle(rectangle.rect().x, rectangle.rect().y, rectangle.rect().width, rectangle.rect().height);
+    setup_rectangle_path(cr, rectangle);
+
     cr.set_line_width(rectangle.border().width() as f64);
     set_brush(cr, &rectangle.border().brush(), rectangle.rect().into());
     match rectangle.border().style() {
@@ -86,4 +87,31 @@ pub(crate) fn do_paint_rectangle(cr: &Context, tile: &Tile, rectangle: &Rectangl
 
     // Restore the context state
     _ = cr.restore();
+}
+
+
+/// Creates a cairo rectangle with either sharp or rounded corners. Does not fill or stroke the path.
+fn setup_rectangle_path(cr: &Context, rect: &Rectangle) {
+    let (r_tl, r_tr, r_br, r_bl) = rect.radius();
+
+    if r_tl == 0.0 && r_tr == 0.0 && r_br == 0.0 && r_bl == 0.0 {
+        cr.rectangle(rect.rect().x, rect.rect().y, rect.rect().width, rect.rect().height);
+        return;
+    }
+
+    cr.move_to(rect.rect().x + r_tl, rect.rect().y);
+
+    cr.line_to(rect.rect().x + rect.rect().width - r_tr, rect.rect().y);
+    cr.arc(rect.rect().x + rect.rect().width - r_tr, rect.rect().y + r_tr, r_tr, -0.5 * std::f64::consts::PI, 0.0);
+
+    cr.line_to(rect.rect().x + rect.rect().width, rect.rect().y + rect.rect().height - r_br);
+    cr.arc(rect.rect().x + rect.rect().width - r_br, rect.rect().y + rect.rect().height - r_br, r_br, 0.0, 0.5 * std::f64::consts::PI);
+
+    cr.line_to(rect.rect().x + r_bl, rect.rect().y + rect.rect().height);
+    cr.arc(rect.rect().x + r_bl, rect.rect().y + rect.rect().height - r_bl, r_bl, 0.5 * std::f64::consts::PI, std::f64::consts::PI);
+
+    cr.line_to(rect.rect().x, rect.rect().y + r_tl);
+    cr.arc(rect.rect().x + r_tl, rect.rect().y + r_tl, r_tl, std::f64::consts::PI, 1.5 * std::f64::consts::PI);
+
+    cr.close_path();
 }

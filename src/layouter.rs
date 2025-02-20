@@ -37,6 +37,7 @@ impl std::fmt::Display for LayoutElementId {
 pub struct ElementContextText {
     pub font_family: String,
     pub font_size: f64,
+    pub font_weight: usize,
     pub text: String,
 }
 
@@ -57,10 +58,11 @@ pub enum ElementContext {
 }
 
 impl ElementContext {
-    pub(crate) fn text(font_family: &str, font_size: f64, text: &str) -> ElementContext {
+    pub(crate) fn text(font_family: &str, font_size: f64, font_weight: usize, text: &str) -> ElementContext {
         Self::Text(ElementContextText{
             font_family: font_family.to_string(),
             font_size,
+            font_weight,
             text: text.to_string(),
         })
     }

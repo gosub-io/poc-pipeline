@@ -1,4 +1,4 @@
-use taffy::{Dimension, Display, FlexDirection, FlexWrap, LengthPercentage, LengthPercentageAuto, Position, Style};
+use taffy::{AlignContent, AlignItems, AlignSelf, BoxSizing, Dimension, Display, FlexDirection, FlexWrap, LengthPercentage, LengthPercentageAuto, Overflow, Point, Position, Rect, Size, Style, TextAlign};
 use taffy::prelude::FromLength;
 use crate::common::document::style::{StyleProperty, StylePropertyList, StyleValue, Display as CssDisplay, Unit as CssUnit };
 
@@ -29,14 +29,28 @@ impl CssTaffyConverter {
         }
     }
 
+    fn get_f32_opt(&self, prop: StyleProperty, default: Option<f32>) -> Option<f32> {
+        let Some(val) = self.data.get_property(prop) else {
+            return default;
+        };
+
+        match *val {
+            StyleValue::Number(num) => Some(num),
+            _ => default,
+        }
+    }
+
     pub fn convert(&self, ts: &mut Style) {
         ts.display = self.get_display(ts.display);
         // item_is_table: false,
-        // box_sizing: BoxSizing::BorderBox,
-        // overflow: Point { x: Overflow::Visible, y: Overflow::Visible },
+        ts.box_sizing = self.get_box_sizing(ts.box_sizing);
+        ts.overflow = Point {
+            x: self.get_overflow(StyleProperty::OverflowX, ts.overflow.x),
+            y: self.get_overflow(StyleProperty::OverflowY, ts.overflow.y),
+        };
         ts.scrollbar_width = self.get_f32(StyleProperty::ScrollbarWidth, ts.scrollbar_width);
         ts.position = self.get_position(ts.position);
-        // inset: Rect::auto(),
+        ts.inset = self.get_inset(ts.inset);
         ts.margin.top = self.get_lpa(StyleProperty::MarginTop, ts.margin.top);
         ts.margin.right = self.get_lpa(StyleProperty::MarginRight, ts.margin.right);
         ts.margin.bottom = self.get_lpa(StyleProperty::MarginBottom, ts.margin.bottom);
@@ -55,15 +69,15 @@ impl CssTaffyConverter {
         ts.min_size.height = self.get_dimension(StyleProperty::MinHeight, ts.min_size.height);
         ts.max_size.width = self.get_dimension(StyleProperty::MaxWidth, ts.max_size.width);
         ts.max_size.height = self.get_dimension(StyleProperty::MaxHeight, ts.max_size.height);
-        // aspect_ratio: None,
-        // gap: Size::zero(),
-        // align_items: None,
-        // align_self: None,
-        // justify_items: None,
-        // justify_self: None,
-        // align_content: None,
-        // justify_content: None,
-        // text_align: TextAlign::Auto,
+        ts.aspect_ratio = self.get_f32_opt(StyleProperty::AspectRatio, ts.aspect_ratio);
+        ts.gap = self.get_size_lp(StyleProperty::Gap, ts.gap);
+        ts.align_items = self.get_align_items(StyleProperty::AlignItems, ts.align_items);
+        ts.align_self = self.get_align_self(StyleProperty::AlignSelf, ts.align_self);
+        ts.justify_items = self.get_align_items(StyleProperty::JustifyItems, ts.justify_items);
+        ts.justify_self = self.get_align_self(StyleProperty::JustifySelf, ts.justify_self);
+        ts.align_content = self.get_align_content(StyleProperty::AlignContent, ts.align_content);
+        ts.justify_content = self.get_align_content(StyleProperty::JustifyContent, ts.justify_content);
+        ts.text_align = self.get_text_align(ts.text_align);
         ts.flex_direction = self.get_flex_direction(ts.flex_direction);
         ts.flex_wrap = self.get_flex_wrap(ts.flex_wrap);
         ts.flex_grow = self.get_f32(StyleProperty::FlexGrow, ts.flex_grow);
@@ -102,7 +116,7 @@ impl CssTaffyConverter {
         };
 
         match val {
-            StyleValue::Unit(val, unit) => Dimension::from_length(*val),
+            StyleValue::Unit(val, _unit) => Dimension::from_length(*val),
             StyleValue::Number(val) => Dimension::from_length(*val),
             StyleValue::Keyword(val) if val == "auto" => Dimension::Auto,
             _ => default,
@@ -214,6 +228,157 @@ impl CssTaffyConverter {
                 }
             }
             StyleValue::Number(value) => Dimension::from_length(*value),
+            _ => default,
+        }
+    }
+
+    fn get_size_lp(&self, prop: StyleProperty, default: Size<LengthPercentage>) -> Size<LengthPercentage> {
+        let Some(val) = self.data.get_property(prop) else {
+            return default;
+        };
+
+        match val {
+            StyleValue::Unit(value, unit) => {
+                match unit {
+                    CssUnit::Px => Size::length(*value),
+                    CssUnit::Percent => Size::percent(*value),
+                    _ => default,
+                }
+            }
+            StyleValue::Number(value) => Size::length(*value),
+            _ => default,
+        }
+    }
+
+    fn get_align_items(&self, prop: StyleProperty, default: Option<AlignItems>) -> Option<AlignItems> {
+        let Some(val) = self.data.get_property(prop) else {
+            return default;
+        };
+
+        match val {
+            StyleValue::Keyword(ref val) => {
+                match val.as_str() {
+                    "start" => Some(AlignItems::Start),
+                    "end" => Some(AlignItems::End),
+                    "flex-start" => Some(AlignItems::FlexStart),
+                    "flex-end" => Some(AlignItems::FlexEnd),
+                    "center" => Some(AlignItems::Center),
+                    "baseline" => Some(AlignItems::Baseline),
+                    "stretch" => Some(AlignItems::Stretch),
+                    _ => default,
+                }
+            },
+            _ => default,
+        }
+    }
+
+    fn get_align_self(&self, prop: StyleProperty, default: Option<AlignSelf>) -> Option<AlignSelf> {
+        let Some(val) = self.data.get_property(prop) else {
+            return default;
+        };
+
+        match val {
+            StyleValue::Keyword(ref val) => {
+                match val.as_str() {
+                    "auto" => None,
+                    "start" => Some(AlignSelf::Start),
+                    "end" => Some(AlignSelf::End),
+                    "flex-start" => Some(AlignSelf::FlexStart),
+                    "flex-end" => Some(AlignSelf::FlexEnd),
+                    "center" => Some(AlignSelf::Center),
+                    "baseline" => Some(AlignSelf::Baseline),
+                    "stretch" => Some(AlignSelf::Stretch),
+                    _ => default,
+                }
+            },
+            _ => default,
+        }
+    }
+
+    fn get_align_content(&self, prop: StyleProperty, default: Option<AlignContent>) -> Option<AlignContent> {
+        let Some(val) = self.data.get_property(prop) else {
+            return default;
+        };
+
+        match val {
+            StyleValue::Keyword(ref val) => {
+                match val.as_str() {
+                    "start" => Some(AlignContent::Start),
+                    "end" => Some(AlignContent::End),
+                    "flex-start" => Some(AlignContent::FlexStart),
+                    "flex-end" => Some(AlignContent::FlexEnd),
+                    "center" => Some(AlignContent::Center),
+                    "stretch" => Some(AlignContent::Stretch),
+                    "space-between" => Some(AlignContent::SpaceBetween),
+                    "space-evenly" => Some(AlignContent::SpaceEvenly),
+                    "space-around" => Some(AlignContent::SpaceAround),
+                    _ => default,
+                }
+            },
+            _ => default,
+        }
+    }
+
+    fn get_text_align(&self, default: TextAlign) -> TextAlign {
+        let Some(val) = self.data.get_property(StyleProperty::TextAlign) else {
+            return default;
+        };
+
+        match val {
+            StyleValue::Keyword(ref val) => {
+                match val.as_str() {
+                    "auto" => TextAlign::Auto,
+                    "center" => TextAlign::LegacyCenter,
+                    "left" => TextAlign::LegacyLeft,
+                    "right" => TextAlign::LegacyRight,
+                    _ => default,
+                }
+            },
+            _ => default,
+        }
+    }
+
+    fn get_inset(&self, default: Rect<LengthPercentageAuto>) -> Rect<LengthPercentageAuto> {
+        Rect {
+            top: self.get_lpa(StyleProperty::InsetBlockStart, default.top),
+            right: self.get_lpa(StyleProperty::InsetInlineEnd, default.right),
+            bottom: self.get_lpa(StyleProperty::InsetBlockEnd, default.bottom),
+            left: self.get_lpa(StyleProperty::InsetInlineStart, default.left),
+        }
+    }
+
+    fn get_overflow(&self, prop: StyleProperty, default: Overflow) -> Overflow {
+        let Some(val) = self.data.get_property(prop) else {
+            return default;
+        };
+
+        match val {
+            StyleValue::Keyword(ref val) => {
+                match val.as_str() {
+                    "visible" => Overflow::Visible,
+                    "hidden" => Overflow::Hidden,
+                    "scroll" => Overflow::Scroll,
+                    "clip" => Overflow::Clip,
+                    _ => default,
+                }
+            },
+            _ => default,
+        }
+    }
+
+    fn get_box_sizing(&self, default: BoxSizing) -> BoxSizing {
+        let Some(val) = self.data.get_property(StyleProperty::BoxSizing) else {
+            return default;
+        };
+
+        match val {
+            StyleValue::Keyword(ref val) => {
+                match val.as_str() {
+                    "content-box" => BoxSizing::ContentBox,
+                    "border-box" => BoxSizing::BorderBox,
+                    _ => default,
+                }
+            },
             _ => default,
         }
     }

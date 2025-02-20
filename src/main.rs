@@ -18,6 +18,9 @@ use crate::rasterizer::Rasterable;
 
 const TILE_DIMENSION : f64 = 200.0;
 
+const VIEWPORT_WIDTH : f64 = 2024.0;
+const VIEWPORT_HEIGHT : f64 = 1068.0;
+
 #[allow(unused)]
 mod rendertree_builder;
 #[allow(unused)]
@@ -53,7 +56,7 @@ fn main() {
     // --------------------------------------------------------------------
     // Layout the render-tree into a layout-tree
     let mut layouter = TaffyLayouter::new();
-    let layout_tree = layouter.layout(render_tree, geo::Dimension::new(1024.0, 768.0));
+    let layout_tree = layouter.layout(render_tree, geo::Dimension::new(VIEWPORT_WIDTH, VIEWPORT_HEIGHT));
     // println!("Layout width: {}, height: {}", layout_tree.root_dimension.width, layout_tree.root_dimension.height);
 
     // --------------------------------------------------------------------
@@ -88,7 +91,7 @@ fn main() {
         current_hovered_element: None,
         tile_list: RwLock::new(tile_list),
         show_tilegrid: true,
-        viewport: Rect::new(0.0, 0.0, 1024.0, 768.0),
+        viewport: Rect::new(0.0, 0.0, VIEWPORT_WIDTH, VIEWPORT_HEIGHT),
     };
     init_browser_state(browser_state);
 
@@ -104,13 +107,13 @@ fn build_ui(app: &Application) {
     let window = ApplicationWindow::builder()
         .application(app)
         .title("Renderer")
-        .default_width(1024)
-        .default_height(768)
+        .default_width(VIEWPORT_WIDTH as i32)
+        .default_height(VIEWPORT_HEIGHT as i32)
         .build();
 
     let area = DrawingArea::new();
-    area.set_content_height(1024);
-    area.set_content_width(768);
+    area.set_content_width(VIEWPORT_WIDTH as i32);
+    area.set_content_height(VIEWPORT_HEIGHT as i32);
     area.set_draw_func(move |_area, cr, _width, _height| {
         do_paint(LayerId::new(0));
         do_rasterize(LayerId::new(0));
@@ -195,7 +198,7 @@ fn build_ui(app: &Application) {
     });
     window.add_controller(controller);
 
-    window.set_default_size(1024, 768);
+    window.set_default_size(VIEWPORT_WIDTH as i32, VIEWPORT_HEIGHT as i32);
     window.show();
 }
 

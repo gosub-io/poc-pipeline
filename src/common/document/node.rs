@@ -137,6 +137,21 @@ pub struct Node {
 }
 
 impl Node {
+    pub fn get_style_f32(&self, prop: StyleProperty) -> f32 {
+        match &self.node_type {
+            NodeType::Element(data) => {
+                match data.get_style(prop) {
+                    Some(StyleValue::Unit(px, _)) => *px,
+                    Some(StyleValue::Number(px)) => *px,
+                    _ => 0.0,
+                }
+            }
+            _ => 0.0,
+        }
+    }
+}
+
+impl Node {
     /// Text nodes also have styles. Normally this is taken from the parent element that the text resides in.
     pub fn new_text(doc: &Document, parent_id: Option<NodeId>, text: String, style: Option<StylePropertyList>) -> Node {
         Node {

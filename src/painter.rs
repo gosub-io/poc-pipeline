@@ -10,7 +10,7 @@ use crate::layering::layer::LayerList;
 use crate::layouter::ElementContext;
 use crate::painter::commands::brush::Brush;
 use crate::painter::commands::color::Color;
-use crate::painter::commands::rectangle::Rectangle;
+use crate::painter::commands::rectangle::{Radius, Rectangle};
 use crate::painter::commands::PaintCommand;
 use crate::common::get_image_store;
 use crate::painter::commands::border::{Border, BorderStyle};
@@ -49,6 +49,7 @@ impl Painter {
                         &ctx.text,
                         &ctx.font_family,
                         ctx.font_size,
+                        ctx.font_weight,
                         brush
                     );
                     commands.push(PaintCommand::text(t));
@@ -71,7 +72,25 @@ impl Painter {
                 ElementContext::None => {
                     let brush = self.get_brush(dom_node, StyleProperty::BackgroundColor, Brush::solid(Color::TRANSPARENT));
                     // let border = Border::new(3.0, BorderStyle::None, Brush::Solid(Color::RED));
-                    let r = Rectangle::new(layout_element.box_model.border_box()).with_background(brush); // .with_border(border);
+                    let mut r = Rectangle::new(layout_element.box_model.border_box()).with_background(brush);
+
+                    // Get border
+
+                    // Get radius
+                    let radius_bottom_left = dom_node.get_style_f32(StyleProperty::BorderBottomLeftRadius);
+                    let radius_bottom_right = dom_node.get_style_f32(StyleProperty::BorderBottomRightRadius);
+                    let radius_top_left = dom_node.get_style_f32(StyleProperty::BorderTopLeftRadius);
+                    let radius_top_right = dom_node.get_style_f32(StyleProperty::BorderTopRightRadius);
+
+                    if (radius_bottom_left != 0.0 || radius_bottom_right != 0.0 || radius_top_left != 0.0 || radius_top_right != 0.0) {
+                        r = r.with_radius_tlrb(
+                            radius_top_left as Radius,
+                            radius_top_right as Radius,
+                            radius_bottom_right as Radius,
+                            radius_bottom_left as Radius
+                        );
+                    }
+
                     commands.push(PaintCommand::rectangle(r));
                 }
             }

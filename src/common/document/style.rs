@@ -35,6 +35,27 @@ pub enum StyleProperty {
     MinHeight,
     MaxWidth,
     MaxHeight,
+    BorderBottomLeftRadius,
+    BorderBottomRightRadius,
+    BorderTopLeftRadius,
+    BorderTopRightRadius,
+    AspectRatio,
+    Gap,
+    AlignItems,
+    AlignSelf,
+    AlignContent,
+    TextAlign,
+
+    InsetBlockEnd,
+    InsetBlockStart,
+    InsetInlineEnd,
+    InsetInlineStart,
+    JustifyItems,
+    JustifySelf,
+    JustifyContent,
+    OverflowX,
+    OverflowY,
+    BoxSizing,
 }
 
 #[allow(unused)]

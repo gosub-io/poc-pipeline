@@ -12,8 +12,8 @@ use crate::layouter::{LayoutElementNode, LayoutTree, LayoutElementId, CanLayout,
 use crate::layouter::css_taffy_converter::CssTaffyConverter;
 use crate::layouter::text::pango::get_text_layout;
 
-const DEFAULT_FONT_SIZE: f64 = 12.0;
-const DEFAULT_FONT_FAMILY: &str = "Arial";
+const DEFAULT_FONT_SIZE: f64 = 16.0;
+const DEFAULT_FONT_FAMILY: &str = "Sans";
 
 pub struct TaffyLayouter {
     /// Generated taffy tree
@@ -35,10 +35,11 @@ pub enum TaffyContext {
 }
 
 impl TaffyContext {
-    fn text(font_family: &str, font_size: f64, text: &str) -> TaffyContext {
+    fn text(font_family: &str, font_size: f64, font_weight: usize, text: &str) -> TaffyContext {
         TaffyContext::Text(ElementContextText{
             font_family: font_family.to_string(),
             font_size,
+            font_weight,
             text: text.to_string(),
         })
     }
@@ -79,10 +80,13 @@ impl CanLayout for TaffyLayouter {
             match v_nc {
                 Some(TaffyContext::Text(text_ctx)) => {
                     let font_size = text_ctx.font_size;
+                    let font_weight = text_ctx.font_weight;
                     let font_family = text_ctx.font_family.as_str();
                     let text = text_ctx.text.as_str();
 
-                    let layout = get_text_layout(text, font_family, font_size, v_as.width.unwrap_or(100.0) as f64);
+                    dbg!(&text_ctx);
+
+                    let layout = get_text_layout(text, font_family, font_size, font_weight, v_as.width.unwrap_or(100.0) as f64);
                     match layout {
                         Ok(layout) => {
                             // @TODO: Somehow, layout.width() and layout.height() do not seem to work anymore
@@ -216,9 +220,15 @@ impl TaffyLayouter {
                     _ => {},
                 }
 
+                let font_weight = match node_style.get_property(StyleProperty::FontWeight) {
+                    Some(StyleValue::Number(value)) => *value,
+                    _ => 400.0,
+                };
+
                 taffy_context = Some(TaffyContext::text(
                     font_family.as_str(),
                     font_size,
+                    font_weight as usize,
                     text,
                 ));
             }
@@ -316,6 +326,7 @@ fn to_element_context(taffy_context: Option<&TaffyContext>) -> ElementContext {
         Some(TaffyContext::Text(text_ctx)) => ElementContext::text(
             text_ctx.font_family.as_str(),
             text_ctx.font_size,
+            text_ctx.font_weight,
             text_ctx.text.as_str()
         ),
         Some(TaffyContext::Image(image_ctx)) => ElementContext::image(
