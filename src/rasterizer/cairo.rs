@@ -110,16 +110,16 @@
 //             }
 //         }
 //
-//         let binding = layer_list.layers.read().unwrap();
+//         let binding = layer_list.layers.read().expect("");
 //         let Some(layer) = binding.get(&layer_id) else {
 //             return;
 //         };
 //
 //         for el_node_id in &layer.elements {
-//             let el = layer_list.layout_tree.get_node_by_id(*el_node_id).unwrap();
+//             let el = layer_list.layout_tree.get_node_by_id(*el_node_id).expect("");
 //
 //             // Skip this node if it's not the hovernode we need to display
-//             if hover.is_some() && hover.unwrap() != el.id {
+//             if hover.is_some() && hover.expect("") != el.id {
 //                 continue;
 //             }
 //
@@ -189,7 +189,7 @@ impl Rasterable for CairoRasterizer {
 
         {
             // Each tile has a number of paint commands. We need to execute these paint commands in order onto this surface
-            let cr = cairo::Context::new(&surface).unwrap();
+            let cr = cairo::Context::new(&surface).expect("Failed to create cairo context");
 
             for command in &tile.paint_commands {
                 match command {

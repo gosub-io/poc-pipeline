@@ -113,6 +113,17 @@ pub struct  TileList {
 }
 
 impl TileList {
+    pub fn invalidate_all(&mut self) {
+        for tile in self.arena.values_mut() {
+            tile.state = TileState::Dirty;
+        }
+    }
+
+    pub fn invalidate_tile(&mut self, tile_id: TileId) {
+        let tile = self.arena.get_mut(&tile_id).unwrap();
+        tile.state = TileState::Dirty;
+    }
+
     pub(crate) fn get_tile_mut(&mut self, tile_id: TileId) -> Option<&mut Tile> {
         self.arena.get_mut(&tile_id)
     }

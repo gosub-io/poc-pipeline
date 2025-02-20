@@ -3,7 +3,7 @@ use gtk4::{glib, Adjustment, Application, ApplicationWindow, DrawingArea, EventC
 use gtk4::glib::clone;
 use gtk4::prelude::{AdjustmentExt, ApplicationExt, ApplicationExtManual, DrawingAreaExt, DrawingAreaExtManual, GtkWindowExt, WidgetExt};
 use rendertree_builder::RenderTree;
-use crate::common::browser_state::{get_browser_state, init_browser_state, BrowserState};
+use crate::common::browser_state::{get_browser_state, init_browser_state, BrowserState, WireframeState};
 use crate::common::geo;
 use crate::common::geo::{Dimension, Rect};
 use crate::layering::layer::{LayerId, LayerList};
@@ -17,6 +17,9 @@ use crate::rasterizer::cairo::CairoRasterizer;
 use crate::rasterizer::Rasterable;
 
 const TILE_DIMENSION : f64 = 200.0;
+
+const WINDOW_WIDTH: f64 = 800.0;
+const WINDOW_HEIGHT: f64 = 600.0;
 
 const VIEWPORT_WIDTH : f64 = 2024.0;
 const VIEWPORT_HEIGHT : f64 = 1068.0;
@@ -44,7 +47,7 @@ fn main() {
     // let doc = common::document::parser::document_from_json("adayinthelifeof.nl.json");
     // let doc = common::document::parser::document_from_json("example.org.json");
     // let mut output = String::new();
-    // doc.print_tree(&mut output).unwrap();
+    // doc.print_tree(&mut output).expect("");
     // println!("{}", output);
 
     // --------------------------------------------------------------------
@@ -62,7 +65,7 @@ fn main() {
     // --------------------------------------------------------------------
     // Generate render layers
     let layer_list = LayerList::new(layout_tree);
-    // for (layer_id, layer) in layer_list.layers.read().unwrap().iter() {
+    // for (layer_id, layer) in layer_list.layers.read().expect("").iter() {
     //     println!("Layer: {} (order: {})", layer_id, layer.order);
     //     for element in layer.elements.iter() {
     //         println!("  Element: {}", element);
@@ -86,7 +89,7 @@ fn main() {
 
     let browser_state = BrowserState {
         visible_layer_list: vec![true; 10],
-        wireframed: false,
+        wireframed: WireframeState::None,
         debug_hover: false,
         current_hovered_element: None,
         tile_list: RwLock::new(tile_list),
@@ -99,6 +102,21 @@ fn main() {
         build_ui(app);
     });
 
+
+    println!(r"
+---------------------------------------
+    Gosub Rendering Pipeline Concept
+---------------------------------------
+
+Available key commands:
+  0-9   Toggle layer [0-9]
+  w     Toggle wireframe
+  d     Toggle debug hover
+  t     Toggle tile grid
+
+");
+
+
     app.run();
 }
 
@@ -107,19 +125,26 @@ fn build_ui(app: &Application) {
     let window = ApplicationWindow::builder()
         .application(app)
         .title("Renderer")
-        .default_width(VIEWPORT_WIDTH as i32)
-        .default_height(VIEWPORT_HEIGHT as i32)
+        .default_width(WINDOW_WIDTH as i32)
+        .default_height(WINDOW_HEIGHT as i32)
         .build();
 
     let area = DrawingArea::new();
     area.set_content_width(VIEWPORT_WIDTH as i32);
     area.set_content_height(VIEWPORT_HEIGHT as i32);
     area.set_draw_func(move |_area, cr, _width, _height| {
-        do_paint(LayerId::new(0));
-        do_rasterize(LayerId::new(0));
 
-        do_paint(LayerId::new(1));
-        do_rasterize(LayerId::new(1));
+        let binding = get_browser_state();
+        let state = binding.read().unwrap();
+
+        if state.visible_layer_list[0] {
+            do_paint(LayerId::new(0));
+            do_rasterize(LayerId::new(0));
+        }
+        if state.visible_layer_list[1] {
+            do_paint(LayerId::new(1));
+            do_rasterize(LayerId::new(1));
+        }
 
         CairoCompositor::compose(CairoCompositorConfig{
             cr: cr.clone(),
@@ -133,23 +158,55 @@ fn build_ui(app: &Application) {
     let area_clone = area.clone();
     motion_controller.connect_motion(move |_, x, y| {
         let binding = get_browser_state();
-        let mut state = binding.write().unwrap();
+        let mut state = binding.write().expect("Failed to get browser state");
 
-        let el = state.tile_list.read().unwrap().layer_list.find_element_at(x, y).clone();
-        match (state.current_hovered_element, el) {
+        let el_id = state.tile_list.read().unwrap().layer_list.find_element_at(x, y).clone();
+        match (state.current_hovered_element, el_id) {
             (Some(current_id), Some(new_id)) if current_id != new_id => {
                 // println!("OnElementLeave({})", current_id);
                 // println!("OnElementEnter({})", new_id);
                 state.current_hovered_element = Some(new_id);
+
+                // Invalidate all tiles that intersect with the current element
+                let el = state.tile_list.read().unwrap().layer_list.layout_tree.get_node_by_id(current_id).unwrap();
+                let affected_tiles = state.tile_list.read().unwrap().get_intersecting_tiles(LayerId::new(0), el.box_model.margin_box);
+                let mut list = state.tile_list.write().expect("Failed to get tile list");
+                for tile_id in affected_tiles {
+                    list.invalidate_tile(tile_id);
+                }
+
+                // Invalidate all tiles that intersect with the new element
+                let el = state.tile_list.read().unwrap().layer_list.layout_tree.get_node_by_id(new_id).unwrap();
+                let affected_tiles = state.tile_list.read().unwrap().get_intersecting_tiles(LayerId::new(0), el.box_model.margin_box);
+
+                let mut list = state.tile_list.write().expect("Failed to get tile list");
+                for tile_id in affected_tiles {
+                    list.invalidate_tile(tile_id);
+                }
+
                 area_clone.queue_draw();
             }
             (None, Some(new_id)) => {
-                // println!("OnElementEnter({})", new_id);
+                // Invalidate all tiles that intersect with the new element
+                let el = state.tile_list.read().unwrap().layer_list.layout_tree.get_node_by_id(new_id).unwrap();
+                let affected_tiles = state.tile_list.read().unwrap().get_intersecting_tiles(LayerId::new(0), el.box_model.margin_box);
+                let mut list = state.tile_list.write().expect("Failed to get tile list");
+                for tile_id in affected_tiles {
+                    list.invalidate_tile(tile_id);
+                }
+
                 state.current_hovered_element = Some(new_id);
                 area_clone.queue_draw();
             }
-            (Some(_current_id), None) => {
-                // println!("OnElementLeave({})", current_id);
+            (Some(current_id), None) => {
+                // Invalidate all tiles that intersect with the current element
+                let el = state.tile_list.read().unwrap().layer_list.layout_tree.get_node_by_id(current_id).unwrap();
+                let affected_tiles = state.tile_list.read().unwrap().get_intersecting_tiles(LayerId::new(0), el.box_model.margin_box);
+                let mut list = state.tile_list.write().expect("Failed to get tile list");
+                for tile_id in affected_tiles {
+                    list.invalidate_tile(tile_id);
+                }
+
                 state.current_hovered_element = None;
                 area_clone.queue_draw();
             }
@@ -171,7 +228,7 @@ fn build_ui(app: &Application) {
     let controller = gtk4::EventControllerKey::new();
     controller.connect_key_pressed(move |_controller, keyval, _keycode, _state| {
         let binding = get_browser_state();
-        let mut state = binding.write().unwrap();
+        let mut state = binding.write().expect("Failed to get browser state");
 
         match keyval {
             // numeric keys triggers the visibility of the layers
@@ -186,7 +243,15 @@ fn build_ui(app: &Application) {
             key if key == gtk4::gdk::Key::_9 => { state.visible_layer_list[8] = !state.visible_layer_list[8]; area.queue_draw(); }
             key if key == gtk4::gdk::Key::_0 => { state.visible_layer_list[9] = !state.visible_layer_list[9]; area.queue_draw(); }
             // toggle wireframed elements
-            key if key == gtk4::gdk::Key::w => { state.wireframed = !state.wireframed; area.queue_draw(); }
+            key if key == gtk4::gdk::Key::w => {
+                match state.wireframed {
+                    WireframeState::None => state.wireframed = WireframeState::Only,
+                    WireframeState::Only => state.wireframed = WireframeState::Both,
+                    WireframeState::Both => state.wireframed = WireframeState::None,
+                }
+                state.tile_list.write().expect("Failed to get tile list").invalidate_all();
+                area.queue_draw();
+            }
             // toggle displaying only the hovered element
             key if key == gtk4::gdk::Key::d => { state.debug_hover = !state.debug_hover; area.queue_draw(); }
             // toggle tile grid
@@ -198,7 +263,7 @@ fn build_ui(app: &Application) {
     });
     window.add_controller(controller);
 
-    window.set_default_size(VIEWPORT_WIDTH as i32, VIEWPORT_HEIGHT as i32);
+    window.set_default_size(WINDOW_WIDTH as i32, WINDOW_HEIGHT as i32);
     window.show();
 }
 
@@ -209,6 +274,7 @@ fn do_paint(layer_id: LayerId) {
 
     let tile_ids = state.tile_list.read().unwrap().get_intersecting_tiles(layer_id, state.viewport);
     for tile_id in tile_ids {
+
         // get tile
         let mut binding = state.tile_list.write().unwrap();
         let Some(tile) = binding.get_tile(tile_id) else {
@@ -225,7 +291,6 @@ fn do_paint(layer_id: LayerId) {
         // println!("Generarting painting commands for tile");
         let painter = Painter::new(binding.layer_list.clone());
         let paint_commands = painter.paint(tile);
-        // dbg!(&paint_commands);
 
         let Some(tile) = binding.get_tile_mut(tile_id) else {
             log::warn!("Tile not found: {:?}", tile_id);
@@ -255,7 +320,7 @@ fn do_rasterize(layer_id: LayerId) {
         }
 
         // Rasterize the tile into a texture
-        // println!("Generarting painting commands for tile");
+        // println!("Generating painting commands for tile");
         let texture_id = CairoRasterizer::rasterize(tile);
 
         let Some(tile) = binding.get_tile_mut(tile_id) else {
@@ -309,10 +374,10 @@ fn on_viewport_changed(area: &DrawingArea, hadj: &Adjustment, vadj: &Adjustment)
     let width = hadj.page_size(); // Visible width
     let height = vadj.page_size(); // Visible height
 
-    println!("Visible viewport: x={} y={} width={} height={}", x, y, width, height);
+    // println!("Visible viewport: x={} y={} width={} height={}", x, y, width, height);
 
     let binding = get_browser_state();
-    let mut state = binding.write().unwrap();
+    let mut state = binding.write().expect("Failed to get browser state");
     state.viewport = Rect::new(x, y, width, height);
 
     area.queue_draw(); // Request re-draw if necessary

@@ -69,14 +69,13 @@ async def main():
         print("Usage: souper.py <url>")
         sys.exit(1)
 
-    url = sys.argv[1]
-    dom_tree = await fetch_and_parse_html("https://" + url)
+    dom_tree = await fetch_and_parse_html(sys.argv[1])
 
     # Save to JSON file
-    with open(url + ".json", "w", encoding="utf-8") as f:
+    with open("output.json", "w", encoding="utf-8") as f:
         json.dump(dom_tree, f, indent=2, ensure_ascii=False)
 
-    print(f"DOM tree with computed styles saved to {url}.json")
+    print(f"DOM tree with computed styles saved to output.json")
 
 
 # Run the async function

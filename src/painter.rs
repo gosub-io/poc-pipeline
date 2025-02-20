@@ -4,10 +4,11 @@ use std::ops::AddAssign;
 use std::sync::Arc;
 use pangocairo::pango::FontDescription;
 use rand::Rng;
+use crate::common::browser_state::{get_browser_state, BrowserState, WireframeState};
 use crate::common::document::node::{Node, NodeType};
 use crate::common::document::style::{StyleProperty, StyleValue, Color as StyleColor};
 use crate::layering::layer::LayerList;
-use crate::layouter::ElementContext;
+use crate::layouter::{ElementContext, LayoutElementNode};
 use crate::painter::commands::brush::Brush;
 use crate::painter::commands::color::Color;
 use crate::painter::commands::rectangle::{Radius, Rectangle};
@@ -40,60 +41,22 @@ impl Painter {
                 continue;
             };
 
-            match &layout_element.context {
-                ElementContext::Text(ctx) => {
-                    let brush = self.get_parent_brush(dom_node, StyleProperty::Color, Brush::solid(Color::BLACK));
-                    // let brush = Brush::solid(Color::from_rgb8(130, 130, 130));
-                    let t = Text::new(
-                        layout_element.box_model.content_box(),
-                        &ctx.text,
-                        &ctx.font_family,
-                        ctx.font_size,
-                        ctx.font_weight,
-                        brush
-                    );
-                    commands.push(PaintCommand::text(t));
+            let binding = get_browser_state();
+            let state = binding.read().unwrap();
 
-                    // let border = Border::new(1.0, BorderStyle::Solid, Brush::Solid(Color::RED));
-                    // let r = Rectangle::new(layout_element.box_model.border_box()).with_border(border);
-                    // let r = Rectangle::new(layout_element.box_model.border_box()); // .with_border(border);
-                    // commands.push(PaintCommand::rectangle(r));
+            match state.wireframed {
+                WireframeState::Only => {
+                    commands.extend(self.generate_wireframe_commands(&layout_element));
                 }
-                ElementContext::Image(image_ctx) => {
-                    let binding = get_image_store();
-                    let image_store = binding.read().expect("Failed to get image store");
-                    let image = image_store.get(image_ctx.image_id).unwrap();
-
-                    let brush = Brush::image(image.data.clone(), image.width as u32, image.height as u32);
-                    // let border = Border::new(3.0, BorderStyle::None, Brush::Solid(Color::GREEN));
-                    let r = Rectangle::new(layout_element.box_model.border_box()).with_background(brush);
-                    commands.push(PaintCommand::rectangle(r));
+                WireframeState::Both => {
+                    commands.extend(self.generate_element_commands(&layout_element, &dom_node));
+                    commands.extend(self.generate_wireframe_commands(&layout_element));
                 }
-                ElementContext::None => {
-                    let brush = self.get_brush(dom_node, StyleProperty::BackgroundColor, Brush::solid(Color::TRANSPARENT));
-                    // let border = Border::new(3.0, BorderStyle::None, Brush::Solid(Color::RED));
-                    let mut r = Rectangle::new(layout_element.box_model.border_box()).with_background(brush);
-
-                    // Get border
-
-                    // Get radius
-                    let radius_bottom_left = dom_node.get_style_f32(StyleProperty::BorderBottomLeftRadius);
-                    let radius_bottom_right = dom_node.get_style_f32(StyleProperty::BorderBottomRightRadius);
-                    let radius_top_left = dom_node.get_style_f32(StyleProperty::BorderTopLeftRadius);
-                    let radius_top_right = dom_node.get_style_f32(StyleProperty::BorderTopRightRadius);
-
-                    if (radius_bottom_left != 0.0 || radius_bottom_right != 0.0 || radius_top_left != 0.0 || radius_top_right != 0.0) {
-                        r = r.with_radius_tlrb(
-                            radius_top_left as Radius,
-                            radius_top_right as Radius,
-                            radius_bottom_right as Radius,
-                            radius_bottom_left as Radius
-                        );
-                    }
-
-                    commands.push(PaintCommand::rectangle(r));
+                WireframeState::None => {
+                    commands.extend(self.generate_element_commands(&layout_element, &dom_node));
                 }
             }
+
         }
 
         commands
@@ -127,6 +90,77 @@ impl Painter {
         };
 
         self.get_brush(parent, css_prop, default)
+    }
+
+    fn generate_wireframe_commands(&self, layout_element: &LayoutElementNode) -> Vec<PaintCommand> {
+        let mut commands = Vec::new();
+
+        let border = Border::new(1.0, BorderStyle::Solid, Brush::Solid(Color::RED));
+        let r = Rectangle::new(layout_element.box_model.border_box()).with_border(border);
+        commands.push(PaintCommand::rectangle(r));
+
+        commands
+    }
+
+    fn generate_element_commands(&self, layout_element: &LayoutElementNode, dom_node: &Node) -> Vec<PaintCommand> {
+        let mut commands = Vec::new();
+
+        match &layout_element.context {
+            ElementContext::Text(ctx) => {
+                let brush = self.get_parent_brush(dom_node, StyleProperty::Color, Brush::solid(Color::BLACK));
+                // let brush = Brush::solid(Color::from_rgb8(130, 130, 130));
+                let t = Text::new(
+                    layout_element.box_model.content_box(),
+                    &ctx.text,
+                    &ctx.font_family,
+                    ctx.font_size,
+                    ctx.font_weight,
+                    brush
+                );
+                commands.push(PaintCommand::text(t));
+
+                // let border = Border::new(1.0, BorderStyle::Solid, Brush::Solid(Color::RED));
+                // let r = Rectangle::new(layout_element.box_model.border_box()).with_border(border);
+                // let r = Rectangle::new(layout_element.box_model.border_box()); // .with_border(border);
+                // commands.push(PaintCommand::rectangle(r));
+            }
+            ElementContext::Image(image_ctx) => {
+                let binding = get_image_store();
+                let image_store = binding.read().expect("Failed to get image store");
+                let image = image_store.get(image_ctx.image_id).unwrap();
+
+                let brush = Brush::image(image.data.clone(), image.width as u32, image.height as u32);
+                // let border = Border::new(3.0, BorderStyle::None, Brush::Solid(Color::GREEN));
+                let r = Rectangle::new(layout_element.box_model.border_box()).with_background(brush);
+                commands.push(PaintCommand::rectangle(r));
+            }
+            ElementContext::None => {
+                let brush = self.get_brush(dom_node, StyleProperty::BackgroundColor, Brush::solid(Color::TRANSPARENT));
+                // let border = Border::new(3.0, BorderStyle::None, Brush::Solid(Color::RED));
+                let mut r = Rectangle::new(layout_element.box_model.border_box()).with_background(brush);
+
+                // Get border
+
+                // Get radius
+                let radius_bottom_left = dom_node.get_style_f32(StyleProperty::BorderBottomLeftRadius);
+                let radius_bottom_right = dom_node.get_style_f32(StyleProperty::BorderBottomRightRadius);
+                let radius_top_left = dom_node.get_style_f32(StyleProperty::BorderTopLeftRadius);
+                let radius_top_right = dom_node.get_style_f32(StyleProperty::BorderTopRightRadius);
+
+                if (radius_bottom_left != 0.0 || radius_bottom_right != 0.0 || radius_top_left != 0.0 || radius_top_right != 0.0) {
+                    r = r.with_radius_tlrb(
+                        radius_top_left as Radius,
+                        radius_top_right as Radius,
+                        radius_bottom_right as Radius,
+                        radius_bottom_left as Radius
+                    );
+                }
+
+                commands.push(PaintCommand::rectangle(r));
+            }
+        }
+
+        commands
     }
 }
 

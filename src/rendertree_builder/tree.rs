@@ -78,7 +78,9 @@ impl RenderTree {
     }
 
     fn print_node(&self, node_id: RenderNodeId, level: usize) {
-        let node = self.get_node_by_id(node_id).unwrap();
+        let Some(node) = self.get_node_by_id(node_id) else {
+            return;
+        };
 
         let indent = " ".repeat(level * 4);
         println!("{}{}", indent, node.node_id);

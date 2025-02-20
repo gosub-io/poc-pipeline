@@ -4,13 +4,20 @@ use crate::Rect;
 use crate::layouter::LayoutElementId;
 use crate::tiler::TileList;
 
+#[derive(Debug)]
+pub enum WireframeState {
+    None,
+    Only,
+    Both,
+}
+
 /// Things that can change in the browser is stored in this structure. It keeps the current rendering pipeline (in the form of a layer_list),
 /// and some things that we can control, or is controlled by the user (like current_hovered_element).
 pub struct BrowserState {
     /// List of layers that will be visible are set to true
     pub visible_layer_list: Vec<bool>,
-    /// If true, wireframes are drawn, otherwise complete elements are drawn
-    pub wireframed: bool,
+    /// Defines if we need to draw wireframes, or the actual content, or both
+    pub wireframed: WireframeState,
     /// Just show the hovered debug node in wireframe
     pub debug_hover: bool,
     /// Show the tile grid

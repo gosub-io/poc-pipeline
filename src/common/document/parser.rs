@@ -144,6 +144,7 @@ fn get_style_from_node(node: &DomNode) -> StylePropertyList {
 
             "justify_items" => style.set_property(StyleProperty::JustifyItems, parse_style_str(value)),
             "justify_self" => style.set_property(StyleProperty::JustifySelf, parse_style_str(value)),
+            "justify_content" => style.set_property(StyleProperty::JustifyContent, parse_style_str(value)),
 
             "overflow-x" => style.set_property(StyleProperty::OverflowX, parse_style_str(value)),
             "overflow-y" => style.set_property(StyleProperty::OverflowY, parse_style_str(value)),

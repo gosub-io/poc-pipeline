@@ -27,14 +27,14 @@ pub fn get_font_context() -> std::sync::MutexGuard<'static, parley::FontContext>
     FONT_CTX
         .get_or_init(|| Mutex::new(parley::FontContext::new()))
         .lock()
-        .unwrap()
+        .expect("Failed to lock font context")
 }
 
 fn get_layout_context() -> std::sync::MutexGuard<'static, parley::LayoutContext> {
     LAYOUT_CTX
         .get_or_init(|| Mutex::new(parley::LayoutContext::new()))
         .lock()
-        .unwrap()
+        .expect("Failed to lock layout context")
 }
 
 pub fn get_text_layout(text: &str, font_family: &str, font_size: f64) -> Layout<ColorBrush> {
