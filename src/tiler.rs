@@ -113,6 +113,20 @@ pub struct  TileList {
 }
 
 impl TileList {
+    pub fn get_tiles_for_element(&self, element_id: LayoutElementId) -> Vec<TileId> {
+        let mut matching_tiles = vec![];
+
+        for tile in self.arena.values() {
+            for element in &tile.elements {
+                if element.id == element_id {
+                    matching_tiles.push(tile.id);
+                }
+            }
+        }
+
+        matching_tiles
+    }
+
     pub fn invalidate_all(&mut self) {
         for tile in self.arena.values_mut() {
             tile.state = TileState::Dirty;

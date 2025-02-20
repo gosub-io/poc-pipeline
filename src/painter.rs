@@ -44,6 +44,11 @@ impl Painter {
             let binding = get_browser_state();
             let state = binding.read().unwrap();
 
+            // Paint boxmodel for the hovered element if needed
+            if state.debug_hover && state.current_hovered_element.is_some() && state.current_hovered_element.unwrap() == layout_element.id {
+                commands.extend(self.generate_boxmodel_commands(&layout_element));
+            }
+
             match state.wireframed {
                 WireframeState::Only => {
                     commands.extend(self.generate_wireframe_commands(&layout_element));
@@ -56,7 +61,6 @@ impl Painter {
                     commands.extend(self.generate_element_commands(&layout_element, &dom_node));
                 }
             }
-
         }
 
         commands
@@ -97,6 +101,24 @@ impl Painter {
 
         let border = Border::new(1.0, BorderStyle::Solid, Brush::Solid(Color::RED));
         let r = Rectangle::new(layout_element.box_model.border_box()).with_border(border);
+        commands.push(PaintCommand::rectangle(r));
+
+        commands
+    }
+
+    fn generate_boxmodel_commands(&self, layout_element: &LayoutElementNode) -> Vec<PaintCommand> {
+        let mut commands = Vec::new();
+
+        let brush = Brush::Solid(Color::GREEN);
+        let r = Rectangle::new(layout_element.box_model.margin_box).with_background(brush);
+        commands.push(PaintCommand::rectangle(r));
+
+        let brush = Brush::Solid(Color::YELLOW);
+        let r = Rectangle::new(layout_element.box_model.padding_box()).with_background(brush);
+        commands.push(PaintCommand::rectangle(r));
+
+        let brush = Brush::Solid(Color::CYAN);
+        let r = Rectangle::new(layout_element.box_model.content_box()).with_background(brush);
         commands.push(PaintCommand::rectangle(r));
 
         commands

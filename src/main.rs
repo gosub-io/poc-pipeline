@@ -158,59 +158,46 @@ fn build_ui(app: &Application) {
     let area_clone = area.clone();
     motion_controller.connect_motion(move |_, x, y| {
         let binding = get_browser_state();
-        let mut state = binding.write().expect("Failed to get browser state");
-
+        let state = binding.read().expect("Failed to get browser state");
         let el_id = state.tile_list.read().unwrap().layer_list.find_element_at(x, y).clone();
-        match (state.current_hovered_element, el_id) {
+        let che = state.current_hovered_element.clone();
+
+        let mut tile_ids = vec![];
+        match (che, el_id) {
             (Some(current_id), Some(new_id)) if current_id != new_id => {
-                // println!("OnElementLeave({})", current_id);
-                // println!("OnElementEnter({})", new_id);
-                state.current_hovered_element = Some(new_id);
-
-                // Invalidate all tiles that intersect with the current element
-                let el = state.tile_list.read().unwrap().layer_list.layout_tree.get_node_by_id(current_id).unwrap();
-                let affected_tiles = state.tile_list.read().unwrap().get_intersecting_tiles(LayerId::new(0), el.box_model.margin_box);
-                let mut list = state.tile_list.write().expect("Failed to get tile list");
-                for tile_id in affected_tiles {
-                    list.invalidate_tile(tile_id);
-                }
-
-                // Invalidate all tiles that intersect with the new element
-                let el = state.tile_list.read().unwrap().layer_list.layout_tree.get_node_by_id(new_id).unwrap();
-                let affected_tiles = state.tile_list.read().unwrap().get_intersecting_tiles(LayerId::new(0), el.box_model.margin_box);
-
-                let mut list = state.tile_list.write().expect("Failed to get tile list");
-                for tile_id in affected_tiles {
-                    list.invalidate_tile(tile_id);
-                }
-
-                area_clone.queue_draw();
+                state.tile_list.read().unwrap().get_tiles_for_element(current_id).iter().for_each(|tile_id| {
+                    tile_ids.push(*tile_id);
+                });
+                state.tile_list.read().unwrap().get_tiles_for_element(new_id).iter().for_each(|tile_id| {
+                    tile_ids.push(*tile_id);
+                });
             }
             (None, Some(new_id)) => {
-                // Invalidate all tiles that intersect with the new element
-                let el = state.tile_list.read().unwrap().layer_list.layout_tree.get_node_by_id(new_id).unwrap();
-                let affected_tiles = state.tile_list.read().unwrap().get_intersecting_tiles(LayerId::new(0), el.box_model.margin_box);
-                let mut list = state.tile_list.write().expect("Failed to get tile list");
-                for tile_id in affected_tiles {
-                    list.invalidate_tile(tile_id);
-                }
-
-                state.current_hovered_element = Some(new_id);
-                area_clone.queue_draw();
+                let mut tile_ids = vec![];
+                state.tile_list.read().unwrap().get_tiles_for_element(new_id).iter().for_each(|tile_id| {
+                    tile_ids.push(*tile_id);
+                });
             }
             (Some(current_id), None) => {
-                // Invalidate all tiles that intersect with the current element
-                let el = state.tile_list.read().unwrap().layer_list.layout_tree.get_node_by_id(current_id).unwrap();
-                let affected_tiles = state.tile_list.read().unwrap().get_intersecting_tiles(LayerId::new(0), el.box_model.margin_box);
-                let mut list = state.tile_list.write().expect("Failed to get tile list");
-                for tile_id in affected_tiles {
-                    list.invalidate_tile(tile_id);
-                }
-
-                state.current_hovered_element = None;
-                area_clone.queue_draw();
+                let mut tile_ids = vec![];
+                state.tile_list.read().unwrap().get_tiles_for_element(current_id).iter().for_each(|tile_id| {
+                    tile_ids.push(*tile_id);
+                });
             }
             _ => {},
+        }
+        drop(state);
+
+
+        let mut state = binding.write().expect("Failed to get browser state");
+        if state.current_hovered_element != el_id {
+            for tile_id in &tile_ids {
+                // It's ok when we have double tiles in the list. We just set the tile to dirty again.
+                state.tile_list.write().unwrap().invalidate_tile(*tile_id);
+            }
+
+            state.current_hovered_element = el_id;
+            area_clone.queue_draw();
         }
     });
     area.add_controller(motion_controller);
@@ -253,7 +240,11 @@ fn build_ui(app: &Application) {
                 area.queue_draw();
             }
             // toggle displaying only the hovered element
-            key if key == gtk4::gdk::Key::d => { state.debug_hover = !state.debug_hover; area.queue_draw(); }
+            key if key == gtk4::gdk::Key::d => {
+                state.debug_hover = !state.debug_hover;
+                state.tile_list.write().expect("Failed to get tile list").invalidate_all();
+                area.queue_draw();
+            }
             // toggle tile grid
             key if key == gtk4::gdk::Key::t => { state.show_tilegrid = !state.show_tilegrid; area.queue_draw(); }
             _ => (),
