@@ -32,23 +32,23 @@ impl ImageStore {
         let filepath = "sub.png";
 
         // println!("Store from path: {}", filepath);
-        let fmt = ImageFormat::from_path(filepath).unwrap();
+        let fmt = ImageFormat::from_path(filepath).expect("Failed to get image format");
 
-        let file = File::open(filepath).unwrap();
+        let file = File::open(filepath).expect("Failed to open file");
         let reader = BufReader::new(file);
-        let rgb_img = image::load(reader, fmt).unwrap().to_rgba8();
+        let rgb_img = image::load(reader, fmt).expect("Failed to load image").to_rgba8();
 
         let img = Image::new(rgb_img.width() as usize, rgb_img.height() as usize, rgb_img.into_raw(), fmt);
 
-        let mut images = self.images.write().unwrap();
-        let image_id = *self.next_image_id.read().unwrap();
+        let mut images = self.images.write().expect("Failed to lock images");
+        let image_id = *self.next_image_id.read().expect("Failed to lock next image ID");
         images.insert(image_id, Arc::new(img));
-        *self.next_image_id.write().unwrap() += 1;
+        *self.next_image_id.write().expect("Failed to lock next image ID") += 1;
         image_id
     }
 
     pub fn get(&self, image_id: ImageId) -> Option<Arc<Image>> {
-        let images = self.images.read().unwrap();
+        let images = self.images.read().expect("Failed to lock images");
         images.get(&image_id).cloned()
     }
 }

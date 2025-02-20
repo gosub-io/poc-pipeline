@@ -276,7 +276,7 @@ fn do_paint(layer_id: LayerId) {
     for tile_id in tile_ids {
 
         // get tile
-        let mut binding = state.tile_list.write().unwrap();
+        let mut binding = state.tile_list.write().expect("Failed to get tile list");
         let Some(tile) = binding.get_tile(tile_id) else {
             log::warn!("Tile not found: {:?}", tile_id);
             continue;
@@ -308,7 +308,7 @@ fn do_rasterize(layer_id: LayerId) {
     for tile_id in tile_ids {
 
         // get tile
-        let mut binding = state.tile_list.write().unwrap();
+        let mut binding = state.tile_list.write().expect("Failed to get tile list");
         let Some(tile) = binding.get_tile(tile_id) else {
             log::warn!("Tile not found: {:?}", tile_id);
             continue;

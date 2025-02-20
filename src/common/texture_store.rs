@@ -52,7 +52,7 @@ impl TextureStore {
     }
 
     fn next_id(&self) -> TextureId {
-        let mut nid = self.next_id.write().unwrap();
+        let mut nid = self.next_id.write().expect("Failed to lock next texture ID");
         let id = *nid;
         *nid += 1;
         id

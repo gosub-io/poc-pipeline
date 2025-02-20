@@ -55,7 +55,7 @@ impl Document {
     }
 
     pub fn next_node_id(&self) -> NodeId {
-        let mut nid = self.next_node_id.write().unwrap();
+        let mut nid = self.next_node_id.write().expect("Failed to lock next node ID");
         let id = *nid;
         *nid += 1;
         id
