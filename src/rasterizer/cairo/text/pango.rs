@@ -1,11 +1,11 @@
 use gtk4::cairo::{Context, Error, Format, ImageSurface};
-use gtk4::pango;
-use gtk4::pango::{Weight, SCALE};
+use gtk4::pango::SCALE;
 use pangocairo::functions::create_layout;
 use pangocairo::pango::FontDescription;
 use crate::painter::commands::text::Text;
 use crate::rasterizer::cairo::brush::set_brush;
 use crate::tiler::Tile;
+use crate::common::font::pango::{find_available_font, to_pango_weight};
 
 pub(crate) fn do_paint_text(cr: &Context, tile: &Tile, cmd: &Text) -> Result<(), Error> {
     let surface = create_text_layout(cmd)?;
@@ -52,48 +52,3 @@ fn create_text_layout(cmd: &Text) -> Result<ImageSurface, Error> {
     Ok(surface)
 }
 
-fn to_pango_weight(w: usize) -> Weight {
-    if w < 100 {
-        Weight::Thin
-    } else if w < 200 {
-        Weight::Ultralight
-    } else if w < 300 {
-        Weight::Light
-    } else if w < 400 {
-        Weight::Normal
-    } else if w < 500 {
-        Weight::Medium
-    } else if w < 600 {
-        Weight::Semibold
-    } else if w < 700 {
-        Weight::Bold
-    } else if w < 800 {
-        Weight::Ultrabold
-    } else {
-        Weight::Heavy
-    }
-}
-
-
-fn find_available_font(_families: &str, _ctx: &pango::Context) -> String {
-    return "Ubuntu Sans".into();
-
-/*
-    let available_fonts: Vec<String> = ctx.list_families().iter().map(|f| f.name().to_ascii_lowercase()).collect();
-
-    for font in families.split(',') {
-        if font == "system-ui" {
-            continue;
-        }
-
-        println!("Checking for: {}", font);
-        let font_name = font.trim().replace('"', ""); // Remove spaces & quotes
-
-        if available_fonts.contains(&font_name.to_ascii_lowercase()) {
-            return font_name; // Found a valid font!
-        }
-    }
-
-    "FBserif".to_string() // Default fallback
- */
-}

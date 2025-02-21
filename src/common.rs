@@ -3,6 +3,7 @@ pub mod image;
 pub mod document;
 pub mod geo;
 pub mod browser_state;
+pub mod font;
 
 mod image_store;
 mod texture_store;

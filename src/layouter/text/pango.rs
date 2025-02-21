@@ -1,8 +1,7 @@
 use gtk4::cairo::{Context, Error, Format, ImageSurface};
-use gtk4::pango::{FontDescription, SCALE, Layout, Weight};
+use gtk4::pango::{FontDescription, SCALE, Layout};
 use pangocairo::functions::create_layout;
-use pangocairo::pango;
-use pangocairo::prelude::{FontFamilyExt, FontMapExt};
+use crate::common::font::pango::{find_available_font, to_pango_weight};
 
 /// Retrieves the pango layout for the given text, font family, font size and maximum width.
 /// it will wrap any long lines based on the pixels found in width.
@@ -24,47 +23,4 @@ pub fn get_text_layout(text: &str, font_family: &str, font_size: f64, font_weigh
     // layout.set_wrap(gtk4::pango::WrapMode::Char);
 
     Ok(layout)
-}
-
-fn to_pango_weight(w: usize) -> Weight {
-    if w < 100 {
-        Weight::Thin
-    } else if w < 200 {
-        Weight::Ultralight
-    } else if w < 300 {
-        Weight::Light
-    } else if w < 400 {
-        Weight::Normal
-    } else if w < 500 {
-        Weight::Medium
-    } else if w < 600 {
-        Weight::Semibold
-    } else if w < 700 {
-        Weight::Bold
-    } else if w < 800 {
-        Weight::Ultrabold
-    } else {
-        Weight::Heavy
-    }
-}
-
-fn find_available_font(families: &str, ctx: &pango::Context) -> String {
-    return "Ubuntu Sans".into();
-
-    let available_fonts: Vec<String> = ctx.list_families().iter().map(|f| f.name().to_ascii_lowercase()).collect();
-
-    for font in families.split(',') {
-        if font == "system-ui" {
-            continue;
-        }
-
-        println!("Checking for: {}", font);
-        let font_name = font.trim().replace('"', ""); // Remove spaces & quotes
-
-        if available_fonts.contains(&font_name.to_ascii_lowercase()) {
-            return font_name; // Found a valid font!
-        }
-    }
-
-    "FBserif".to_string() // Default fallback
 }
