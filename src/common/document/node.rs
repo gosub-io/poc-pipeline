@@ -4,6 +4,7 @@ use crate::common::document::document::Document;
 use crate::common::document::style::{StylePropertyList, StyleValue, StyleProperty};
 use crate::rendertree_builder::RenderNodeId;
 
+/// Map of attributes for a html element (a href, src, data-*, etc)
 #[derive(Debug, Clone)]
 pub struct AttrMap {
     attributes: HashMap<String, String>,
@@ -46,14 +47,14 @@ impl AttrMap {
     }
 }
 
-
+/// Data for a html element (tag name, attributes, styles etc)
 #[derive(Clone, Debug)]
 pub struct ElementData {
     /// Element name (ie: P, DIV, IMG etc)
     pub tag_name: String,
     /// Element attributes (src, href, class etc)
     pub attributes: AttrMap,
-    /// Is this element self closing (ie: <img />)
+    /// Is this element self-closing (ie: <img />)
     #[allow(unused)]
     pub self_closing: bool,
     /// Element styles (color, font-size etc)
@@ -92,8 +93,11 @@ impl ElementData {
 
 #[derive(Clone, Debug)]
 pub enum NodeType {
+    // Comment node (<!-- comment -->)
     Comment(String),
+    // Text node (ie: Some text). Does not contain any children
     Text(String, StylePropertyList),
+    // Element node (ie: <div></div>)
     Element(ElementData),
 }
 
@@ -110,6 +114,7 @@ impl NodeId {
     }
 }
 
+/// RenderNodeId and NodeId are interchangeable. This is a convenience function to convert between the two.
 impl From<RenderNodeId> for NodeId {
     fn from(node_id: RenderNodeId) -> Self {
         Self(node_id.to_u64())

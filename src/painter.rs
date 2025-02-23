@@ -16,7 +16,7 @@ use crate::painter::commands::PaintCommand;
 use crate::common::get_image_store;
 use crate::painter::commands::border::{Border, BorderStyle};
 use crate::painter::commands::text::Text;
-use crate::tiler::Tile;
+use crate::tiler::{Tile, TiledLayoutElement};
 
 pub struct Painter {
     layer_list: Arc<LayerList>,
@@ -30,36 +30,34 @@ impl Painter {
     }
 
     // Generate paint commands for the given tile
-    pub(crate) fn paint(&self, tile: &Tile) -> Vec<PaintCommand> {
+    pub(crate) fn paint(&self, element: &TiledLayoutElement) -> Vec<PaintCommand> {
         let mut commands = Vec::new();
 
-        for tile_element in &tile.elements {
-            let Some(layout_element) = self.layer_list.layout_tree.get_node_by_id(tile_element.id) else {
-                continue;
-            };
-            let Some(dom_node) = self.layer_list.layout_tree.render_tree.doc.get_node_by_id(layout_element.dom_node_id) else {
-                continue;
-            };
+        let Some(layout_element) = self.layer_list.layout_tree.get_node_by_id(element.id) else {
+            return Vec::new();
+        };
+        let Some(dom_node) = self.layer_list.layout_tree.render_tree.doc.get_node_by_id(layout_element.dom_node_id) else {
+            return Vec::new();
+        };
 
-            let binding = get_browser_state();
-            let state = binding.read().unwrap();
+        let binding = get_browser_state();
+        let state = binding.read().unwrap();
 
-            // Paint boxmodel for the hovered element if needed
-            if state.debug_hover && state.current_hovered_element.is_some() && state.current_hovered_element.unwrap() == layout_element.id {
-                commands.extend(self.generate_boxmodel_commands(&layout_element));
+        // Paint boxmodel for the hovered element if needed
+        if state.debug_hover && state.current_hovered_element.is_some() && state.current_hovered_element.unwrap() == layout_element.id {
+            commands.extend(self.generate_boxmodel_commands(&layout_element));
+        }
+
+        match state.wireframed {
+            WireframeState::Only => {
+                commands.extend(self.generate_wireframe_commands(&layout_element));
             }
-
-            match state.wireframed {
-                WireframeState::Only => {
-                    commands.extend(self.generate_wireframe_commands(&layout_element));
-                }
-                WireframeState::Both => {
-                    commands.extend(self.generate_element_commands(&layout_element, &dom_node));
-                    commands.extend(self.generate_wireframe_commands(&layout_element));
-                }
-                WireframeState::None => {
-                    commands.extend(self.generate_element_commands(&layout_element, &dom_node));
-                }
+            WireframeState::Both => {
+                commands.extend(self.generate_element_commands(&layout_element, &dom_node));
+                commands.extend(self.generate_wireframe_commands(&layout_element));
+            }
+            WireframeState::None => {
+                commands.extend(self.generate_element_commands(&layout_element, &dom_node));
             }
         }
 

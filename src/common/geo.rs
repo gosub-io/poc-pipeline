@@ -13,13 +13,13 @@ impl Rect {
         Self { x, y, width, height }
     }
 
-    /// Check if this rectangle intersects with another rectangle.
-    pub fn intersects(&self, other: Rect) -> bool {
-        self.x < other.x + other.width &&
-            self.x + self.width > other.x &&
-            self.y < other.y + other.height &&
-            self.y + self.height > other.y
-    }
+    // /// Check if this rectangle intersects with another rectangle.
+    // pub fn intersects(&self, other: Rect) -> bool {
+    //     self.x < other.x + other.width &&
+    //         self.x + self.width > other.x &&
+    //         self.y < other.y + other.height &&
+    //         self.y + self.height > other.y
+    // }
 
     /// Converts a size and dimension into a rectangle.
     #[allow(unused)]
@@ -83,13 +83,6 @@ impl Dimension {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_rect_intersects() {
-        let rect1 = Rect::new(0.0, 0.0, 10.0, 10.0);
-        let rect2 = Rect::new(5.0, 5.0, 10.0, 10.0);
-        assert!(rect1.intersects(rect2));
-    }
 
     #[test]
     fn test_rect_from_coord_dimension() {

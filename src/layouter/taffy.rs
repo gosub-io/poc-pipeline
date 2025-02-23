@@ -84,8 +84,6 @@ impl CanLayout for TaffyLayouter {
                     let font_family = text_ctx.font_family.as_str();
                     let text = text_ctx.text.as_str();
 
-                    dbg!(&text_ctx);
-
                     let layout = get_text_layout(text, font_family, font_size, font_weight, v_as.width.unwrap_or(100.0) as f64);
                     match layout {
                         Ok(layout) => {
@@ -112,6 +110,9 @@ impl CanLayout for TaffyLayouter {
         let w = root.box_model.margin_box.width as f32;
         let h = root.box_model.margin_box.height as f32;
         layout_tree.root_dimension = crate::common::geo::Dimension::new(w as f64, h as f64);
+
+
+        self.tree.print_tree(self.root_id);
 
         layout_tree
     }
@@ -145,6 +146,7 @@ impl TaffyLayouter {
             root_id: LayoutElementId::new(0), // Will be filled in later
             next_node_id: Arc::new(RwLock::new(LayoutElementId::new(0))),
             root_dimension: crate::common::geo::Dimension::ZERO,
+            rstar_tree: rstar::RTree::new(),
         };
 
         let ids = {

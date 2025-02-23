@@ -1,12 +1,45 @@
 use std::collections::HashMap;
+use std::fmt::Debug;
 use std::ops::AddAssign;
 use std::sync::{Arc, RwLock};
+use rstar::AABB;
+use rstar::primitives::GeomWithData;
 use crate::common::geo::{Coordinate, Dimension, Rect};
 use crate::layering::layer::{LayerId, LayerList};
 use crate::layouter::{LayoutElementId, LayoutElementNode};
 use crate::painter::commands::PaintCommand;
 use crate::common::texture::TextureId;
 
+/*
+
+TileList
+    wrapped(LayerList)
+    tiles: hashmap<LayerId, TileLayer>
+    arena of Tile
+    next_node_id
+    default_tile_dimension
+
+TileLayer
+    layer_id
+    tiles: Vec<TileId>
+    rstar_tree
+
+ Tile
+    id
+    layer_id
+    elements: Vec<TiledLayoutElement>
+    texture_id
+    state
+    rect
+
+ TiledLayoutElement
+    id
+    rect
+    position
+    paint_commands
+ */
+
+/// Identifier for tiles
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TileId(u64);
 
@@ -28,14 +61,19 @@ impl std::fmt::Display for TileId {
     }
 }
 
+/// An element that is laid out in a tile. It contains the paint commands to render the (partial)
+/// element onto the tile.
 #[derive(Debug, Clone)]
 pub struct TiledLayoutElement {
     /// Element to layout
     pub id: LayoutElementId,
-    /// Position and dimension of the element inside the tile
+    /// Position and dimension of the element inside the tile. If the element is larger than the
+    /// tile, this will be a subset of the element.
     pub rect: Rect,
-    /// Coordinate of the element in the tile
+    /// Coordinate of the element in the tile. It is the coordinate inside the tile where the element starts.
     pub position: Coordinate,
+    /// List of paint commands to execute in order to draw this elements onto the tile
+    pub paint_commands: Vec<PaintCommand>,
 }
 
 /*
@@ -70,7 +108,7 @@ the rect starts at 0,0 to 50,25. Which is the top left quarter of the element.
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum TileState {
-    /// Tile texture is clean
+    /// Tile texture is clean and can be rendered
     Clean,
     /// Tile texture needs a repaint
     Dirty,
@@ -78,31 +116,58 @@ pub enum TileState {
     Unrenderable,
 }
 
+/// Single tile in the tile list. It contains a list of elements that are laid out in the tile and
+/// has the (rendered) texture that will eventually be composited onto the screen.
 #[derive(Debug, Clone)]
 pub struct Tile {
     /// Tile ID
     pub id: TileId,
+    /// Layer id on which this tile lives
+    pub layer_id: LayerId,
     /// Elements found in the tile
     pub elements: Vec<TiledLayoutElement>,
-    /// Texture that this tile is rendered to
+    /// Texture that this tile is rendered to. If it does not have a texture id, it's not rendered
+    /// yet. Note that when the staet is DIRTY, the texture_id is still valid, but the texture needs
+    /// to be repainted.
     pub texture_id: Option<TextureId>,
-    /// List of paint commands to execute in order to draw the elements in this tile
-    pub paint_commands: Vec<PaintCommand>,
     /// State of the tile
     pub state: TileState,
     // Position and dimension of the tile in the layer
     pub rect: Rect,
-    /// Layer id on which this tile lives
-    pub layer_id: LayerId,
 }
 
+/// Each layer has a list of tiles. Each tile has a list of elements that are laid out in that tile.
 #[derive(Debug, Clone)]
-pub struct  TileList {
+pub struct TileLayer {
+    // Layer ID of this layer
+    pub layer_id: LayerId,
+    // List of tiles inside this layer
+    pub tiles: Vec<TileId>,
+    /// R* tree for fast spatial queries of tiles inside this layer
+    rstar_tree: rstar::RTree<GeomWithData<rstar::primitives::Rectangle<[f64; 2]>, TileId>>,
+}
+
+impl TileLayer {
+    // Find all tile ids in this layer that intersects with the given rect
+    pub fn intersects_with(&self, rect: Rect) -> Vec<TileId> {
+        self.rstar_tree
+            .locate_in_envelope_intersecting(&AABB::from_corners(
+                [rect.x, rect.y],
+                [rect.x + rect.width, rect.y + rect.height]
+            ))
+            .map(|x| x.data)
+            .collect()
+    }
+}
+
+/// Main list of tiles per layer.
+#[derive(Clone)]
+pub struct TileList {
     /// Wrapped layer list
     pub layer_list: Arc<LayerList>,
 
-    /// A list of tile ids per layer
-    pub layers: HashMap<LayerId, Vec<TileId>>,
+    // Tile info per layer
+    pub tiles: HashMap<LayerId, TileLayer>,
 
     /// Arena of layout nodes
     pub arena : HashMap<TileId, Tile>,
@@ -110,6 +175,17 @@ pub struct  TileList {
     next_node_id: Arc<RwLock<TileId>>,
 
     pub default_tile_dimension: Dimension,
+}
+
+impl Debug for TileList {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("TileList")
+            .field("layers", &self.tiles)
+            .field("arena", &self.arena)
+            .field("next_node_id", &self.next_node_id)
+            .field("default_tile_dimension", &self.default_tile_dimension)
+            .finish()
+    }
 }
 
 impl TileList {
@@ -149,19 +225,11 @@ impl TileList {
 
     /// Return all the tiles for the specific layer that intersects with the given viewport
     pub(crate) fn get_intersecting_tiles(&self, layer_id: LayerId, viewport: Rect) -> Vec<TileId> {
-        let mut matching_tiles = vec![];
-
-        let Some(tile_ids) = self.layers.get(&layer_id) else {
-            return matching_tiles
+        let Some(tile_layer) = self.tiles.get(&layer_id) else {
+            return vec![];
         };
 
-        for tile_id in tile_ids {
-            let tile = self.arena.get(tile_id).unwrap();
-            if tile.rect.intersects(viewport) {
-                matching_tiles.push(*tile_id);
-            }
-        }
-        matching_tiles
+        tile_layer.intersects_with(viewport)
     }
 }
 
@@ -169,7 +237,7 @@ impl TileList {
     pub fn new(layer_list: LayerList, dimension: Dimension) -> Self {
         Self {
             layer_list: Arc::new(layer_list),
-            layers: HashMap::new(),
+            tiles: HashMap::new(),
             arena: HashMap::new(),
             next_node_id: Arc::new(RwLock::new(TileId::new(0))),
             default_tile_dimension: dimension,
@@ -193,17 +261,16 @@ impl TileList {
                     let tile_id = self.next_node_id();
                     let tile = Tile {
                         id: tile_id,
+                        layer_id: *layer_id,
+                        state: TileState::Dirty,
                         elements: Vec::new(),
                         texture_id: None,
-                        paint_commands: Vec::new(),
-                        state: TileState::Dirty,
                         rect: Rect::new(
                             x as f64 * self.default_tile_dimension.width,
                             y as f64 * self.default_tile_dimension.height,
                             self.default_tile_dimension.width,
                             self.default_tile_dimension.height,
                         ),
-                        layer_id: *layer_id,
                     };
 
                     self.arena.insert(tile_id, tile);
@@ -211,11 +278,30 @@ impl TileList {
                 }
             }
 
-            // Store tile_ids in the layer mapping
-            self.layers.insert(*layer_id, tile_ids.clone());
+            let rtree_data: Vec<_> = tile_ids.iter().map(|tile_id| {
+                let tile = self.arena.get(tile_id).unwrap();
+                GeomWithData::new(
+                    rstar::primitives::Rectangle::from_corners(
+                        [tile.rect.x, tile.rect.y],
+                        [tile.rect.x + tile.rect.width, tile.rect.y + tile.rect.height]
+                    ),
+                    *tile_id
+                )
+            }).collect();
+
+            let tile_layer = TileLayer {
+                layer_id: *layer_id,
+                tiles: tile_ids.clone(),
+                rstar_tree: rstar::RTree::bulk_load(rtree_data),
+            };
+            self.tiles.insert(*layer_id, tile_layer);
 
             // Get elements in this layer
             let Some(layer) = layer_list.get(&layer_id) else {
+                continue;
+            };
+
+            let Some(tile_layer) = self.tiles.get(&layer_id) else {
                 continue;
             };
 
@@ -226,57 +312,62 @@ impl TileList {
                     log::warn!("Warning: Element {:?} not found in layout tree!", element_id);
                     continue;
                 };
+                let margin_box = element.box_model.margin_box;
 
-                // Iterate all tiles that intersects this element. Calculate the offset and dimension the element in those tiles
-                let matching_tile_ids = self.find_intersecting_tiles(&tile_ids, element);
-                // println!("Layer {:?} / Element {:?}: {:?}", layer_id, element_id, matching_tile_ids);
+                // Find all tile_ids that contain this element
+                let matching_tile_ids = tile_layer.intersects_with(margin_box);
                 for tile_id in &matching_tile_ids {
                     let tile = self.arena.get_mut(&tile_id).unwrap();
 
-                    if tile.rect.intersects(element.box_model.margin_box) {
-                        let rect = element.box_model.margin_box;
+                    let position = Coordinate::new(
+                        tile.rect.x.max(margin_box.x) - margin_box.x,
+                        tile.rect.y.max(margin_box.y) - margin_box.y
+                    );
 
-                        let position = Coordinate::new(
-                            tile.rect.x.max(rect.x) - rect.x,
-                            tile.rect.y.max(rect.y) - rect.y
-                        );
+                    let dimension = Rect::new(
+                        margin_box.x.max(tile.rect.x) - tile.rect.x,
+                        margin_box.y.max(tile.rect.y) - tile.rect.y,
+                        (tile.rect.x + tile.rect.width).min(margin_box.x + margin_box.width) - tile.rect.x.max(margin_box.x),
+                        (tile.rect.y + tile.rect.height).min(margin_box.y + margin_box.height) - tile.rect.y.max(margin_box.y),
+                    );
 
-                        let dimension = Rect::new(
-                            rect.x.max(tile.rect.x) - tile.rect.x,
-                            rect.y.max(tile.rect.y) - tile.rect.y,
-                            (tile.rect.x + tile.rect.width).min(rect.x + rect.width) - tile.rect.x.max(rect.x),
-                            (tile.rect.y + tile.rect.height).min(rect.y + rect.height) - tile.rect.y.max(rect.y),
-                        );
+                    let tiled_element = TiledLayoutElement {
+                        id: element_id,
+                        rect: dimension,
+                        position,
+                        paint_commands: vec![],
+                    };
 
-                        let tiled_element = TiledLayoutElement {
-                            id: element_id,
-                            rect: dimension,
-                            position,
-                        };
-
-                        tile.elements.push(tiled_element);
-                    }
+                    tile.elements.push(tiled_element);
                 }
             }
         }
     }
 
-    fn find_intersecting_tiles(&self, tile_ids: &Vec<TileId>, element: &LayoutElementNode) -> Vec<TileId> {
-        let mut matching_tile_ids = vec![];
-        for tile_id in tile_ids.iter() {
-            let tile = self.arena.get(tile_id).unwrap();
-            if tile.rect.intersects(element.box_model.margin_box) {
-                matching_tile_ids.push(*tile_id);
-            }
-        }
-        matching_tile_ids
-    }
+    // fn find_intersecting_tiles(&self, tile_ids: &Vec<TileId>, element: &LayoutElementNode) -> Vec<TileId> {
+    //     let matching_tile_ids = self.tile_layer.rstar_tree
+    //         .locate_in_envelope_intersecting(&AABB::from_corners(
+    //             [element.box_model.margin_box.x, element.box_model.margin_box.y],
+    //             [element.box_model.margin_box.x + element.box_model.margin_box.width, element.box_model.margin_box.y + element.box_model.margin_box.height]
+    //         )).map(|x| x.data).collect();
+    //
+    //     matching_tile_ids
+    //
+    //     // let mut matching_tile_ids = vec![];
+    //     // for tile_id in tile_ids.iter() {
+    //     //     let tile = self.arena.get(tile_id).unwrap();
+    //     //     if tile.rect.intersects(element.box_model.margin_box) {
+    //     //         matching_tile_ids.push(*tile_id);
+    //     //     }
+    //     // }
+    //     // matching_tile_ids
+    // }
 
     pub fn print_list(&self) {
         println!("Generated tilelist:");
-        for (layer_id, tile_ids) in self.layers.iter() {
+        for (layer_id, tile_layer) in self.tiles.iter() {
             println!("Layer: {}", layer_id);
-            for tile_id in tile_ids {
+            for tile_id in tile_layer.tiles.iter() {
                 let tile = self.arena.get(tile_id).unwrap();
                 println!("  Tile: {} : {} elements", tile_id, tile.elements.len());
             }

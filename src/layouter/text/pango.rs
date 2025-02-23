@@ -13,7 +13,7 @@ pub fn get_text_layout(text: &str, font_family: &str, font_size: f64, font_weigh
     let selected_family = find_available_font(font_family, &layout.context());
     let mut font_desc = FontDescription::new();
     font_desc.set_family(&selected_family);
-    font_desc.set_size((font_size / 1.3 * SCALE as f64) as i32);
+    font_desc.set_size((font_size * SCALE as f64) as i32);
     font_desc.set_weight(to_pango_weight(font_weight));
     layout.set_font_description(Some(&font_desc));
 

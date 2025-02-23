@@ -1,6 +1,6 @@
 use gtk4::cairo::{Context, Error, Format, ImageSurface};
 use gtk4::pango::SCALE;
-use pangocairo::functions::create_layout;
+use pangocairo::functions::{context_set_resolution, create_layout};
 use pangocairo::pango::FontDescription;
 use crate::painter::commands::text::Text;
 use crate::rasterizer::cairo::brush::set_brush;
@@ -32,11 +32,13 @@ fn create_text_layout(cmd: &Text) -> Result<ImageSurface, Error> {
     let cr = Context::new(&surface)?;
     let layout = create_layout(&cr);
 
+    // @TODO: I need to set the DPI resolution to 72dpi, otherwise the text will be too large
+    context_set_resolution(&layout.context(), 72.0);
+
     let selected_family = find_available_font(cmd.font_family.as_str(), &layout.context());
     let mut font_desc = FontDescription::new();
     font_desc.set_family(&selected_family);
-    // @TODO: Why do we need to divide by 1.3? It seems that this actually fills the layout correctly.
-    font_desc.set_size(((cmd.font_size / 1.3) * SCALE as f64) as i32);
+    font_desc.set_size((cmd.font_size * SCALE as f64) as i32);
     font_desc.set_weight(to_pango_weight(cmd.font_weight));
     layout.set_font_description(Some(&font_desc));
 

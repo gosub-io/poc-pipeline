@@ -3,14 +3,22 @@ use std::sync::{Arc, RwLock};
 use crate::common::document::node::{Node, NodeType, NodeId, AttrMap};
 use crate::common::document::style::StylePropertyList;
 
+/// Main DOM document structure
 #[derive(Clone)]
 pub struct Document {
     pub arena: HashMap<NodeId, Node>,
-    pub root_id: Option<NodeId>,
     next_node_id: Arc<RwLock<NodeId>>,
+    pub root_id: Option<NodeId>,
 }
 
 impl Document {
+    pub fn new() -> Document {
+        Document {
+            arena: HashMap::new(),
+            root_id: None,
+            next_node_id: Arc::new(RwLock::new(NodeId::new(1))),
+        }
+    }
 
     pub fn new_element(&mut self, parent_id: Option<NodeId>, tag_name: &str, attributes: Option<AttrMap>, self_closing: bool, style: Option<StylePropertyList>) -> NodeId {
         let node = Node::new_element(self, parent_id, tag_name.to_string(), attributes, self_closing, style);
@@ -44,14 +52,6 @@ impl Document {
 
     pub fn set_root(&mut self, root_id: NodeId) {
         self.root_id = Some(root_id);
-    }
-
-    pub fn new() -> Document {
-        Document {
-            arena: HashMap::new(),
-            root_id: None,
-            next_node_id: Arc::new(RwLock::new(NodeId::new(1))),
-        }
     }
 
     pub fn next_node_id(&self) -> NodeId {

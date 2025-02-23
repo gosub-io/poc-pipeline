@@ -93,10 +93,10 @@ fn get_style_from_node(node: &DomNode) -> StylePropertyList {
 
             "width" => style.set_property(StyleProperty::Width, parse_style_value(value)),
             "height" => style.set_property(StyleProperty::Height, parse_style_value(value)),
-            "max_width" => style.set_property(StyleProperty::MaxWidth, parse_style_value(value)),
-            "min_width" => style.set_property(StyleProperty::MinWidth, parse_style_value(value)),
-            "max_height" => style.set_property(StyleProperty::MaxHeight, parse_style_value(value)),
-            "min_height" => style.set_property(StyleProperty::MinHeight, parse_style_value(value)),
+            "max-width" => style.set_property(StyleProperty::MaxWidth, parse_style_value(value)),
+            "min-width" => style.set_property(StyleProperty::MinWidth, parse_style_value(value)),
+            "max-height" => style.set_property(StyleProperty::MaxHeight, parse_style_value(value)),
+            "min-height" => style.set_property(StyleProperty::MinHeight, parse_style_value(value)),
 
             "border-top-width" => style.set_property(StyleProperty::BorderTopWidth, parse_style_value(value)),
             "border-left-width" => style.set_property(StyleProperty::BorderLeftWidth, parse_style_value(value)),
@@ -125,12 +125,12 @@ fn get_style_from_node(node: &DomNode) -> StylePropertyList {
             "font-family" => style.set_property(StyleProperty::FontFamily, StyleValue::Keyword(value.to_string())),
 
             "flex-basis" => style.set_property(StyleProperty::FlexBasis, parse_style_str(value)),
+            "flex-direction" => style.set_property(StyleProperty::FlexDirection, parse_style_str(value)),
             "flex-grow" => style.set_property(StyleProperty::FlexGrow, parse_style_num(value)),
             "flex-shrink" => style.set_property(StyleProperty::FlexShrink, parse_style_num(value)),
-            "flex-direction" => style.set_property(StyleProperty::FlexDirection, parse_style_str(value)),
             "flex-wrap" => style.set_property(StyleProperty::FlexWrap, parse_style_str(value)),
 
-            "aspect_ratio" => style.set_property(StyleProperty::AspectRatio, parse_style_num(value)),
+            "aspect-ratio" => style.set_property(StyleProperty::AspectRatio, parse_style_num(value)),
             "gap" => style.set_property(StyleProperty::Gap, parse_style_value(value)),
             "align-items" => style.set_property(StyleProperty::AlignItems, parse_style_str(value)),
             "align-self" => style.set_property(StyleProperty::AlignSelf, parse_style_str(value)),
@@ -143,8 +143,8 @@ fn get_style_from_node(node: &DomNode) -> StylePropertyList {
             "inset-inline-start" => style.set_property(StyleProperty::InsetInlineStart, parse_style_value(value)),
 
             "justify_items" => style.set_property(StyleProperty::JustifyItems, parse_style_str(value)),
-            "justify_self" => style.set_property(StyleProperty::JustifySelf, parse_style_str(value)),
-            "justify_content" => style.set_property(StyleProperty::JustifyContent, parse_style_str(value)),
+            "justify-self" => style.set_property(StyleProperty::JustifySelf, parse_style_str(value)),
+            "justify-content" => style.set_property(StyleProperty::JustifyContent, parse_style_str(value)),
 
             "overflow-x" => style.set_property(StyleProperty::OverflowX, parse_style_str(value)),
             "overflow-y" => style.set_property(StyleProperty::OverflowY, parse_style_str(value)),

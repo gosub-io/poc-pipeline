@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::ops::AddAssign;
 use std::sync::{Arc, RwLock};
+use rstar::primitives::GeomWithData;
 use crate::layouter::box_model::BoxModel;
 use crate::rendertree_builder::{RenderTree, RenderNodeId};
 use crate::common::document::node::{NodeId as DomNodeId};
@@ -91,7 +92,6 @@ pub struct LayoutElementNode {
     pub context: ElementContext,
 }
 
-#[derive(Clone)]
 pub struct LayoutTree {
     /// Wrapped render tree
     pub render_tree: RenderTree,
@@ -103,6 +103,8 @@ pub struct LayoutTree {
     next_node_id: Arc<RwLock<LayoutElementId>>,
     // Root width and height
     pub root_dimension: Dimension,
+    /// R* tree for fast spatial queries of layout elements
+    rstar_tree: rstar::RTree<GeomWithData<rstar::primitives::Rectangle<[f64; 2]>, LayoutElementId>>,
 }
 
 impl LayoutTree {

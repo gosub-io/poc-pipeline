@@ -16,13 +16,13 @@ use crate::layouter::CanLayout;
 use crate::rasterizer::cairo::CairoRasterizer;
 use crate::rasterizer::Rasterable;
 
-const TILE_DIMENSION : f64 = 200.0;
+const TILE_DIMENSION : f64 = 256.0;
 
-const WINDOW_WIDTH: f64 = 800.0;
-const WINDOW_HEIGHT: f64 = 600.0;
+const WINDOW_WIDTH: f64 = 1024.0;
+const WINDOW_HEIGHT: f64 = 768.0;
 
-const VIEWPORT_WIDTH : f64 = 2024.0;
-const VIEWPORT_HEIGHT : f64 = 1068.0;
+const VIEWPORT_WIDTH : f64 = 1024.0;
+const VIEWPORT_HEIGHT : f64 = 768.0;
 
 #[allow(unused)]
 mod rendertree_builder;
@@ -136,12 +136,14 @@ fn build_ui(app: &Application) {
 
         let binding = get_browser_state();
         let state = binding.read().unwrap();
+        let vis_layers = state.visible_layer_list.clone();
+        drop(state);
 
-        if state.visible_layer_list[0] {
+        if vis_layers[0] {
             do_paint(LayerId::new(0));
             do_rasterize(LayerId::new(0));
         }
-        if state.visible_layer_list[1] {
+        if vis_layers[1] {
             do_paint(LayerId::new(1));
             do_rasterize(LayerId::new(1));
         }
@@ -263,12 +265,13 @@ fn do_paint(layer_id: LayerId) {
     let binding = get_browser_state();
     let state = binding.read().unwrap();
 
+    let painter = Painter::new(state.tile_list.read().unwrap().layer_list.clone());
+
     let tile_ids = state.tile_list.read().unwrap().get_intersecting_tiles(layer_id, state.viewport);
     for tile_id in tile_ids {
-
         // get tile
         let mut binding = state.tile_list.write().expect("Failed to get tile list");
-        let Some(tile) = binding.get_tile(tile_id) else {
+        let Some(tile) = binding.get_tile_mut(tile_id) else {
             log::warn!("Tile not found: {:?}", tile_id);
             continue;
         };
@@ -278,16 +281,10 @@ fn do_paint(layer_id: LayerId) {
             continue;
         }
 
-        // Paint the given tile
-        // println!("Generarting painting commands for tile");
-        let painter = Painter::new(binding.layer_list.clone());
-        let paint_commands = painter.paint(tile);
-
-        let Some(tile) = binding.get_tile_mut(tile_id) else {
-            log::warn!("Tile not found: {:?}", tile_id);
-            continue;
-        };
-        tile.paint_commands = paint_commands;
+        // Paint all the elements in each tile
+        for tiled_layout_element in &mut tile.elements {
+            tiled_layout_element.paint_commands = painter.paint(tiled_layout_element);
+        }
     }
 }
 
@@ -365,11 +362,17 @@ fn on_viewport_changed(area: &DrawingArea, hadj: &Adjustment, vadj: &Adjustment)
     let width = hadj.page_size(); // Visible width
     let height = vadj.page_size(); // Visible height
 
-    // println!("Visible viewport: x={} y={} width={} height={}", x, y, width, height);
+    println!("Visible viewport: x={} y={} width={} height={}", x, y, width, height);
 
     let binding = get_browser_state();
     let mut state = binding.write().expect("Failed to get browser state");
+
+    // If we changed the viewport size, we need to invalidate all tiles
+    if width != state.viewport.width || height != state.viewport.height {
+        state.tile_list.write().expect("Failed to get tile list").invalidate_all();
+    }
+
     state.viewport = Rect::new(x, y, width, height);
 
-    area.queue_draw(); // Request re-draw if necessary
+    area.queue_draw();
 }
