@@ -4,7 +4,6 @@ use gtk4::glib::clone;
 use gtk4::prelude::{AdjustmentExt, ApplicationExt, ApplicationExtManual, DrawingAreaExt, DrawingAreaExtManual, GtkWindowExt, WidgetExt};
 use rendertree_builder::RenderTree;
 use crate::common::browser_state::{get_browser_state, init_browser_state, BrowserState, WireframeState};
-use crate::common::geo;
 use crate::common::geo::{Dimension, Rect};
 use crate::layering::layer::{LayerId, LayerList};
 use crate::painter::Painter;
@@ -18,11 +17,8 @@ use crate::rasterizer::Rasterable;
 
 const TILE_DIMENSION : f64 = 256.0;
 
-const WINDOW_WIDTH: f64 = 1024.0;
-const WINDOW_HEIGHT: f64 = 768.0;
-
-const VIEWPORT_WIDTH : f64 = 1024.0;
-const VIEWPORT_HEIGHT : f64 = 768.0;
+const WINDOW_WIDTH: f64 = 800.0;
+const WINDOW_HEIGHT: f64 = 600.0;
 
 #[allow(unused)]
 mod rendertree_builder;
@@ -59,8 +55,9 @@ fn main() {
     // --------------------------------------------------------------------
     // Layout the render-tree into a layout-tree
     let mut layouter = TaffyLayouter::new();
-    let layout_tree = layouter.layout(render_tree, geo::Dimension::new(VIEWPORT_WIDTH, VIEWPORT_HEIGHT));
-    // println!("Layout width: {}, height: {}", layout_tree.root_dimension.width, layout_tree.root_dimension.height);
+    let layout_tree = layouter.layout(render_tree, None);
+    layouter.print_tree();
+    println!("Layout width: {}, height: {}", layout_tree.root_dimension.width, layout_tree.root_dimension.height);
 
     // --------------------------------------------------------------------
     // Generate render layers
@@ -94,7 +91,7 @@ fn main() {
         current_hovered_element: None,
         tile_list: RwLock::new(tile_list),
         show_tilegrid: true,
-        viewport: Rect::new(0.0, 0.0, VIEWPORT_WIDTH, VIEWPORT_HEIGHT),
+        viewport: Rect::ZERO,
     };
     init_browser_state(browser_state);
 
@@ -129,9 +126,15 @@ fn build_ui(app: &Application) {
         .default_height(WINDOW_HEIGHT as i32)
         .build();
 
+
+    // Find the root layout dimension so we can set the viewport correctly
+    let binding = get_browser_state().clone();
+    let state = binding.read().unwrap();
+    let dim = state.tile_list.read().unwrap().layer_list.layout_tree.clone().root_dimension.clone();
+
     let area = DrawingArea::new();
-    area.set_content_width(VIEWPORT_WIDTH as i32);
-    area.set_content_height(VIEWPORT_HEIGHT as i32);
+    area.set_content_width(dim.width as i32);
+    area.set_content_height(dim.height as i32);
     area.set_draw_func(move |_area, cr, _width, _height| {
 
         let binding = get_browser_state();

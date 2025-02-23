@@ -6,7 +6,7 @@ use taffy::NodeId as TaffyNodeId;
 use crate::rendertree_builder::{RenderTree, RenderNodeId};
 use crate::common::document::node::{NodeType, NodeId as DomNodeId};
 use crate::common::document::style::{StyleProperty, StyleValue, Unit};
-use crate::common::get_image_store;
+use crate::common::{geo, get_image_store};
 use crate::common::image::ImageId;
 use crate::layouter::{LayoutElementNode, LayoutTree, LayoutElementId, CanLayout, ElementContext, box_model, ElementContextText, ElementContextImage};
 use crate::layouter::css_taffy_converter::CssTaffyConverter;
@@ -61,19 +61,26 @@ impl TaffyLayouter {
             layout_taffy_mapping: HashMap::new(),
         }
     }
+
+    pub fn print_tree(&mut self) {
+        self.tree.print_tree(self.root_id);
+    }
 }
 
 impl CanLayout for TaffyLayouter {
-    fn layout(&mut self, render_tree: RenderTree, viewport: crate::common::geo::Dimension) -> LayoutTree {
+    fn layout(&mut self, render_tree: RenderTree, viewport: Option<geo::Dimension>) -> LayoutTree {
         let root_id = render_tree.root_id.unwrap();
         let Some(mut layout_tree) = self.generate_tree(render_tree, root_id) else {
             panic!("Failed to generate root node render tree");
         };
 
-        // Compute the layout based on the viewport
-        let size = Size {
-            width: AvailableSpace::Definite(viewport.width as f32),
-            height: AvailableSpace::Definite(viewport.height as f32),
+        // // Compute the layout based on the viewport
+        let size = match viewport {
+            Some(viewport) => Size {
+                width: AvailableSpace::Definite(viewport.width as f32),
+                height: AvailableSpace::Definite(viewport.height as f32),
+            },
+            None => Size::MAX_CONTENT,
         };
 
         self.tree.compute_layout_with_measure(self.root_id, size, |v_kd, v_as, v_ni, v_nc, v_s| {
@@ -110,9 +117,6 @@ impl CanLayout for TaffyLayouter {
         let w = root.box_model.margin_box.width as f32;
         let h = root.box_model.margin_box.height as f32;
         layout_tree.root_dimension = crate::common::geo::Dimension::new(w as f64, h as f64);
-
-
-        self.tree.print_tree(self.root_id);
 
         layout_tree
     }

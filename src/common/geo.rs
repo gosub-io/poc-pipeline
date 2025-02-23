@@ -8,18 +8,12 @@ pub struct Rect {
 }
 
 impl Rect {
+    pub const ZERO : Rect = Rect { x: 0.0, y: 0.0, width: 0.0, height: 0.0 };
+
     /// Create a new rectangle with the given position and dimensions.
     pub fn new(x: f64, y: f64, width: f64, height: f64) -> Self {
         Self { x, y, width, height }
     }
-
-    // /// Check if this rectangle intersects with another rectangle.
-    // pub fn intersects(&self, other: Rect) -> bool {
-    //     self.x < other.x + other.width &&
-    //         self.x + self.width > other.x &&
-    //         self.y < other.y + other.height &&
-    //         self.y + self.height > other.y
-    // }
 
     /// Converts a size and dimension into a rectangle.
     #[allow(unused)]

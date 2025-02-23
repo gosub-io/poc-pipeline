@@ -135,5 +135,5 @@ impl std::fmt::Debug for LayoutTree {
 }
 
 pub trait CanLayout {
-    fn layout(&mut self, render_tree: RenderTree, viewport: crate::common::geo::Dimension) -> LayoutTree;
+    fn layout(&mut self, render_tree: RenderTree, viewport: Option<Dimension>) -> LayoutTree;
 }
