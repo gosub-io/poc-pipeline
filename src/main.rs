@@ -39,9 +39,10 @@ fn main() {
     // let doc = common::document::create_document();
     // let doc = common::document::parser::document_from_json("gosub.io.json");
     // let doc = common::document::parser::document_from_json("news.ycombinator.com.json");
-    let doc = common::document::parser::document_from_json("codemusings.nl.json");
+    // let doc = common::document::parser::document_from_json("codemusings.nl.json");
     // let doc = common::document::parser::document_from_json("adayinthelifeof.nl.json");
     // let doc = common::document::parser::document_from_json("example.org.json");
+    let doc = common::document::parser::document_from_json("test5.json");
     // let mut output = String::new();
     // doc.print_tree(&mut output).expect("");
     // println!("{}", output);

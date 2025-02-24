@@ -56,6 +56,8 @@ pub enum StyleProperty {
     OverflowX,
     OverflowY,
     BoxSizing,
+    LineHeight,
+    TextWrap,
 }
 
 #[allow(unused)]
@@ -94,20 +96,37 @@ pub enum FontWeight {
     Number(f32),
 }
 
+#[allow(unused)]
 #[derive(Debug, Clone, PartialEq)]
 pub enum StyleValue {
     Keyword(String),
     Unit(f32, Unit),
     Number(f32),
+    Percentage(f32),
     Color(Color),
     None,
     Display(Display),
     FontWeight(FontWeight),
+    TextWrap(TextWrap),
 }
 
 #[derive(Debug, Clone)]
 pub struct StylePropertyList {
     pub properties: HashMap<StyleProperty, StyleValue>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum TextWrap {
+    Wrap,
+    NoWrap,
+    Balance,
+    Pretty,
+    Stable,
+    Initial,
+    Inherit,
+    Revert,
+    RevertLayer,
+    Unset
 }
 
 impl StylePropertyList {

@@ -15,9 +15,7 @@ pub fn find_available_font(families: &str, ctx: &pango::Context) -> String {
             return get_system_ui_font();
         }
 
-        println!("Checking for: {}", font);
         let font_name = font.trim().replace('"', "");
-
         if available_fonts.contains(&font_name.to_ascii_lowercase()) {
             return font_name;
         }

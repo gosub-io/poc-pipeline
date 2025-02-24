@@ -4,7 +4,7 @@ use std::sync::{Arc, RwLock};
 use rstar::primitives::GeomWithData;
 use crate::layouter::box_model::BoxModel;
 use crate::rendertree_builder::{RenderTree, RenderNodeId};
-use crate::common::document::node::{NodeId as DomNodeId};
+use crate::common::document::node::{NodeId as DomNodeId, NodeId};
 use crate::common::geo::Dimension;
 use crate::common::image::ImageId;
 
@@ -36,6 +36,7 @@ impl std::fmt::Display for LayoutElementId {
 
 #[derive(Debug, Clone)]
 pub struct ElementContextText {
+    pub node_id: DomNodeId,
     pub font_family: String,
     pub font_size: f64,
     pub font_weight: usize,
@@ -44,6 +45,7 @@ pub struct ElementContextText {
 
 #[derive(Clone, Debug)]
 pub struct ElementContextImage {
+    pub node_id: DomNodeId,
     pub src: String,
     pub image_id: ImageId,
     pub dimension: Dimension,
@@ -59,8 +61,9 @@ pub enum ElementContext {
 }
 
 impl ElementContext {
-    pub(crate) fn text(font_family: &str, font_size: f64, font_weight: usize, text: &str) -> ElementContext {
+    pub(crate) fn text(font_family: &str, font_size: f64, font_weight: usize, text: &str, node_id: DomNodeId) -> ElementContext {
         Self::Text(ElementContextText{
+            node_id,
             font_family: font_family.to_string(),
             font_size,
             font_weight,
@@ -68,8 +71,9 @@ impl ElementContext {
         })
     }
 
-    pub fn image(src: &str, image_id: ImageId, dimension: Dimension) -> ElementContext {
+    pub fn image(src: &str, image_id: ImageId, dimension: Dimension, node_id: DomNodeId) -> ElementContext {
         Self::Image(ElementContextImage {
+            node_id,
             src: src.to_string(),
             image_id,
             dimension,

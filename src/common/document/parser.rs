@@ -3,7 +3,7 @@ use serde::Deserialize;
 use std::collections::HashMap;
 use crate::common::document::document::Document;
 use crate::common::document::node::{AttrMap, NodeId, NodeType};
-use crate::common::document::style::{Color, Display, FontWeight, StyleProperty, StylePropertyList, StyleValue, Unit};
+use crate::common::document::style::{Color, Display, FontWeight, StyleProperty, StylePropertyList, StyleValue, TextWrap, Unit};
 
 // This parses uses the tools/souper.py to load a JSON file and create a DOM from it. This allows us to render
 // a webpage with minimal effort, and without connecting a whole html5 and css parser to it.
@@ -136,6 +136,8 @@ fn get_style_from_node(node: &DomNode) -> StylePropertyList {
             "align-self" => style.set_property(StyleProperty::AlignSelf, parse_style_str(value)),
             "align-content" => style.set_property(StyleProperty::AlignContent, parse_style_str(value)),
             "text-align" => style.set_property(StyleProperty::TextAlign, parse_style_str(value)),
+            "line-height" => style.set_property(StyleProperty::LineHeight, parse_style_value(value)),
+            "text-wrap" => style.set_property(StyleProperty::TextWrap, parse_text_wrap(value)),
 
             "inset-block-end" => style.set_property(StyleProperty::InsetBlockEnd, parse_style_value(value)),
             "inset-block-start" => style.set_property(StyleProperty::InsetBlockStart, parse_style_value(value)),
@@ -155,6 +157,22 @@ fn get_style_from_node(node: &DomNode) -> StylePropertyList {
     }
 
     style
+}
+
+fn parse_text_wrap(value: &str) -> StyleValue {
+    match value {
+        "wrap" => StyleValue::TextWrap(TextWrap::Wrap),
+        "nowrap" => StyleValue::TextWrap(TextWrap::NoWrap),
+        "balance" => StyleValue::TextWrap(TextWrap::Balance),
+        "pretty" => StyleValue::TextWrap(TextWrap::Pretty),
+        "stable" => StyleValue::TextWrap(TextWrap::Stable),
+        "initial" => StyleValue::TextWrap(TextWrap::Initial),
+        "inherit" => StyleValue::TextWrap(TextWrap::Inherit),
+        "revert" => StyleValue::TextWrap(TextWrap::Revert),
+        "revert-layer" => StyleValue::TextWrap(TextWrap::RevertLayer),
+        "unset" => StyleValue::TextWrap(TextWrap::Unset),
+        _ => StyleValue::TextWrap(TextWrap::Wrap),
+    }
 }
 
 fn parse_position(position: &str) -> StyleValue {

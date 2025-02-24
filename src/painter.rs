@@ -160,6 +160,21 @@ impl Painter {
                 let mut r = Rectangle::new(layout_element.box_model.border_box()).with_background(brush);
 
                 // Get border
+                let border_top_width = dom_node.get_style_f32(StyleProperty::BorderTopWidth);
+                let border_right_width = dom_node.get_style_f32(StyleProperty::BorderRightWidth);
+                let border_bottom_width = dom_node.get_style_f32(StyleProperty::BorderBottomWidth);
+                let border_left_width = dom_node.get_style_f32(StyleProperty::BorderLeftWidth);
+
+                if (border_top_width != 0.0 || border_right_width != 0.0 || border_bottom_width != 0.0 || border_left_width != 0.0) {
+                    // let border_top_color = self.get_brush(dom_node, StyleProperty::BorderTopColor, Brush::solid(Color::BLACK));
+                    // let border_right_color = self.get_brush(dom_node, StyleProperty::BorderRightColor, Brush::solid(Color::BLACK));
+                    // let border_bottom_color = self.get_brush(dom_node, StyleProperty::BorderBottomColor, Brush::solid(Color::BLACK));
+                    // let border_left_color = self.get_brush(dom_node, StyleProperty::BorderLeftColor, Brush::solid(Color::BLACK));
+
+                    // @TODO: border width is taken from the top, it can be different for each side
+                    let border = Border::new(border_top_width, BorderStyle::Solid, Brush::Solid(Color::BLACK));
+                    r = r.with_border(border);
+                }
 
                 // Get radius
                 let radius_bottom_left = dom_node.get_style_f32(StyleProperty::BorderBottomLeftRadius);

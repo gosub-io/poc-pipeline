@@ -4,7 +4,7 @@ use gtk4::pango;
 use taffy::prelude::*;
 use taffy::NodeId as TaffyNodeId;
 use crate::rendertree_builder::{RenderTree, RenderNodeId};
-use crate::common::document::node::{NodeType, NodeId as DomNodeId};
+use crate::common::document::node::{NodeType, NodeId as DomNodeId, ElementData};
 use crate::common::document::style::{StyleProperty, StyleValue, Unit};
 use crate::common::{geo, get_image_store};
 use crate::common::image::ImageId;
@@ -35,8 +35,9 @@ pub enum TaffyContext {
 }
 
 impl TaffyContext {
-    fn text(font_family: &str, font_size: f64, font_weight: usize, text: &str) -> TaffyContext {
+    fn text(font_family: &str, font_size: f64, font_weight: usize, text: &str, node_id: DomNodeId) -> TaffyContext {
         TaffyContext::Text(ElementContextText{
+            node_id,
             font_family: font_family.to_string(),
             font_size,
             font_weight,
@@ -44,8 +45,9 @@ impl TaffyContext {
         })
     }
 
-    fn image(src: &str, image_id: ImageId, dimension: crate::common::geo::Dimension) -> TaffyContext {
+    fn image(src: &str, image_id: ImageId, dimension: geo::Dimension, node_id: DomNodeId) -> TaffyContext {
         TaffyContext::Image(ElementContextImage{
+            node_id,
             src: src.to_string(),
             image_id,
             dimension,
@@ -91,7 +93,25 @@ impl CanLayout for TaffyLayouter {
                     let font_family = text_ctx.font_family.as_str();
                     let text = text_ctx.text.as_str();
 
-                    let layout = get_text_layout(text, font_family, font_size, font_weight, v_as.width.unwrap_or(100.0) as f64);
+                    let Some(node) = layout_tree.render_tree.doc.get_node_by_id(text_ctx.node_id) else {
+                        return Size::ZERO;
+                    };
+                    let Some(node) = layout_tree.render_tree.doc.get_node_by_id(node.parent_id.unwrap()) else {
+                        return Size::ZERO;
+                    };
+                    let Some(ElementData { styles, .. }) = (match &node.node_type {
+                        NodeType::Element(data) => Some(data),
+                        _ => return Size::ZERO,
+                    }) else { return Size::ZERO };
+
+                    let layout = get_text_layout(
+                        text,
+                        font_family,
+                        font_size,
+                        font_weight,
+                        v_as.width.unwrap_or(0.0) as f64,
+                        styles,
+                    );
                     match layout {
                         Ok(layout) => {
                             // @TODO: Somehow, layout.width() and layout.height() do not seem to work anymore
@@ -110,13 +130,13 @@ impl CanLayout for TaffyLayouter {
 
         // Generate box model for the whole layout tree
         let root_id = layout_tree.root_id;
-        self.populate_boxmodel(&mut layout_tree, root_id, crate::common::geo::Coordinate::ZERO);
+        self.populate_boxmodel(&mut layout_tree, root_id, geo::Coordinate::ZERO);
 
         // get dimension of the root node
         let root = layout_tree.get_node_by_id(root_id).unwrap();
         let w = root.box_model.margin_box.width as f32;
         let h = root.box_model.margin_box.height as f32;
-        layout_tree.root_dimension = crate::common::geo::Dimension::new(w as f64, h as f64);
+        layout_tree.root_dimension = geo::Dimension::new(w as f64, h as f64);
 
         layout_tree
     }
@@ -124,7 +144,7 @@ impl CanLayout for TaffyLayouter {
 
 impl TaffyLayouter {
     // Populate the layout tree with the boxmodels that we now can generate
-    fn populate_boxmodel(&self, layout_tree: &mut LayoutTree, layout_node_id: LayoutElementId, offset: crate::common::geo::Coordinate) {
+    fn populate_boxmodel(&self, layout_tree: &mut LayoutTree, layout_node_id: LayoutElementId, offset: geo::Coordinate) {
         let taffy_node_id = self.layout_taffy_mapping.get(&layout_node_id).unwrap();
         let layout = self.tree.layout(*taffy_node_id).unwrap().clone();
 
@@ -133,7 +153,7 @@ impl TaffyLayouter {
         let child_ids = el.children.clone();
 
         for child_id in child_ids {
-            self.populate_boxmodel(layout_tree, child_id, crate::common::geo::Coordinate::new(
+            self.populate_boxmodel(layout_tree, child_id, geo::Coordinate::new(
                 offset.x + layout.location.x as f64 + layout.margin.left as f64,
                 offset.y + layout.location.y as f64 + layout.margin.top as f64
             ));
@@ -149,7 +169,7 @@ impl TaffyLayouter {
             arena: HashMap::new(),
             root_id: LayoutElementId::new(0), // Will be filled in later
             next_node_id: Arc::new(RwLock::new(LayoutElementId::new(0))),
-            root_dimension: crate::common::geo::Dimension::ZERO,
+            root_dimension: geo::Dimension::ZERO,
             rstar_tree: rstar::RTree::new(),
         };
 
@@ -199,9 +219,9 @@ impl TaffyLayouter {
                     let image_id = store.read().unwrap().store_from_path(src.as_str());
 
                     let image = store.read().unwrap().get(image_id).unwrap();
-                    let dimension = crate::common::geo::Dimension::new(image.width as f64, image.height as f64);
+                    let dimension = geo::Dimension::new(image.width as f64, image.height as f64);
 
-                    taffy_context = Some(TaffyContext::image(src.as_str(), image_id, dimension));
+                    taffy_context = Some(TaffyContext::image(src.as_str(), image_id, dimension, dom_node.node_id));
                 }
             }
             NodeType::Text(text, node_style) => {
@@ -236,6 +256,7 @@ impl TaffyLayouter {
                     font_size,
                     font_weight as usize,
                     text,
+                    dom_node.node_id,
                 ));
             }
             NodeType::Comment(_) => {}
@@ -333,18 +354,20 @@ fn to_element_context(taffy_context: Option<&TaffyContext>) -> ElementContext {
             text_ctx.font_family.as_str(),
             text_ctx.font_size,
             text_ctx.font_weight,
-            text_ctx.text.as_str()
+            text_ctx.text.as_str(),
+            text_ctx.node_id,
         ),
         Some(TaffyContext::Image(image_ctx)) => ElementContext::image(
             image_ctx.src.as_str(),
             image_ctx.image_id,
             image_ctx.dimension.clone(),
+            image_ctx.node_id,
         ),
         None => ElementContext::None,
     }
 }
 
-// Returns true if there is a margin on the rect (basically, if the rect is non-zero)
+/// Returns true if there is a margin on the rect (basically, if the rect is non-zero)
 fn has_margin(src: Rect<LengthPercentageAuto>) -> bool {
     let is_zero = (src.top == LengthPercentageAuto::Length(0.0) || src.top == LengthPercentageAuto::Percent(0.0)) &&
     (src.right == LengthPercentageAuto::Length(0.0) || src.right == LengthPercentageAuto::Percent(0.0)) &&
@@ -355,9 +378,9 @@ fn has_margin(src: Rect<LengthPercentageAuto>) -> bool {
 }
 
 /// Converts a taffy layout to our own BoxModel structure
-pub fn taffy_layout_to_boxmodel(layout: &Layout, offset: crate::common::geo::Coordinate) -> box_model::BoxModel {
+pub fn taffy_layout_to_boxmodel(layout: &Layout, offset: geo::Coordinate) -> box_model::BoxModel {
     box_model::BoxModel {
-        margin_box: crate::common::geo::Rect {
+        margin_box: geo::Rect {
             x: offset.x + layout.location.x as f64,
             y: offset.y + layout.location.y as f64,
             width: layout.size.width as f64 + layout.margin.left as f64 + layout.margin.right as f64,

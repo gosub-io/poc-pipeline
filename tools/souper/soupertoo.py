@@ -10,6 +10,8 @@ async def fetch_and_parse_html(url):
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)  # Run headless browser
         page = await browser.new_page()
+
+        await page.set_viewport_size({"width": 1024, "height": 768})
         await page.goto(url, wait_until="domcontentloaded")
 
         # Get the fully rendered HTML

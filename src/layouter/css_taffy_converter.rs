@@ -26,6 +26,8 @@ impl CssTaffyConverter {
             StyleValue::None => default,
             StyleValue::Display(_) => default,
             StyleValue::FontWeight(_) => default,
+            StyleValue::TextWrap(_) => default,
+            StyleValue::Percentage(_) => default,
         }
     }
 
@@ -303,6 +305,7 @@ impl CssTaffyConverter {
         match val {
             StyleValue::Keyword(ref val) => {
                 match val.as_str() {
+                    "normal" => default,
                     "start" => Some(AlignContent::Start),
                     "end" => Some(AlignContent::End),
                     "flex-start" => Some(AlignContent::FlexStart),
