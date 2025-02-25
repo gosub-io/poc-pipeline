@@ -144,7 +144,7 @@ fn get_style_from_node(node: &DomNode) -> StylePropertyList {
             "inset-inline-end" => style.set_property(StyleProperty::InsetInlineEnd, parse_style_value(value)),
             "inset-inline-start" => style.set_property(StyleProperty::InsetInlineStart, parse_style_value(value)),
 
-            "justify_items" => style.set_property(StyleProperty::JustifyItems, parse_style_str(value)),
+            "justify-items" => style.set_property(StyleProperty::JustifyItems, parse_style_str(value)),
             "justify-self" => style.set_property(StyleProperty::JustifySelf, parse_style_str(value)),
             "justify-content" => style.set_property(StyleProperty::JustifyContent, parse_style_str(value)),
 

@@ -78,9 +78,9 @@ impl CssTaffyConverter {
         ts.gap = self.get_size_lp(StyleProperty::Gap, ts.gap);
         ts.align_items = self.get_align_items(StyleProperty::AlignItems, ts.align_items);
         ts.align_self = self.get_align_self(StyleProperty::AlignSelf, ts.align_self);
+        ts.align_content = self.get_align_content(StyleProperty::AlignContent, ts.align_content);
         ts.justify_items = self.get_align_items(StyleProperty::JustifyItems, ts.justify_items);
         ts.justify_self = self.get_align_self(StyleProperty::JustifySelf, ts.justify_self);
-        ts.align_content = self.get_align_content(StyleProperty::AlignContent, ts.align_content);
         ts.justify_content = self.get_align_content(StyleProperty::JustifyContent, ts.justify_content);
         ts.text_align = self.get_text_align(ts.text_align);
         ts.flex_direction = self.get_flex_direction(ts.flex_direction);

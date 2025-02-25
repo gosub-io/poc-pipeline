@@ -26,7 +26,7 @@ pub fn get_text_layout(text: &str, font_family: &str, font_size: f64, font_weigh
     // @TODO: This should be configurable
     layout.set_wrap(WrapMode::Word);
 
-    layout.set_spacing(((font_size - line_height) * SCALE as f64) as i32);
+    layout.set_spacing(((line_height - font_size) * SCALE as f64) as i32);
 
     Ok(layout)
 }

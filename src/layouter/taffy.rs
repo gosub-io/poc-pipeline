@@ -5,7 +5,7 @@ use taffy::prelude::*;
 use taffy::NodeId as TaffyNodeId;
 use crate::rendertree_builder::{RenderTree, RenderNodeId};
 use crate::common::document::node::{NodeType, NodeId as DomNodeId, ElementData};
-use crate::common::document::style::{StyleProperty, StyleValue, Unit};
+use crate::common::document::style::{FontWeight, StyleProperty, StyleValue, Unit};
 use crate::common::{geo, get_image_store};
 use crate::common::geo::Coordinate;
 use crate::common::image::ImageId;
@@ -24,10 +24,6 @@ pub struct TaffyLayouter {
     root_id: TaffyNodeId,
     /// Mapping of layout element id to taffy node id
     layout_taffy_mapping: HashMap<LayoutElementId, TaffyNodeId>,
-    // Stack of CSS styles. We need a stack because text elements do not have a CSS style, but we
-    // need to use the parent style. We should be able to use the parent stylesheet instead of storing
-    // it inside a stack though.
-    element_style_stack: Vec<Style>,
 }
 
 /// Context structures to pass to taffy measure functions so we can calculate the size of the text or image.
@@ -66,7 +62,6 @@ impl TaffyLayouter {
             tree: TaffyTree::new(),
             root_id: TaffyNodeId::new(0),
             layout_taffy_mapping: HashMap::new(),
-            element_style_stack: Vec::new(),
         }
     }
 
@@ -102,16 +97,11 @@ impl CanLayout for TaffyLayouter {
                     let text = text_ctx.text.as_str();
                     let line_height = text_ctx.line_height;
 
-                    let Some(node) = layout_tree.render_tree.doc.get_node_by_id(text_ctx.node_id) else {
-                        return Size::ZERO;
+                    let max_width = match v_as.width {
+                        AvailableSpace::Definite(width) => width as f64,
+                        AvailableSpace::MaxContent => f64::MAX,
+                        AvailableSpace::MinContent => 0.0,
                     };
-                    let Some(node) = layout_tree.render_tree.doc.get_node_by_id(node.parent_id.unwrap()) else {
-                        return Size::ZERO;
-                    };
-                    let Some(ElementData { styles, .. }) = (match &node.node_type {
-                        NodeType::Element(data) => Some(data),
-                        _ => return Size::ZERO,
-                    }) else { return Size::ZERO };
 
                     // Calculate the text layout dimensions and return it to taffy
                     let layout = get_text_layout(
@@ -120,13 +110,13 @@ impl CanLayout for TaffyLayouter {
                         font_size,
                         font_weight,
                         line_height,
-                        v_as.width.unwrap_or(0.0) as f64,
+                        max_width,
                     );
                     match layout {
                         Ok(layout) => {
-                            let (rect, logical_rect) = layout.extents();
-                            let text_width = rect.width() as f32 / pango::SCALE as f32;
-                            let text_height = rect.height() as f32 / pango::SCALE as f32;
+                            let (_rect, logical_rect) = layout.extents();
+                            let text_width = logical_rect.width() as f32 / pango::SCALE as f32;
+                            let text_height = logical_rect.height() as f32 / pango::SCALE as f32;
 
                             Size {
                                 width: text_width,
@@ -206,6 +196,8 @@ impl TaffyLayouter {
     }
 
     fn generate_node<'a>(&mut self, layout_tree: &'a mut LayoutTree, render_node_id: RenderNodeId) -> Option<&'a LayoutElementNode> {
+        let mut taffy_style = Style::default();
+
         // Additional taffy context based on the DOM node.
         let mut taffy_context = None;
 
@@ -220,8 +212,7 @@ impl TaffyLayouter {
             NodeType::Element(data) => {
                 // Create the taffy style from our CSS and push it into the stack
                 let conv = CssTaffyConverter::new(&data.styles);
-                let taffy_style = conv.convert();
-                self.element_style_stack.push(taffy_style);
+                taffy_style = conv.convert();
 
                 // Check if element type is an image, if so, set the taffy context
                 if data.tag_name.eq_ignore_ascii_case("img") {
@@ -236,6 +227,17 @@ impl TaffyLayouter {
 
                     taffy_context = Some(TaffyContext::image(src.as_str(), image_id, dimension, dom_node.node_id));
                 }
+
+                if data.tag_name.eq_ignore_ascii_case("svg") {
+                    let src = "dummy";
+                    let store = get_image_store();
+                    let image_id = store.read().unwrap().store_from_path(src);
+
+                    let image = store.read().unwrap().get(image_id).unwrap();
+                    let dimension = geo::Dimension::new(image.width as f64, image.height as f64);
+
+                    taffy_context = Some(TaffyContext::image(src, image_id, dimension, dom_node.node_id));
+                }
             }
             NodeType::Text(text, node_style) => {
                 let parent_node = match dom_node.parent_id {
@@ -244,14 +246,6 @@ impl TaffyLayouter {
                 };
                 if parent_node.is_none() {
                     return None;
-                }
-
-                // We just need to duplicate the last taffy style, as we are going to use this parent taffy style
-                match self.element_style_stack.last() {
-                    Some(style) => {
-                        self.element_style_stack.push(style.clone());
-                    },
-                    None => {},
                 }
 
                 // Default font
@@ -275,8 +269,15 @@ impl TaffyLayouter {
                     _ => {},
                 }
 
+                let fw = node_style.get_property(StyleProperty::FontWeight);
                 let font_weight = match node_style.get_property(StyleProperty::FontWeight) {
-                    Some(StyleValue::Number(value)) => *value,
+                    Some(StyleValue::FontWeight(weight)) => match weight {
+                        FontWeight::Normal => 400.0,
+                        FontWeight::Bold => 700.0,
+                        FontWeight::Number(value) => *value as f64,
+                        FontWeight::Bolder => { unimplemented!("FontWeight::Bolder is not implemented yet") },
+                        FontWeight::Lighter => { unimplemented!("FontWeight::Lighter is not implemented yet") },
+                    }
                     _ => 400.0,
                 };
 
@@ -292,6 +293,7 @@ impl TaffyLayouter {
                     _ => font_size,
                 };
 
+
                 // Calculate vertical offset for centering based on the lineheight.
                 let text_offset = Coordinate::new(0.0, ((line_height - font_size) / 2.0));
 
@@ -304,6 +306,8 @@ impl TaffyLayouter {
                     dom_node.node_id,
                     text_offset,
                 ));
+
+                // dbg!(&taffy_context);
             }
             NodeType::Comment(_) => {
                 // No need to layouting for comment nodes. In fact, they should have been removed already
@@ -315,10 +319,6 @@ impl TaffyLayouter {
         // If this is a leaf node, we can create a leaf node in the taffy tree
         if dom_node.children.is_empty() {
             let element_context = to_element_context(taffy_context.as_ref());
-
-            let Some(mut taffy_style) = self.element_style_stack.pop() else {
-                return None;
-            };
 
             let result = match taffy_context {
                 Some(taffy_context) => self.tree.new_leaf_with_context(taffy_style.to_owned(), taffy_context),
@@ -376,10 +376,6 @@ impl TaffyLayouter {
                 None => continue,
             }
         }
-
-        let Some(taffy_style) = self.element_style_stack.pop() else {
-            return None;
-        };
 
         match self.tree.new_with_children(taffy_style, &children_taffy_ids) {
             Ok(leaf_id) => {

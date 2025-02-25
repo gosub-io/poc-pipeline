@@ -46,9 +46,9 @@ fn create_text_layout(cmd: &Text) -> Result<ImageSurface, Error> {
     layout.set_width((cmd.rect.width * SCALE as f64) as i32);
     layout.set_wrap(gtk4::pango::WrapMode::Word);
 
-    // layout.set_spacing((cmd.line_height - cmd.font_size) * SCALE as f32) as i32);
+    layout.set_spacing(((cmd.line_height - cmd.font_size) * SCALE as f64) as i32);
 
-    set_brush(&cr, &cmd.brush, cmd.rect.into());
+    set_brush(&cr, &cmd.brush, cmd.rect);
     cr.move_to(0.0, 0.0);
     pangocairo::functions::show_layout(&cr, &layout);
 

@@ -18,7 +18,7 @@ pub(crate) fn do_paint_rectangle(cr: &Context, tile: &Tile, rectangle: &Rectangl
     match rectangle.background() {
         Some(brush) => {
             setup_rectangle_path(cr, rectangle);
-            set_brush(cr, brush, rectangle.rect().into());
+            set_brush(cr, brush, rectangle.rect());
             _ = cr.fill();
         }
         None => {}
@@ -28,7 +28,7 @@ pub(crate) fn do_paint_rectangle(cr: &Context, tile: &Tile, rectangle: &Rectangl
     setup_rectangle_path(cr, rectangle);
 
     cr.set_line_width(rectangle.border().width() as f64);
-    set_brush(cr, &rectangle.border().brush(), rectangle.rect().into());
+    set_brush(cr, &rectangle.border().brush(), rectangle.rect());
     match rectangle.border().style() {
         BorderStyle::None => {
             // No border to draw. Note that the border does not take up any space. This is already

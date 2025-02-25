@@ -7,7 +7,6 @@ pub enum Brush {
     Solid(Color),
     /// Paint with an image. This allows us to display images
     Image(Image),
-    /// Gradients
     // Gradient(Gradient),
 }
 

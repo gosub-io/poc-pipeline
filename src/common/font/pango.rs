@@ -25,24 +25,20 @@ pub fn find_available_font(families: &str, ctx: &pango::Context) -> String {
 }
 
 pub fn to_pango_weight(w: usize) -> Weight {
-    if w < 100 {
-        Weight::Thin
-    } else if w < 200 {
-        Weight::Ultralight
-    } else if w < 300 {
-        Weight::Light
-    } else if w < 400 {
-        Weight::Normal
-    } else if w < 500 {
-        Weight::Medium
-    } else if w < 600 {
-        Weight::Semibold
-    } else if w < 700 {
-        Weight::Bold
-    } else if w < 800 {
-        Weight::Ultrabold
-    } else {
-        Weight::Heavy
+    match w {
+        100 => Weight::Thin,
+        200 => Weight::Ultralight,
+        300 => Weight::Light,
+        350 => Weight::Semilight,
+        380 => Weight::Book,
+        400 => Weight::Normal,
+        500 => Weight::Medium,
+        600 => Weight::Semibold,
+        700 => Weight::Bold,
+        800 => Weight::Ultrabold,
+        900 => Weight::Heavy,
+        1000 => Weight::Ultraheavy,
+        _ => Weight::__Unknown(w as i32),
     }
 }
 
