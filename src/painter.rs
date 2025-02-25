@@ -128,6 +128,7 @@ impl Painter {
         match &layout_element.context {
             ElementContext::Text(ctx) => {
                 let brush = self.get_parent_brush(dom_node, StyleProperty::Color, Brush::solid(Color::BLACK));
+
                 // let brush = Brush::solid(Color::from_rgb8(130, 130, 130));
                 let t = Text::new(
                     layout_element.box_model.content_box(),
@@ -135,6 +136,7 @@ impl Painter {
                     &ctx.font_family,
                     ctx.font_size,
                     ctx.font_weight,
+                    ctx.line_height,
                     brush
                 );
                 commands.push(PaintCommand::text(t));

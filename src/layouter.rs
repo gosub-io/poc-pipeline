@@ -5,7 +5,7 @@ use rstar::primitives::GeomWithData;
 use crate::layouter::box_model::BoxModel;
 use crate::rendertree_builder::{RenderTree, RenderNodeId};
 use crate::common::document::node::{NodeId as DomNodeId, NodeId};
-use crate::common::geo::Dimension;
+use crate::common::geo::{Coordinate, Dimension};
 use crate::common::image::ImageId;
 
 pub mod taffy;
@@ -40,7 +40,9 @@ pub struct ElementContextText {
     pub font_family: String,
     pub font_size: f64,
     pub font_weight: usize,
+    pub line_height: f64,
     pub text: String,
+    pub text_offset: Coordinate,
 }
 
 #[derive(Clone, Debug)]
@@ -61,13 +63,15 @@ pub enum ElementContext {
 }
 
 impl ElementContext {
-    pub(crate) fn text(font_family: &str, font_size: f64, font_weight: usize, text: &str, node_id: DomNodeId) -> ElementContext {
+    pub(crate) fn text(font_family: &str, font_size: f64, font_weight: usize, line_height: f64, text: &str, node_id: DomNodeId) -> ElementContext {
         Self::Text(ElementContextText{
             node_id,
             font_family: font_family.to_string(),
             font_size,
             font_weight,
+            line_height,
             text: text.to_string(),
+            text_offset: Coordinate::ZERO,
         })
     }
 

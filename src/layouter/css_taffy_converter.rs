@@ -42,7 +42,9 @@ impl CssTaffyConverter {
         }
     }
 
-    pub fn convert(&self, ts: &mut Style) {
+    pub fn convert(&self) -> Style {
+        let mut ts = Style::default();
+
         ts.display = self.get_display(ts.display);
         // item_is_table: false,
         ts.box_sizing = self.get_box_sizing(ts.box_sizing);
@@ -92,6 +94,8 @@ impl CssTaffyConverter {
         // grid_auto_flow: GridAutoFlow::Row,
         // grid_row: Line { start: GridPlacement::Auto, end: GridPlacement::Auto },
         // grid_column: Line { start: GridPlacement::Auto, end: GridPlacement::Auto },
+
+        ts
     }
 
     fn get_flex_wrap(&self, default: FlexWrap) -> FlexWrap {

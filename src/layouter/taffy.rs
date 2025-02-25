@@ -7,6 +7,7 @@ use crate::rendertree_builder::{RenderTree, RenderNodeId};
 use crate::common::document::node::{NodeType, NodeId as DomNodeId, ElementData};
 use crate::common::document::style::{StyleProperty, StyleValue, Unit};
 use crate::common::{geo, get_image_store};
+use crate::common::geo::Coordinate;
 use crate::common::image::ImageId;
 use crate::layouter::{LayoutElementNode, LayoutTree, LayoutElementId, CanLayout, ElementContext, box_model, ElementContextText, ElementContextImage};
 use crate::layouter::css_taffy_converter::CssTaffyConverter;
@@ -22,6 +23,8 @@ pub struct TaffyLayouter {
     root_id: TaffyNodeId,
     /// Mapping of layout element id to taffy node id
     layout_taffy_mapping: HashMap<LayoutElementId, TaffyNodeId>,
+
+    element_style_stack: Vec<Style>,
 }
 
 /// @TODO: we have taffy context structures, which contains information for layouting with taffy. But
@@ -35,13 +38,15 @@ pub enum TaffyContext {
 }
 
 impl TaffyContext {
-    fn text(font_family: &str, font_size: f64, font_weight: usize, text: &str, node_id: DomNodeId) -> TaffyContext {
+    fn text(font_family: &str, font_size: f64, font_weight: usize, line_height: f64, text: &str, node_id: DomNodeId) -> TaffyContext {
         TaffyContext::Text(ElementContextText{
             node_id,
             font_family: font_family.to_string(),
             font_size,
             font_weight,
+            line_height,
             text: text.to_string(),
+            text_offset: Coordinate::ZERO,
         })
     }
 
@@ -61,6 +66,7 @@ impl TaffyLayouter {
             tree: TaffyTree::new(),
             root_id: TaffyNodeId::new(0),
             layout_taffy_mapping: HashMap::new(),
+            element_style_stack: Vec::new(),
         }
     }
 
@@ -92,6 +98,7 @@ impl CanLayout for TaffyLayouter {
                     let font_weight = text_ctx.font_weight;
                     let font_family = text_ctx.font_family.as_str();
                     let text = text_ctx.text.as_str();
+                    let line_height = text_ctx.line_height;
 
                     let Some(node) = layout_tree.render_tree.doc.get_node_by_id(text_ctx.node_id) else {
                         return Size::ZERO;
@@ -109,16 +116,31 @@ impl CanLayout for TaffyLayouter {
                         font_family,
                         font_size,
                         font_weight,
+                        line_height,
                         v_as.width.unwrap_or(0.0) as f64,
-                        styles,
                     );
                     match layout {
                         Ok(layout) => {
-                            // @TODO: Somehow, layout.width() and layout.height() do not seem to work anymore
-                            let (_, logical_rect) = layout.extents();
+                            let (rect, logical_rect) = layout.extents();
+                            let text_width = rect.width() as f32 / pango::SCALE as f32;
+                            let text_height = rect.height() as f32 / pango::SCALE as f32;
+
+                            // Extract line-height from styles
+                            let line_height = styles.get_property(StyleProperty::LineHeight).and_then(|lh| {
+                                match lh {
+                                    StyleValue::Unit(value, _) => Some(*value),
+                                    StyleValue::Percentage(value) => Some((value / 100.0) * font_size as f32),
+                                    _ => None,
+                                }
+                            }).unwrap_or(font_size as f32); // Fallback to font size if line-height is not set
+
+                            // Calculate vertical offset for centering
+                            text_ctx.text_offset = Coordinate::new(0.0, ((line_height - font_size as f32) / 2.0) as f64);
+                            dbg!(&line_height, text_ctx.text_offset, text);
+
                             Size {
-                                width: logical_rect.width() as f32 / pango::SCALE as f32,
-                                height: logical_rect.height() as f32 / pango::SCALE as f32,
+                                width: text_width,
+                                height: text_height,
                             }
                         },
                         Err(_) => Size::ZERO
@@ -130,7 +152,7 @@ impl CanLayout for TaffyLayouter {
 
         // Generate box model for the whole layout tree
         let root_id = layout_tree.root_id;
-        self.populate_boxmodel(&mut layout_tree, root_id, geo::Coordinate::ZERO);
+        self.populate_boxmodel(&mut layout_tree, root_id, Coordinate::ZERO);
 
         // get dimension of the root node
         let root = layout_tree.get_node_by_id(root_id).unwrap();
@@ -144,16 +166,22 @@ impl CanLayout for TaffyLayouter {
 
 impl TaffyLayouter {
     // Populate the layout tree with the boxmodels that we now can generate
-    fn populate_boxmodel(&self, layout_tree: &mut LayoutTree, layout_node_id: LayoutElementId, offset: geo::Coordinate) {
+    fn populate_boxmodel(&self, layout_tree: &mut LayoutTree, layout_node_id: LayoutElementId, offset: Coordinate) {
         let taffy_node_id = self.layout_taffy_mapping.get(&layout_node_id).unwrap();
         let layout = self.tree.layout(*taffy_node_id).unwrap().clone();
 
+
+        let text_offset = match self.tree.get_node_context(*taffy_node_id) {
+            Some(TaffyContext::Text(text_ctx)) => text_ctx.text_offset,
+            _ => Coordinate::ZERO,
+        };
+
         let el = layout_tree.get_node_by_id_mut(layout_node_id).unwrap();
-        el.box_model = taffy_layout_to_boxmodel(&layout, offset);
+        el.box_model = taffy_layout_to_boxmodel(&layout, offset, text_offset);
         let child_ids = el.children.clone();
 
         for child_id in child_ids {
-            self.populate_boxmodel(layout_tree, child_id, geo::Coordinate::new(
+            self.populate_boxmodel(layout_tree, child_id, Coordinate::new(
                 offset.x + layout.location.x as f64 + layout.margin.left as f64,
                 offset.y + layout.location.y as f64 + layout.margin.top as f64
             ));
@@ -190,12 +218,6 @@ impl TaffyLayouter {
     }
 
     fn generate_node<'a>(&mut self, layout_tree: &'a mut LayoutTree, render_node_id: RenderNodeId) -> Option<&'a LayoutElementNode> {
-        // Default taffy style
-        let mut taffy_style = Style {
-            display: Display::Block,
-            ..Default::default()
-        };
-
         // Additional taffy context based on the DOM node.
         let mut taffy_context = None;
 
@@ -207,8 +229,10 @@ impl TaffyLayouter {
 
         match &dom_node.node_type {
             NodeType::Element(data) => {
+                // Create the taffy style from our CSS and push it into the stack
                 let conv = CssTaffyConverter::new(&data.styles);
-                conv.convert(&mut taffy_style);
+                let taffy_style = conv.convert();
+                self.element_style_stack.push(taffy_style);
 
                 // Check if element type is an image
                 if data.tag_name.eq_ignore_ascii_case("img") {
@@ -225,6 +249,22 @@ impl TaffyLayouter {
                 }
             }
             NodeType::Text(text, node_style) => {
+                let parent_node = match dom_node.parent_id {
+                    Some(parent_id) => layout_tree.render_tree.doc.get_node_by_id(parent_id),
+                    None => None,
+                };
+                if parent_node.is_none() {
+                    return None;
+                }
+
+                // We just need to duplicate the last taffy style, as we are going to use this parent taffy style
+                match self.element_style_stack.last() {
+                    Some(style) => {
+                        self.element_style_stack.push(style.clone());
+                    },
+                    None => {},
+                }
+
                 // Default font
                 let mut font_size = DEFAULT_FONT_SIZE;
                 let mut font_family = DEFAULT_FONT_FAMILY.to_string();
@@ -251,23 +291,42 @@ impl TaffyLayouter {
                     _ => 400.0,
                 };
 
+                let line_height = match node_style.get_property(StyleProperty::LineHeight) {
+                    Some(StyleValue::Unit(value, unit)) => {
+                        match unit {
+                            Unit::Px => *value as f64,
+                            Unit::Em => panic!("Don't know how to deal with em units for line-height"),
+                            Unit::Rem => panic!("Don't know how to deal with rem units for line-height"),
+                            _ => panic!("Incorrect line-height property unit"),
+                        }
+                    }
+                    _ => font_size,
+                };
+
                 taffy_context = Some(TaffyContext::text(
                     font_family.as_str(),
                     font_size,
                     font_weight as usize,
+                    line_height,
                     text,
                     dom_node.node_id,
                 ));
             }
-            NodeType::Comment(_) => {}
+            NodeType::Comment(_) => {
+                return None;
+            }
         }
 
         if dom_node.children.is_empty() {
             let element_context = to_element_context(taffy_context.as_ref());
 
+            let Some(mut taffy_style) = self.element_style_stack.pop() else {
+                return None;
+            };
+
             let result = match taffy_context {
-                Some(taffy_context) => self.tree.new_leaf_with_context(taffy_style, taffy_context),
-                None => self.tree.new_leaf(taffy_style),
+                Some(taffy_context) => self.tree.new_leaf_with_context(taffy_style.to_owned(), taffy_context),
+                None => self.tree.new_leaf(taffy_style.to_owned()),
             };
 
             match result {
@@ -321,6 +380,10 @@ impl TaffyLayouter {
             }
         }
 
+        let Some(taffy_style) = self.element_style_stack.pop() else {
+            return None;
+        };
+
         match self.tree.new_with_children(taffy_style, &children_taffy_ids) {
             Ok(leaf_id) => {
                 let element_context = to_element_context(taffy_context.as_ref());
@@ -354,6 +417,7 @@ fn to_element_context(taffy_context: Option<&TaffyContext>) -> ElementContext {
             text_ctx.font_family.as_str(),
             text_ctx.font_size,
             text_ctx.font_weight,
+            text_ctx.line_height,
             text_ctx.text.as_str(),
             text_ctx.node_id,
         ),
@@ -378,7 +442,7 @@ fn has_margin(src: Rect<LengthPercentageAuto>) -> bool {
 }
 
 /// Converts a taffy layout to our own BoxModel structure
-pub fn taffy_layout_to_boxmodel(layout: &Layout, offset: geo::Coordinate) -> box_model::BoxModel {
+pub fn taffy_layout_to_boxmodel(layout: &Layout, offset: Coordinate, text_offset: Coordinate) -> box_model::BoxModel {
     box_model::BoxModel {
         margin_box: geo::Rect {
             x: offset.x + layout.location.x as f64,

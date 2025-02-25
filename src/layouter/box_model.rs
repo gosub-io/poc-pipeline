@@ -11,9 +11,13 @@ pub struct Edges {
 
 #[derive(Debug, Clone, Copy)]
 pub struct BoxModel {
+    /// Rectangle of the margin box, the outer box of the element.
     pub margin_box: geo::Rect,
+    /// Thickness of the margin on each side.
     pub margin: Edges,
+    /// Thickness of the border on each side.
     pub border: Edges,
+    /// Thickness of the padding on each side.
     pub padding: Edges,
 }
 
