@@ -3,6 +3,7 @@ pub struct Image {
     data: Vec<u8>,
     width: u32,
     height: u32,
+    // @todo: Do we need ImageFormat??
 }
 
 impl Image {

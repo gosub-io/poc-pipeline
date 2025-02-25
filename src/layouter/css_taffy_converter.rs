@@ -2,6 +2,7 @@ use taffy::{AlignContent, AlignItems, AlignSelf, BoxSizing, Dimension, Display, 
 use taffy::prelude::FromLength;
 use crate::common::document::style::{StyleProperty, StylePropertyList, StyleValue, Display as CssDisplay, Unit as CssUnit };
 
+/// This struct convert CSS stylesheets into taffy style structure.
 pub struct CssTaffyConverter {
     data: StylePropertyList,
 }

@@ -3,8 +3,11 @@ use crate::painter::commands::image::Image;
 
 #[derive(Clone, Debug)]
 pub enum Brush {
+    /// Paint with fixed solid color
     Solid(Color),
+    /// Paint with an image. This allows us to display images
     Image(Image),
+    /// Gradients
     // Gradient(Gradient),
 }
 

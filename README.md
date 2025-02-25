@@ -17,14 +17,17 @@ The stages:
  - Compositing - combine the tiles into a final image
 
 The first step is generating the render tree. It will convert a DOM tree together with CSS styles into a tree of nodes that are needed for 
-generating layout. The node IDs in the render-tree are the same as the node IDs in the DOM tree.
+generating layout. The node IDs in the render-tree are the same as the node IDs in the DOM tree and are interchangable: NodeId(4) is the 
+same as RenderNodeId(4) though they have different types. 
 
-The second step is to generate a layout. For this we use Taffy to compute all the layout elements. The layout elements are the building blocks
-for the layout tree.
+The second step is to generate a layout. For this we use Taffy to compute all the layout elements and use pango for generating text layout.
+The layout elements are the building blocks for the layout tree. To make sure we are not dependend on taffy, the output of the layout tree is a 
+BoxModel system, where each element is confined into a box model. This boxmodel holds the dimensions of the margin, padding, border and content.
 
 The third step is to generate layers. Layers are used to optimize rendering. They are used to group elements that can be rendered together.
 If there are elements with some kind of CSS animations, they can be moved to a separate layer, and let the compositor deal with this animation.
-This means that we do not need to rerender the layers or tiles, but merely update the position of the layers in the compositor.
+This means that we do not need to rerender the layers or tiles, but merely update the position of the layers in the compositor. As a demonstration,
+we place all elements in layer 0, and place images inside layer 1.
 
 The next step is tiling. Here we convert the layout tree into elements of 256x256 pixels (tiles). This is done to optimize rendering dirty elements. 
 Only the tiles that are visible on the screen are rendered and cached. When the user scrolls, we only need to render the new tiles that are visible 
@@ -34,7 +37,7 @@ still valid do not have to be rendered again.
 The painting generates commands that are needed to render pixels onto the tiles. However, it does not execute this painting. It merely generates
 the commands.
 
-The reastering phase will get the tiles and the paint commands and execute the painting per tile into textures.
+The rastering phase will get the tiles and the paint commands and execute the painting per tile into textures.
 
 The final step is compositing. Here we combine the visible tiles in the layers onto the screen. When we have CSS animations like transitions, we
 do not need to repaint the tiles, but merely update the position of the tiles (or their opacity). The compositing will take care of this and returns 
@@ -46,12 +49,14 @@ Each stage will take the data from the previous stage and transform it into a ne
 by wrapping these structures.
 
 For instance, the layering stage will take the layout tree and the render tree as input. The output of the layering stage is a list of layers.
-Note that we have a wrapped layouttree, which in turn has a wrapped render tree which in turn has a wrapped DOM document.
+Note that we have a wrapped layout tree, which in turn has a wrapped render tree which in turn has a wrapped DOM document.
+
+
+# Data structure throughout the pipelines
+Note that each structure wraps the previous structure so it's always possible to look back into the previous stage for information. Normally,
+the layout list and dom nodes are important for later stages.
 
 ```
-
-
-
 TileList
     - layers: HashMap<LayerId, Vec<TileId>>
     - default_tile_width
@@ -80,4 +85,20 @@ TileList
                         - node_id: NodeId
                         - children: Vec<Node>
                         - node_type: NodeType
+```
 
+
+# Directory layout
+Each stage has its own file in the `src` directory. The `main.rs` file contains the main function that runs the pipeline. If a stage is larger (most of them are), it will 
+be split into a module with the corresponding name. Some code is shared between stages (geometry, document, texture and images stores etc), and they are placed into the 
+`common` module. Note that it's possible for any pipeline module to use the `common` module, but not the other way around.
+
+
+# Main demo application
+The `main.rs` holds a simple GTK application to demonstrate the pipeline. The pipeline accepts a DOM document and stylesheets, but since this is a POC, we haven't 
+implemented a html5 and css parser. Instead, you can use the `soupertoo.py` tool in the `tools` directory to generate a JSON file that contains the DOM tree and the
+css styles which can be used in the `main.rs` file.
+
+# Rstar
+This pipeline relies on rstar for spatial searched. For instance, we need to know which elements are visible on the screen. Or which elements are at a certain position.
+Some of the pipeline data structures will have a separate rstar tree for this purpose. 

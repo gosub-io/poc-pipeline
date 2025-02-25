@@ -3,6 +3,7 @@ use std::ops::AddAssign;
 use std::sync::{Arc, RwLock};
 use crate::layouter::{LayoutElementId, LayoutTree};
 
+/// ID for layers
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct LayerId(u64);
 
@@ -58,12 +59,13 @@ impl std::fmt::Debug for Layer {
     }
 }
 
+/// A list of layers that is returned by the pipeline stage
 pub(crate) struct LayerList {
     /// Wrapped layout tree
     pub layout_tree: Arc<LayoutTree>,
     /// List of all (unique) layer IDs
     pub layer_ids: RwLock<Vec<LayerId>>,
-    /// List of layers
+    /// List of actual layers
     pub layers: RwLock<HashMap<LayerId, Layer>>,
     /// Next layer ID
     next_layer_id: RwLock<LayerId>,
@@ -91,6 +93,7 @@ impl LayerList {
         layer_list
     }
 
+    /// @TODO: This must be done through rstar!
     /// Find the element at the given coordinates. It will return the given element if it is found or None otherwise
     pub fn find_element_at(&self, x: f64, y: f64) -> Option<LayoutElementId> {
         // This assumes that the layers are ordered from top to bottom

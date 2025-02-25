@@ -25,6 +25,16 @@ impl Rect {
             height: dimension.height,
         }
     }
+
+    /// Returns a new rect that is shifted by the given coordinate.
+    pub fn shift(&self, coord: Coordinate) -> Self {
+        Self {
+            x: self.x + coord.x,
+            y: self.y + coord.y,
+            width: self.width,
+            height: self.height,
+        }
+    }
 }
 
 impl Into<Coordinate> for Rect {

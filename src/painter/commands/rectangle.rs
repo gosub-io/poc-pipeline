@@ -2,7 +2,7 @@ use crate::common::geo::Rect;
 use crate::painter::commands::border::Border;
 use crate::painter::commands::brush::Brush;
 
-// @TODO: Radius is actually 2x f64.
+// @TODO: Radius is actually 2x f64 as both edges can have a different radius.
 pub type Radius = f64;
 
 #[derive(Clone, Debug)]

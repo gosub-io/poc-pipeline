@@ -25,10 +25,15 @@ impl std::fmt::Display for ImageId {
 
 #[derive(Clone)]
 pub struct Image {
+    /// Width of the image in pixels
     pub width: usize,
+    /// Height of the image in pixels
     pub height: usize,
+    /// Binary data that represents the image
     pub data: Vec<u8>,
+    /// Actual image format of the binary data
     pub format: ImageFormat,
+    /// Sha256 hash of the image (not really used yet)
     pub hash: [u8; 32],
 }
 

@@ -9,6 +9,7 @@ pub struct Edges {
     pub left: f64,
 }
 
+/// Represents a boxmodel of an element. It contains the margin, border and padding of the element.
 #[derive(Debug, Clone, Copy)]
 pub struct BoxModel {
     /// Rectangle of the margin box, the outer box of the element.

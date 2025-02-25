@@ -10,7 +10,7 @@ pub fn find_available_font(families: &str, ctx: &pango::Context) -> String {
 
     for font in families.split(',') {
 
-        // System-ui is a special font that should be handled by the system.
+        // System-ui is a special font that should be handled by us.
         if font == "system-ui" {
             return get_system_ui_font();
         }
@@ -46,7 +46,8 @@ pub fn to_pango_weight(w: usize) -> Weight {
     }
 }
 
-/// Returns the font as defined by the gnome settings.
+/// Returns the font as defined by the gnome settings. Other platforms like windows and osx will
+/// deal with this differently.
 fn get_system_ui_font() -> String {
     let settings = Settings::new("org.gnome.desktop.interface");
     settings.string("font-name").to_string()

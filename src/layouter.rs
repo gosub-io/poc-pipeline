@@ -13,6 +13,7 @@ pub mod text;
 mod box_model;
 mod css_taffy_converter;
 
+/// ID's for layout elements
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct LayoutElementId(u64);
 
@@ -34,22 +35,33 @@ impl std::fmt::Display for LayoutElementId {
     }
 }
 
+/// Context for an element. It contains all information to paint the element.
 #[derive(Debug, Clone)]
 pub struct ElementContextText {
+    /// Node ID of the text in the DOM
     pub node_id: DomNodeId,
+    /// Font family (can be comma separated)
     pub font_family: String,
+    /// Size of the font in pixels
     pub font_size: f64,
+    /// Weight (100-700) of the font
     pub font_weight: usize,
+    /// Line height of the text. Most likely not needed anymore since we already calculated the text_offset
     pub line_height: f64,
     pub text: String,
+    /// Additional offset for the text. This can happen when we have a lineheight and the text needs to be centered in the block
     pub text_offset: Coordinate,
 }
 
 #[derive(Clone, Debug)]
 pub struct ElementContextImage {
+    /// Node ID of the image in the DOM
     pub node_id: DomNodeId,
+    /// Source of the image
     pub src: String,
+    /// ID of the image inside the image store
     pub image_id: ImageId,
+    /// Dimension of the image. Can be Dimension::ZERO if not known yet
     pub dimension: Dimension,
 }
 
@@ -63,7 +75,7 @@ pub enum ElementContext {
 }
 
 impl ElementContext {
-    pub(crate) fn text(font_family: &str, font_size: f64, font_weight: usize, line_height: f64, text: &str, node_id: DomNodeId) -> ElementContext {
+    pub(crate) fn text(font_family: &str, font_size: f64, font_weight: usize, line_height: f64, text: &str, node_id: DomNodeId, text_offset: Coordinate) -> ElementContext {
         Self::Text(ElementContextText{
             node_id,
             font_family: font_family.to_string(),
@@ -71,7 +83,7 @@ impl ElementContext {
             font_weight,
             line_height,
             text: text.to_string(),
-            text_offset: Coordinate::ZERO,
+            text_offset,
         })
     }
 
@@ -88,13 +100,13 @@ impl ElementContext {
 #[derive(Debug, Clone)]
 pub struct LayoutElementNode {
     pub id: LayoutElementId,
-    /// Id of the node in the DOM, contains the data, like element name, attributes, etc.
+    /// ID of the node in the DOM, contains the data, like element name, attributes, etc.
     pub dom_node_id: DomNodeId,
-    /// Id of the node in the render tree. This is normally the same node ID as the dom node ID
+    /// ID of the node in the render tree. This is normally the same node ID as the dom node ID
     pub render_node_id: RenderNodeId,
     /// Children of this node
     pub children: Vec<LayoutElementId>,
-    /// Generated boxmodel for this node
+    /// Generated box model for this node
     pub box_model: BoxModel,
     /// Element context. Used by different parts of the render engine
     pub context: ElementContext,
@@ -142,6 +154,7 @@ impl std::fmt::Debug for LayoutTree {
     }
 }
 
+/// A layout engine should implement this trait and return a layout tree
 pub trait CanLayout {
     fn layout(&mut self, render_tree: RenderTree, viewport: Option<Dimension>) -> LayoutTree;
 }

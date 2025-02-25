@@ -1,5 +1,7 @@
 use csscolorparser::Color as ccpColor;
 
+/// Our colors are internally f32 (0.0 to 1.0) but we can convert them to u8 (0 to 255) with r8, g8, b8, a8
+/// It also allows creating colors by css name
 #[derive(Clone, Debug)]
 pub struct Color {
     r: f32,

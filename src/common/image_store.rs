@@ -5,13 +5,14 @@ use std::sync::{Arc, OnceLock, RwLock};
 use image::ImageFormat;
 use crate::common::image::{Image, ImageId};
 
+/// Image store is global
 pub static IMAGE_STORE: OnceLock<RwLock<ImageStore>> = OnceLock::new();
 
 pub fn get_image_store() -> &'static RwLock<ImageStore> {
     IMAGE_STORE.get_or_init(|| RwLock::new(ImageStore::new()))
 }
 
-
+/// Image store keeps all the loaded images in memory so it can be referenced by its ImageID
 pub struct ImageStore {
     /// List of all images
     pub images: RwLock<HashMap<ImageId, Arc<Image>>>,

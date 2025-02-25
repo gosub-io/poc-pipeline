@@ -92,18 +92,18 @@ The rect defines the position and dimension of the element that needs to be rend
 In the first tile, the element starts at 50x25. Even though the element is 100x50 in side,
 the rect starts at 0,0 to 50,25. Which is the top left quarter of the element.
 
-    0           100         200
-    +------------+-----------+
-    |            |           |
-    |        ####|####       |
-    |        ####|####       |
-    |        ####|####       |
- 50 +------------+-----------+
-    |        ####|####       |
-    |        ####|####       |
-    |        ####|####       |
-    |            |           |
-100 +------------+-----------+
+    0                 100             200
+    +------------------+----------------+
+    |                  |                |
+    |            ######|######          |
+    |            ######|######          |
+    |            ######|######          |
+ 50 +------------------+----------------+
+    |            ######|######          |
+    |            ######|######          |
+    |            ######|######          |
+    |                  |                |
+100 +------------------+----------------+
 */
 
 #[derive(Clone, Debug, PartialEq)]
@@ -343,25 +343,6 @@ impl TileList {
             }
         }
     }
-
-    // fn find_intersecting_tiles(&self, tile_ids: &Vec<TileId>, element: &LayoutElementNode) -> Vec<TileId> {
-    //     let matching_tile_ids = self.tile_layer.rstar_tree
-    //         .locate_in_envelope_intersecting(&AABB::from_corners(
-    //             [element.box_model.margin_box.x, element.box_model.margin_box.y],
-    //             [element.box_model.margin_box.x + element.box_model.margin_box.width, element.box_model.margin_box.y + element.box_model.margin_box.height]
-    //         )).map(|x| x.data).collect();
-    //
-    //     matching_tile_ids
-    //
-    //     // let mut matching_tile_ids = vec![];
-    //     // for tile_id in tile_ids.iter() {
-    //     //     let tile = self.arena.get(tile_id).unwrap();
-    //     //     if tile.rect.intersects(element.box_model.margin_box) {
-    //     //         matching_tile_ids.push(*tile_id);
-    //     //     }
-    //     // }
-    //     // matching_tile_ids
-    // }
 
     pub fn print_list(&self) {
         println!("Generated tilelist:");

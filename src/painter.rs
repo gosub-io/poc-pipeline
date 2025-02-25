@@ -18,6 +18,9 @@ use crate::painter::commands::border::{Border, BorderStyle};
 use crate::painter::commands::text::Text;
 use crate::tiler::{Tile, TiledLayoutElement};
 
+/// Painter works with the layout tree and generates paint commands for the renderer. It does not
+/// generate a new data structure as output, but will update the existing layout elements with
+/// paint commands.
 pub struct Painter {
     layer_list: Arc<LayerList>,
 }
@@ -50,13 +53,16 @@ impl Painter {
 
         match state.wireframed {
             WireframeState::Only => {
+                // Paint only the wireframe of the element
                 commands.extend(self.generate_wireframe_commands(&layout_element));
             }
             WireframeState::Both => {
+                // Paint both the wireframe and element
                 commands.extend(self.generate_element_commands(&layout_element, &dom_node));
                 commands.extend(self.generate_wireframe_commands(&layout_element));
             }
             WireframeState::None => {
+                // Paint only the element. No debug/developer wireframe is needed.
                 commands.extend(self.generate_element_commands(&layout_element, &dom_node));
             }
         }
@@ -94,6 +100,7 @@ impl Painter {
         self.get_brush(parent, css_prop, default)
     }
 
+    /// Generates the wireframe commands for the given layout element
     fn generate_wireframe_commands(&self, layout_element: &LayoutElementNode) -> Vec<PaintCommand> {
         let mut commands = Vec::new();
 
@@ -104,6 +111,7 @@ impl Painter {
         commands
     }
 
+    /// Generates the boxmodel commands for the given layout element
     fn generate_boxmodel_commands(&self, layout_element: &LayoutElementNode) -> Vec<PaintCommand> {
         let mut commands = Vec::new();
 
@@ -122,6 +130,7 @@ impl Painter {
         commands
     }
 
+    /// Generates the paint commands for the given layout element
     fn generate_element_commands(&self, layout_element: &LayoutElementNode, dom_node: &Node) -> Vec<PaintCommand> {
         let mut commands = Vec::new();
 
@@ -129,9 +138,11 @@ impl Painter {
             ElementContext::Text(ctx) => {
                 let brush = self.get_parent_brush(dom_node, StyleProperty::Color, Brush::solid(Color::BLACK));
 
+                let r = layout_element.box_model.content_box().shift(ctx.text_offset);
+                let r = layout_element.box_model.content_box();
                 // let brush = Brush::solid(Color::from_rgb8(130, 130, 130));
                 let t = Text::new(
-                    layout_element.box_model.content_box(),
+                    r,
                     &ctx.text,
                     &ctx.font_family,
                     ctx.font_size,
@@ -157,6 +168,10 @@ impl Painter {
                 commands.push(PaintCommand::rectangle(r));
             }
             ElementContext::None => {
+                // Paint a normal element. This function will most likely be much more complex as it is now, because we need to
+                // deal with other elements line input fields, buttons, etc. But for now, we just paint a rectangle with (rounded) borders and
+                // brush.
+
                 let brush = self.get_brush(dom_node, StyleProperty::BackgroundColor, Brush::solid(Color::TRANSPARENT));
                 // let border = Border::new(3.0, BorderStyle::None, Brush::Solid(Color::RED));
                 let mut r = Rectangle::new(layout_element.box_model.border_box()).with_background(brush);
