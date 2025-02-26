@@ -212,7 +212,7 @@ impl TaffyLayouter {
             NodeType::Element(data) => {
                 // Create the taffy style from our CSS and push it into the stack
                 let conv = CssTaffyConverter::new(&data.styles);
-                taffy_style = conv.convert();
+                taffy_style = conv.convert(dom_node.node_id);
 
                 // Check if element type is an image, if so, set the taffy context
                 if data.tag_name.eq_ignore_ascii_case("img") {
@@ -269,7 +269,6 @@ impl TaffyLayouter {
                     _ => {},
                 }
 
-                let fw = node_style.get_property(StyleProperty::FontWeight);
                 let font_weight = match node_style.get_property(StyleProperty::FontWeight) {
                     Some(StyleValue::FontWeight(weight)) => match weight {
                         FontWeight::Normal => 400.0,
@@ -306,8 +305,6 @@ impl TaffyLayouter {
                     dom_node.node_id,
                     text_offset,
                 ));
-
-                // dbg!(&taffy_context);
             }
             NodeType::Comment(_) => {
                 // No need to layouting for comment nodes. In fact, they should have been removed already

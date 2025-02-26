@@ -1,5 +1,6 @@
 use taffy::{AlignContent, AlignItems, AlignSelf, BoxSizing, Dimension, Display, FlexDirection, FlexWrap, LengthPercentage, LengthPercentageAuto, Overflow, Point, Position, Rect, Size, Style, TextAlign};
 use taffy::prelude::FromLength;
+use crate::common::document::node::NodeId;
 use crate::common::document::style::{StyleProperty, StylePropertyList, StyleValue, Display as CssDisplay, Unit as CssUnit };
 
 /// This struct convert CSS stylesheets into taffy style structure.
@@ -43,7 +44,7 @@ impl CssTaffyConverter {
         }
     }
 
-    pub fn convert(&self) -> Style {
+    pub fn convert(&self, node_id: NodeId) -> Style {
         let mut ts = Style::default();
 
         ts.display = self.get_display(ts.display);
@@ -95,6 +96,20 @@ impl CssTaffyConverter {
         // grid_auto_flow: GridAutoFlow::Row,
         // grid_row: Line { start: GridPlacement::Auto, end: GridPlacement::Auto },
         // grid_column: Line { start: GridPlacement::Auto, end: GridPlacement::Auto },
+
+
+        // If we have inline element, then set the correct properties for inlining the element
+        match self.data.get_property(StyleProperty::Display) {
+            Some(StyleValue::Display(CssDisplay::Inline)) => {
+
+                println!("Node {} is inline", node_id);
+                ts.display = Display::Flex;
+                ts.flex_direction = FlexDirection::Row;
+                ts.flex_wrap = FlexWrap::Wrap;
+                ts.align_items = Some(AlignItems::Baseline);
+            },
+            _ => {},
+        }
 
         ts
     }

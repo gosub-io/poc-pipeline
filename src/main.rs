@@ -37,10 +37,10 @@ fn main() {
     // --------------------------------------------------------------------
     // Generate a DOM tree
     // let doc = common::document::create_document();
-    let doc = common::document::parser::document_from_json("output.json");
-    // let mut output = String::new();
-    // doc.print_tree(&mut output).expect("");
-    // println!("{}", output);
+    let doc = common::document::parser::document_from_json("typo.json");
+    let mut output = String::new();
+    doc.print_tree(&mut output).expect("");
+    println!("{}", output);
 
     // --------------------------------------------------------------------
     // Convert the DOM tree into a render-tree that has all the non-visible elements removed
