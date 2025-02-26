@@ -12,6 +12,7 @@ use crate::common::image::ImageId;
 use crate::layouter::{LayoutElementNode, LayoutTree, LayoutElementId, CanLayout, ElementContext, box_model, ElementContextText, ElementContextImage};
 use crate::layouter::css_taffy_converter::CssTaffyConverter;
 use crate::layouter::text::pango::get_text_layout;
+use crate::rendertree_builder::tree::RenderNode;
 
 const DEFAULT_FONT_SIZE: f64 = 16.0;
 const DEFAULT_FONT_FAMILY: &str = "Sans";
@@ -178,34 +179,29 @@ impl TaffyLayouter {
             rstar_tree: rstar::RTree::new(),
         };
 
-        let ids = {
-            // Generate tree by starting from the root node
-            let layout_element_id = {
-                let el = self.generate_node(&mut layout_tree, root_id).unwrap();
-                el.id
-            };
-
-            let taffy_node_id = self.layout_taffy_mapping.get(&layout_element_id).unwrap().clone();
-            (taffy_node_id, layout_element_id)
+        let Some((layout_element_root_id, taffy_root_id)) = self.generate_node(&mut layout_tree, root_id) else {
+            return None;
         };
 
-        self.root_id = ids.0;
-        layout_tree.root_id = ids.1;
+        layout_tree.root_id = layout_element_root_id;
+        self.root_id = taffy_root_id;
 
         Some(layout_tree)
     }
 
-    fn generate_node<'a>(&mut self, layout_tree: &'a mut LayoutTree, render_node_id: RenderNodeId) -> Option<&'a LayoutElementNode> {
-        let mut taffy_style = Style::default();
+    fn generate_node<'a>(&mut self, layout_tree: &'a mut LayoutTree, render_node_id: RenderNodeId) -> Option<(LayoutElementId, TaffyNodeId)> {
+        // Find render node and dom node from the layout tree
+        let Some(render_node) = layout_tree.render_tree.get_node_by_id(render_node_id) else {
+            return None;
+        };
+        let Some(dom_node) = layout_tree.render_tree.doc.get_node_by_id(DomNodeId::from(render_node.node_id)) else {
+            return None;
+        };
+        let render_node_children = render_node.children.clone();
 
         // Additional taffy context based on the DOM node.
         let mut taffy_context = None;
-
-        // Find the DOM node in the DOM document that is wrapped in the render tree
-        let dom_node_id = DomNodeId::from(render_node_id);   // DOM node IDs and render node IDs are interchangeable
-        let Some(dom_node) = layout_tree.render_tree.doc.get_node_by_id(dom_node_id) else {
-            return None;
-        };
+        let mut taffy_style = Style::default();
 
         match &dom_node.node_type {
             // Node is an element node (like a div, span, etc.)
@@ -313,90 +309,48 @@ impl TaffyLayouter {
             }
         }
 
-        // If this is a leaf node, we can create a leaf node in the taffy tree
-        if dom_node.children.is_empty() {
-            let element_context = to_element_context(taffy_context.as_ref());
+        // The context will be moved to the taffy tree, so we need to convert it before that happens.
+        let element_context = to_element_context(taffy_context.as_ref());
 
-            let result = match taffy_context {
-                Some(taffy_context) => self.tree.new_leaf_with_context(taffy_style.to_owned(), taffy_context),
-                None => self.tree.new_leaf(taffy_style.to_owned()),
-            };
+        let result = match taffy_context {
+            Some(taffy_context) => self.tree.new_leaf_with_context(taffy_style.to_owned(), taffy_context),
+            None => self.tree.new_leaf(taffy_style.to_owned()),
+        };
 
-            match result {
-                Ok(leaf_id) => {
-                    let el = LayoutElementNode {
-                        id: layout_tree.next_node_id(),
-                        dom_node_id,
-                        render_node_id,
-                        // taffy_node_id: leaf_id,
-                        box_model: box_model::BoxModel::ZERO,
-                        children: vec![],
-                        context: element_context,
-                    };
+        let Ok(leaf_id) = result else {
+            // Could not create a leaf node in the taffy tree
+            return None;
+        };
 
-                    self.layout_taffy_mapping.insert(el.id, leaf_id);
+        // Create the element node in our layout tree
+        let mut element_node = LayoutElementNode {
+            id: layout_tree.next_node_id(),
+            dom_node_id: dom_node.node_id,
+            render_node_id,
+            box_model: box_model::BoxModel::ZERO,
+            children: vec![],
+            context: element_context,
+        };
 
-                    let id = el.id;
-                    layout_tree.arena.insert(id, el);
-                    return layout_tree.arena.get(&id);
-                },
-                Err(_) => {},
-            }
+        for child_id in render_node_children {
+            if let Some((child_id, taffy_id)) = self.generate_node(layout_tree, child_id) {
+                // Add child to taffy leaf
+                self.tree.add_child(leaf_id, taffy_id);
 
-            return None
-        }
-
-        // At this point, we have a non-leaf node. We need to generate children nodes
-        let mut children_taffy_ids = Vec::new();
-        let mut children_el_ids = Vec::new();
-
-        let render_node = layout_tree.render_tree.get_node_by_id(render_node_id).unwrap();
-        let children = render_node.children.clone();
-
-        for child_render_node_id in &children {
-            let result = {
-                let res = self.generate_node(layout_tree, *child_render_node_id);
-                match res {
-                    Some(el) => {
-                        let taffy_node_id = self.layout_taffy_mapping.get(&el.id).unwrap().clone();
-                        Some((taffy_node_id, el.id))
-                    },
-                    None => None,
-                }
-            };
-
-            match result {
-                Some(ids) => {
-                    children_taffy_ids.push(ids.0);
-                    children_el_ids.push(ids.1);
-                },
-                None => continue,
+                // Add child to layout element
+                element_node.children.push(child_id);
             }
         }
 
-        match self.tree.new_with_children(taffy_style, &children_taffy_ids) {
-            Ok(leaf_id) => {
-                let element_context = to_element_context(taffy_context.as_ref());
-                let el = LayoutElementNode {
-                    id: layout_tree.next_node_id(),
-                    dom_node_id,
-                    render_node_id,
-                    box_model: box_model::BoxModel::ZERO,
-                    children: children_el_ids,
-                    context: element_context,
-                };
+        // Insert element node into our arena
+        let layout_element_id = element_node.id;
+        layout_tree.arena.insert(layout_element_id, element_node);
 
-                self.layout_taffy_mapping.insert(el.id, leaf_id);
+        /// Create a mapping between the layout element id and the taffy node id
+        self.layout_taffy_mapping.insert(layout_element_id, leaf_id);
 
-                let id = el.id;
-                layout_tree.arena.insert(id, el);
-                layout_tree.arena.get(&id)
-
-            }
-            Err(_) => None,
-        }
+        Some((layout_element_id, leaf_id))
     }
-
 }
 
 /// Convert a taffy context to an element context. Optiomally, these two structures should be merged
