@@ -1,4 +1,5 @@
 use taffy::{AlignContent, AlignItems, AlignSelf, BoxSizing, Dimension, Display, FlexDirection, FlexWrap, LengthPercentage, LengthPercentageAuto, Overflow, Point, Position, Rect, Size, Style, TextAlign};
+use taffy::Dimension::Length;
 use taffy::prelude::FromLength;
 use crate::common::document::node::NodeId;
 use crate::common::document::style::{StyleProperty, StylePropertyList, StyleValue, Display as CssDisplay, Unit as CssUnit };
@@ -48,7 +49,7 @@ impl CssTaffyConverter {
         let mut ts = Style::default();
 
         ts.display = self.get_display(ts.display);
-        // item_is_table: false,
+        // ts.item_is_table = true;
         ts.box_sizing = self.get_box_sizing(ts.box_sizing);
         ts.overflow = Point {
             x: self.get_overflow(StyleProperty::OverflowX, ts.overflow.x),
@@ -97,11 +98,9 @@ impl CssTaffyConverter {
         // grid_row: Line { start: GridPlacement::Auto, end: GridPlacement::Auto },
         // grid_column: Line { start: GridPlacement::Auto, end: GridPlacement::Auto },
 
-
-        // If we have inline element, then set the correct properties for inlining the element
+        // If we have an inline element, set the correct properties for emulating inlining the element with taffy
         match self.data.get_property(StyleProperty::Display) {
             Some(StyleValue::Display(CssDisplay::Inline)) => {
-
                 println!("Node {} is inline", node_id);
                 ts.display = Display::Flex;
                 ts.flex_direction = FlexDirection::Row;

@@ -32,6 +32,8 @@ fn create_text_layout(cmd: &Text) -> Result<ImageSurface, Error> {
     let cr = Context::new(&surface)?;
     let layout = create_layout(&cr);
 
+    dbg!(&cmd);
+
     // @TODO: I need to set the DPI resolution to 72dpi, otherwise the text will be too large
     context_set_resolution(&layout.context(), 72.0);
 

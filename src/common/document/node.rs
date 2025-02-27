@@ -1,7 +1,8 @@
+use std::cmp::PartialEq;
 use std::collections::HashMap;
 use std::ops::AddAssign;
 use crate::common::document::document::Document;
-use crate::common::document::style::{StylePropertyList, StyleValue, StyleProperty};
+use crate::common::document::style::{StylePropertyList, StyleValue, StyleProperty, Display};
 use crate::rendertree_builder::RenderNodeId;
 
 /// Map of attributes for a html element (a href, src, data-*, etc)
@@ -142,6 +143,44 @@ pub struct Node {
 }
 
 impl Node {
+    /// Returns true if the node is a block element
+    pub fn is_block_element(&self) -> bool {
+        match &self.node_type {
+            NodeType::Element(data) => {
+                match data.get_style(StyleProperty::Display) {
+                    Some(StyleValue::Display(display)) => {
+                        *display == Display::Block
+                    }
+                    _ => false,
+                }
+            }
+            _ => false,
+        }
+    }
+
+    /// Returns true if the node is an element node and is inline
+    pub fn is_inline_element(&self) -> bool {
+        match &self.node_type {
+            NodeType::Element(data) => {
+                match data.get_style(StyleProperty::Display) {
+                    Some(StyleValue::Display(display)) => {
+                        *display == Display::Inline /* || display == Display::InlineBlock */
+                    }
+                    _ => false,
+                }
+            }
+            _ => false,
+        }
+    }
+
+    /// Returns true when the node is a text node
+    pub fn is_text(&self) -> bool {
+        match &self.node_type {
+            NodeType::Text(_, _) => true,
+            _ => false,
+        }
+    }
+
     pub fn get_style_f32(&self, prop: StyleProperty) -> f32 {
         match &self.node_type {
             NodeType::Element(data) => {

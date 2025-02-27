@@ -199,7 +199,7 @@ impl TaffyLayouter {
         };
         let render_node_children = render_node.children.clone();
 
-        // Additional taffy context based on the DOM node.
+        // Create taffy context and style, which depends on type of node we have
         let mut taffy_context = None;
         let mut taffy_style = Style::default();
 
@@ -288,7 +288,6 @@ impl TaffyLayouter {
                     _ => font_size,
                 };
 
-
                 // Calculate vertical offset for centering based on the lineheight.
                 let text_offset = Coordinate::new(0.0, ((line_height - font_size) / 2.0));
 
@@ -322,6 +321,40 @@ impl TaffyLayouter {
             return None;
         };
 
+        // Our inline container ID (if any is defined)
+        let mut inline_container_id = None;
+
+        // If the node is a block element, and it has inline children, we need to create a flex container
+        if dom_node.is_block_element() {
+            // Check if the node actually has inline children
+            let has_inline_children = render_node_children.iter().any(|child_id| {
+                let Some(child) = layout_tree.render_tree.get_node_by_id(*child_id) else {
+                    return false;
+                };
+                let Some(child_dom_node) = layout_tree.render_tree.doc.get_node_by_id(DomNodeId::from(child.node_id)) else {
+                    return false;
+                };
+
+                child_dom_node.is_inline_element() || child_dom_node.is_text()
+            });
+
+            if has_inline_children {
+                // Create our container and add to the taffy tree
+                let Ok(taffy_container_id) = self.tree.new_leaf(Style {
+                    display: Display::Flex,
+                    flex_direction: FlexDirection::Row,
+                    flex_wrap: FlexWrap::Wrap,
+                    align_items: Some(AlignItems::Baseline),
+                    ..Style::default()
+                }) else {
+                    return None;
+                };
+
+                self.tree.add_child(leaf_id, taffy_container_id).unwrap();
+                inline_container_id = Some(taffy_container_id);
+            }
+        }
+
         // Create the element node in our layout tree
         let mut element_node = LayoutElementNode {
             id: layout_tree.next_node_id(),
@@ -333,12 +366,29 @@ impl TaffyLayouter {
         };
 
         for child_id in render_node_children {
-            if let Some((child_id, taffy_id)) = self.generate_node(layout_tree, child_id) {
-                // Add child to taffy leaf
-                self.tree.add_child(leaf_id, taffy_id);
+            if let Some((child_layout_element_id, taffy_id)) = self.generate_node(layout_tree, child_id) {
+                let Some(layout_element) = layout_tree.get_node_by_id(child_layout_element_id) else {
+                    continue;
+                };
+                let Some(child_dom_node) = layout_tree.render_tree.doc.get_node_by_id(layout_element.dom_node_id) else {
+                    continue;
+                };
+
+                if child_dom_node.is_inline_element() || child_dom_node.is_text() {
+                    // Add inline child to inline container
+                    if let Some(container_id) = inline_container_id {
+                        self.tree.add_child(container_id, taffy_id);
+                    }
+                } else {
+                    if inline_container_id.is_some() {
+                        panic!("Block element inside inline container is not supported");
+                    }
+                    // Add child to taffy leaf
+                    self.tree.add_child(leaf_id, taffy_id);
+                }
 
                 // Add child to layout element
-                element_node.children.push(child_id);
+                element_node.children.push(child_layout_element_id);
             }
         }
 

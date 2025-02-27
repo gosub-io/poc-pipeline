@@ -37,7 +37,7 @@ fn main() {
     // --------------------------------------------------------------------
     // Generate a DOM tree
     // let doc = common::document::create_document();
-    let doc = common::document::parser::document_from_json("typo.json");
+    let doc = common::document::parser::document_from_json("typo2.json");
     let mut output = String::new();
     doc.print_tree(&mut output).expect("");
     println!("{}", output);
