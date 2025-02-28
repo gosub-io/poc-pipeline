@@ -37,7 +37,7 @@ fn main() {
     // --------------------------------------------------------------------
     // Generate a DOM tree
     // let doc = common::document::create_document();
-    let doc = common::document::parser::document_from_json("typo2.json");
+    let doc = common::document::parser::document_from_json("w3c.org.json");
     let mut output = String::new();
     doc.print_tree(&mut output).expect("");
     println!("{}", output);
@@ -55,7 +55,7 @@ fn main() {
     layouter.print_tree();
     println!("Layout width: {}, height: {}", layout_tree.root_dimension.width, layout_tree.root_dimension.height);
 
-    // --------------------------------------------------------------------
+    // -------------------------------------------------------------------  -
     // Generate render layers
     let layer_list = LayerList::new(layout_tree);
     // for (layer_id, layer) in layer_list.layers.read().expect("").iter() {
@@ -109,7 +109,6 @@ Available key commands:
 
 ");
 
-
     app.run();
 }
 
@@ -121,7 +120,6 @@ fn build_ui(app: &Application) {
         .default_width(WINDOW_WIDTH as i32)
         .default_height(WINDOW_HEIGHT as i32)
         .build();
-
 
     // Find the root layout dimension so we can set the viewport correctly
     let binding = get_browser_state().clone();
@@ -293,7 +291,6 @@ fn do_rasterize(layer_id: LayerId) {
 
     let tile_ids = state.tile_list.read().unwrap().get_intersecting_tiles(layer_id, state.viewport);
     for tile_id in tile_ids {
-
         // get tile
         let mut binding = state.tile_list.write().expect("Failed to get tile list");
         let Some(tile) = binding.get_tile(tile_id) else {

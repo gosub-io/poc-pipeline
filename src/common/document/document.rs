@@ -108,12 +108,12 @@ impl Document {
                     NodeVisit::Enter => {
                         match &node.node_type {
                             NodeType::Comment(comment) => writeln!(writer, "{}({}) <!-- {} -->", indent, node.node_id, comment).unwrap(),
-                            NodeType::Text(text, _) => writeln!(writer, "{}({}) {}", indent, node.node_id, text).unwrap(),
+                            NodeType::Text(text, _) => writeln!(writer, "{}({}) '{}'", indent, node.node_id, text).unwrap(),
                             NodeType::Element(element) => {
                                 if element.is_self_closing() {
-                                    writeln!(writer, "{}({}) <{} {}>", indent, node.node_id, element.tag_name, element.attributes.to_string()).unwrap();
-                                } else {
                                     writeln!(writer, "{}({}) <{} {}/>", indent, node.node_id, element.tag_name, element.attributes.to_string()).unwrap();
+                                } else {
+                                    writeln!(writer, "{}({}) <{} {}>", indent, node.node_id, element.tag_name, element.attributes.to_string()).unwrap();
                                 }
                             }
                         }

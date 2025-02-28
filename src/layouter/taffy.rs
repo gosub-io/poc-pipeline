@@ -4,7 +4,7 @@ use gtk4::pango;
 use taffy::prelude::*;
 use taffy::NodeId as TaffyNodeId;
 use crate::rendertree_builder::{RenderTree, RenderNodeId};
-use crate::common::document::node::{NodeType, NodeId as DomNodeId, ElementData};
+use crate::common::document::node::{NodeType, NodeId as DomNodeId};
 use crate::common::document::style::{FontWeight, StyleProperty, StyleValue, Unit};
 use crate::common::{geo, get_image_store};
 use crate::common::geo::Coordinate;
@@ -12,7 +12,6 @@ use crate::common::image::ImageId;
 use crate::layouter::{LayoutElementNode, LayoutTree, LayoutElementId, CanLayout, ElementContext, box_model, ElementContextText, ElementContextImage};
 use crate::layouter::css_taffy_converter::CssTaffyConverter;
 use crate::layouter::text::pango::get_text_layout;
-use crate::rendertree_builder::tree::RenderNode;
 
 const DEFAULT_FONT_SIZE: f64 = 16.0;
 const DEFAULT_FONT_FAMILY: &str = "Sans";
@@ -148,7 +147,7 @@ impl CanLayout for TaffyLayouter {
 }
 
 impl TaffyLayouter {
-    // Populate the layout tree with the boxmodels that we now can generate
+    // Populate the layout tree with the box models that we now can generate
     fn populate_boxmodel(&self, layout_tree: &mut LayoutTree, layout_node_id: LayoutElementId, offset: Coordinate) {
         let taffy_node_id = self.layout_taffy_mapping.get(&layout_node_id).unwrap();
         let layout = self.tree.layout(*taffy_node_id).unwrap().clone();
@@ -179,7 +178,7 @@ impl TaffyLayouter {
             rstar_tree: rstar::RTree::new(),
         };
 
-        let Some((layout_element_root_id, taffy_root_id)) = self.generate_node(&mut layout_tree, root_id) else {
+        let Some((layout_element_root_id, taffy_root_id)) = self.generate_node(&mut layout_tree, root_id, 0) else {
             return None;
         };
 
@@ -189,7 +188,9 @@ impl TaffyLayouter {
         Some(layout_tree)
     }
 
-    fn generate_node<'a>(&mut self, layout_tree: &'a mut LayoutTree, render_node_id: RenderNodeId) -> Option<(LayoutElementId, TaffyNodeId)> {
+    /// inline_element_counter will increase each time an inline element is generated and reset to zero when we reached a block element
+    /// This allows us to add a space between inline elements, but not before or after block elements.
+    fn generate_node<'a>(&mut self, layout_tree: &'a mut LayoutTree, render_node_id: RenderNodeId, inline_element_counter: usize) -> Option<(LayoutElementId, TaffyNodeId)> {
         // Find render node and dom node from the layout tree
         let Some(render_node) = layout_tree.render_tree.get_node_by_id(render_node_id) else {
             return None;
@@ -288,21 +289,27 @@ impl TaffyLayouter {
                     _ => font_size,
                 };
 
-                // Calculate vertical offset for centering based on the lineheight.
-                let text_offset = Coordinate::new(0.0, ((line_height - font_size) / 2.0));
+                // Calculate vertical offset for centering based on the line height.
+                let text_offset = Coordinate::new(0.0, (line_height - font_size) / 2.0);
+
+                let mut text = text.clone();
+                if inline_element_counter > 0 {
+                    // If we are in an inline container, we need to add a space between the text nodes
+                    text = format!(" {}", text).clone()
+                }
 
                 taffy_context = Some(TaffyContext::text(
                     font_family.as_str(),
                     font_size,
                     font_weight as usize,
                     line_height,
-                    text,
+                    text.as_str(),
                     dom_node.node_id,
                     text_offset,
                 ));
             }
             NodeType::Comment(_) => {
-                // No need to layouting for comment nodes. In fact, they should have been removed already
+                // No need to layout for comment nodes. In fact, they should have been removed already
                 // by the render-tree building stage.
                 return None;
             }
@@ -365,27 +372,17 @@ impl TaffyLayouter {
             context: element_context,
         };
 
-        for child_id in render_node_children {
-            if let Some((child_layout_element_id, taffy_id)) = self.generate_node(layout_tree, child_id) {
-                let Some(layout_element) = layout_tree.get_node_by_id(child_layout_element_id) else {
-                    continue;
-                };
-                let Some(child_dom_node) = layout_tree.render_tree.doc.get_node_by_id(layout_element.dom_node_id) else {
-                    continue;
-                };
+        let mut inline_element_counter = inline_element_counter;
 
-                if child_dom_node.is_inline_element() || child_dom_node.is_text() {
-                    // Add inline child to inline container
-                    if let Some(container_id) = inline_container_id {
-                        self.tree.add_child(container_id, taffy_id);
-                    }
-                } else {
-                    if inline_container_id.is_some() {
-                        panic!("Block element inside inline container is not supported");
-                    }
-                    // Add child to taffy leaf
-                    self.tree.add_child(leaf_id, taffy_id);
-                }
+        for child_id in render_node_children {
+            if let Some((child_layout_element_id, child_taffy_id)) = self.generate_node(layout_tree, child_id, inline_element_counter) {
+                let _ = match inline_container_id {
+                    Some(container_id) => {
+                        inline_element_counter += 1;
+                        self.tree.add_child(container_id, child_taffy_id)
+                    },
+                    None => self.tree.add_child(leaf_id, child_taffy_id),
+                };
 
                 // Add child to layout element
                 element_node.children.push(child_layout_element_id);
@@ -403,7 +400,7 @@ impl TaffyLayouter {
     }
 }
 
-/// Convert a taffy context to an element context. Optiomally, these two structures should be merged
+/// Convert a taffy context to an element context. Optionally, these two structures should be merged
 /// and only ElementContext should be used.
 fn to_element_context(taffy_context: Option<&TaffyContext>) -> ElementContext {
     match taffy_context {

@@ -1,6 +1,6 @@
 use gtk4::cairo::{Context, Error, Format, ImageSurface};
 use gtk4::pango::{FontDescription, SCALE, Layout};
-use pangocairo::functions::create_layout;
+use pangocairo::functions::{context_set_resolution, create_layout};
 use pangocairo::pango::WrapMode;
 use crate::common;
 use crate::common::document::style::{StyleProperty, StylePropertyList, StyleValue, TextWrap};
@@ -12,6 +12,9 @@ pub fn get_text_layout(text: &str, font_family: &str, font_size: f64, font_weigh
     let surface = ImageSurface::create(Format::ARgb32, 1, 1)?;
     let cr = Context::new(&surface)?;
     let layout = create_layout(&cr);
+
+    // @TODO: I need to set the DPI resolution to 72dpi, otherwise the text will be too large
+    context_set_resolution(&layout.context(), 72.0);
 
     let selected_family = find_available_font(font_family, &layout.context());
     let mut font_desc = FontDescription::new();
