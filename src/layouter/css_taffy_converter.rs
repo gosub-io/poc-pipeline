@@ -1,5 +1,5 @@
-use taffy::{AlignContent, AlignItems, AlignSelf, BoxSizing, Dimension, Display, FlexDirection, FlexWrap, LengthPercentage, LengthPercentageAuto, Overflow, Point, Position, Rect, Size, Style, TextAlign};
-use taffy::prelude::FromLength;
+use taffy::{AlignContent, AlignItems, AlignSelf, BoxSizing, Dimension, Display, FlexDirection, FlexWrap, GridAutoFlow, GridPlacement, LengthPercentage, LengthPercentageAuto, Line, NonRepeatedTrackSizingFunction, Overflow, Point, Position, Rect, Size, Style, TextAlign, TrackSizingFunction};
+use taffy::prelude::{FromLength, TaffyAuto};
 use crate::common::document::node::NodeId;
 use crate::common::document::style::{StyleProperty, StylePropertyList, StyleValue, Display as CssDisplay, Unit as CssUnit };
 
@@ -89,16 +89,41 @@ impl CssTaffyConverter {
         ts.flex_grow = self.get_f32(StyleProperty::FlexGrow, ts.flex_grow);
         ts.flex_shrink = self.get_f32(StyleProperty::FlexShrink, ts.flex_shrink);
         ts.flex_basis = self.get_flex_basis(ts.flex_basis);
-        // grid_template_rows: GridTrackVec::new(),
-        // grid_template_columns: GridTrackVec::new(),
-        // grid_auto_rows: GridTrackVec::new(),
-        // grid_auto_columns: GridTrackVec::new(),
-        // grid_auto_flow: GridAutoFlow::Row,
-        // grid_row: Line { start: GridPlacement::Auto, end: GridPlacement::Auto },
-        // grid_column: Line { start: GridPlacement::Auto, end: GridPlacement::Auto },
+        ts.grid_template_rows = self.get_grid_template(StyleProperty::GridTemplateRows, ts.grid_template_rows);
+        ts.grid_template_columns = self.get_grid_template(StyleProperty::GridTemplateColumns, ts.grid_template_columns);
+        ts.grid_auto_rows = self.get_grid_auto(StyleProperty::GridAutoRows, ts.grid_auto_rows);
+        ts.grid_auto_columns = self.get_grid_auto(StyleProperty::GridAutoColumns, ts.grid_auto_columns);
+        ts.grid_auto_flow = self.get_grid_auto_flow(ts.grid_auto_flow);
+        ts.grid_row = self.get_grid_line(StyleProperty::GridRow, ts.grid_row);
+        ts.grid_column = self.get_grid_line(StyleProperty::GridColumn, ts.grid_column);
 
         // If we have an inline element, set the correct properties for emulating inlining the element with taffy
         match self.data.get_property(StyleProperty::Display) {
+            Some(StyleValue::Display(CssDisplay::Table)) => {
+                ts.display = Display::Flex;
+                ts.flex_direction = FlexDirection::Column;
+            }
+            Some(StyleValue::Display(CssDisplay::TableRow)) => {
+                ts.display = Display::Flex;
+                ts.flex_direction = FlexDirection::Row;
+            }
+            Some(StyleValue::Display(CssDisplay::TableCell)) => {
+                ts.display = Display::Flex;
+                ts.flex_grow = 1.0;
+            }
+            Some(StyleValue::Display(CssDisplay::TableFooterGroup)) => {
+                ts.display = Display::Flex;
+                ts.flex_direction = FlexDirection::Column;
+            }
+            Some(StyleValue::Display(CssDisplay::TableHeaderGroup)) => {
+                ts.display = Display::Flex;
+                ts.flex_direction = FlexDirection::Column;
+            }
+            Some(StyleValue::Display(CssDisplay::TableRowGroup)) => {
+                ts.display = Display::Flex;
+                ts.flex_direction = FlexDirection::Column;
+            }
+
             Some(StyleValue::Display(CssDisplay::Inline)) => {
                 println!("Node {} is inline", node_id);
                 ts.display = Display::Flex;
@@ -174,6 +199,7 @@ impl CssTaffyConverter {
                     CssDisplay::Flex => Display::Flex,
                     CssDisplay::None => Display::None,
                     CssDisplay::Inline => Display::Flex,
+                    _ => default,
                 }
             }
             _ => default,
@@ -397,6 +423,75 @@ impl CssTaffyConverter {
                 match val.as_str() {
                     "content-box" => BoxSizing::ContentBox,
                     "border-box" => BoxSizing::BorderBox,
+                    _ => default,
+                }
+            },
+            _ => default,
+        }
+    }
+
+    fn get_grid_template(&self, prop: StyleProperty, default: Vec<TrackSizingFunction>) -> Vec<TrackSizingFunction> {
+        let Some(val) = self.data.get_property(prop) else {
+            return default;
+        };
+
+        match val {
+            StyleValue::Keyword(ref val) => {
+                match val.as_str() {
+                    "none" => Vec::new(),
+                    "auto" => Vec::new(),
+                    _ => default,
+                }
+            },
+            _ => default,
+        }
+    }
+
+    fn get_grid_auto_flow(&self, default: GridAutoFlow) -> GridAutoFlow {
+        let Some(val) = self.data.get_property(StyleProperty::GridAutoFlow) else {
+            return default;
+        };
+
+        match val {
+            StyleValue::Keyword(ref val) => {
+                match val.as_str() {
+                    "row" => GridAutoFlow::Row,
+                    "column" => GridAutoFlow::Column,
+                    "row dense" => GridAutoFlow::RowDense,
+                    "column dense" => GridAutoFlow::ColumnDense,
+                    _ => default,
+                }
+            },
+            _ => default,
+        }
+    }
+
+    fn get_grid_line(&self, prop: StyleProperty, default: Line<GridPlacement>) -> Line<GridPlacement> {
+        let Some(val) = self.data.get_property(prop) else {
+            return default;
+        };
+
+        match val {
+            StyleValue::Keyword(ref val) => {
+                match val.as_str() {
+                    "auto" => Line { start: GridPlacement::Auto, end: GridPlacement::Auto },
+                    _ => default,
+                }
+            },
+            // StyleValue::Number(val) => Line { start: GridPlacement::Line(val.into()), end: GridPlacement::Line(val.into()) },
+            _ => default,
+        }
+    }
+
+    fn get_grid_auto(&self, prop: StyleProperty, default: Vec<NonRepeatedTrackSizingFunction>) -> Vec<NonRepeatedTrackSizingFunction> {
+        let Some(val) = self.data.get_property(prop) else {
+            return default;
+        };
+
+        match val {
+            StyleValue::Keyword(ref val) => {
+                match val.as_str() {
+                    "auto" => Vec::new(),
                     _ => default,
                 }
             },

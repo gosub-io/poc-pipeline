@@ -58,6 +58,13 @@ pub enum StyleProperty {
     BoxSizing,
     LineHeight,
     TextWrap,
+    GridRow,
+    GridColumn,
+    GridAutoFlow,
+    GridTemplateRows,
+    GridTemplateColumns,
+    GridAutoRows,
+    GridAutoColumns,
 }
 
 #[allow(unused)]
@@ -84,6 +91,13 @@ pub enum Display {
     Inline,
     None,
     Flex,
+    Table,
+    TableCaption,
+    TableCell,
+    TableFooterGroup,
+    TableHeaderGroup,
+    TableRow,
+    TableRowGroup,
 }
 
 #[allow(unused)]

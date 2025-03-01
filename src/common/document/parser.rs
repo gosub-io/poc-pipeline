@@ -197,6 +197,13 @@ fn parse_display(value: &String) -> StyleValue {
         "inline" => StyleValue::Display(Display::Inline),
         "none" => StyleValue::Display(Display::None),
         "flex" => StyleValue::Display(Display::Flex),
+        "table" => StyleValue::Display(Display::Table),
+        "table-caption" => StyleValue::Display(Display::TableCaption),
+        "table-cell" => StyleValue::Display(Display::TableCell),
+        "table-footer-group" => StyleValue::Display(Display::TableFooterGroup),
+        "table-header-group" => StyleValue::Display(Display::TableHeaderGroup),
+        "table-row" => StyleValue::Display(Display::TableRow),
+        "table-row-group" => StyleValue::Display(Display::TableRowGroup),
         _ => StyleValue::Keyword(value.to_string()),
     }
 }
