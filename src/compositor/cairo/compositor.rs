@@ -27,9 +27,6 @@ pub fn compose_layer(cr: &cairo::Context, layer_id: LayerId) {
             continue;
         };
 
-        // Composite
-        // println!("Compositing tile: {:?}", tile_id);
-
         let binding = get_texture_store();
         let texture_store = binding.read().expect("Failed to get texture store");
 

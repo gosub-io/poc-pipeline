@@ -214,17 +214,17 @@ impl TileList {
         tile.state = TileState::Dirty;
     }
 
-    pub(crate) fn get_tile_mut(&mut self, tile_id: TileId) -> Option<&mut Tile> {
+    pub fn get_tile_mut(&mut self, tile_id: TileId) -> Option<&mut Tile> {
         self.arena.get_mut(&tile_id)
     }
 
     /// Returns a reference to the given tile or None when not found
-    pub(crate) fn get_tile(&self, tile_id: TileId) -> Option<&Tile> {
+    pub fn get_tile(&self, tile_id: TileId) -> Option<&Tile> {
         self.arena.get(&tile_id)
     }
 
     /// Return all the tiles for the specific layer that intersects with the given viewport
-    pub(crate) fn get_intersecting_tiles(&self, layer_id: LayerId, viewport: Rect) -> Vec<TileId> {
+    pub fn get_intersecting_tiles(&self, layer_id: LayerId, viewport: Rect) -> Vec<TileId> {
         let Some(tile_layer) = self.tiles.get(&layer_id) else {
             return vec![];
         };

@@ -1,25 +1,3 @@
-//     if show_tilegrid {
-//         // Display the tilegrid based on the tiles
-//         let h = tile_list.layer_list.layout_tree.root_height;
-//         let w = tile_list.layer_list.layout_tree.root_width;
-//
-//         let row_cnt = (h / tile_list.tile_height as f32).ceil() as usize;
-//         let col_cnt = (w / tile_list.tile_width as f32).ceil() as usize;
-//
-//         cr.set_source_rgba(0.0, 0.0, 0.0, 0.25);
-//         for y in 0..row_cnt {
-//             for x in 0..col_cnt {
-//                 cr.rectangle(
-//                     x as f64 * tile_list.tile_width as f64,
-//                     y as f64 * tile_list.tile_height as f64,
-//                     tile_list.tile_width as f64,
-//                     tile_list.tile_height as f64
-//                 );
-//                 _ = cr.stroke();
-//             }
-//         }
-//     }
-
 mod rectangle;
 mod brush;
 mod text;
@@ -34,8 +12,14 @@ use crate::tiler::Tile;
 
 pub struct CairoRasterizer {}
 
+impl CairoRasterizer {
+    pub fn new() -> CairoRasterizer {
+        CairoRasterizer {}
+    }
+}
+
 impl Rasterable for CairoRasterizer {
-    fn rasterize(tile: &Tile) -> TextureId {
+    fn rasterize(&self, tile: &Tile) -> TextureId {
         let mut surface = cairo::ImageSurface::create(cairo::Format::ARgb32, tile.rect.width as i32, tile.rect.height as i32).expect("Failed to create image surface");
 
         {

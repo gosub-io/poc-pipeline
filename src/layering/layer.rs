@@ -27,7 +27,7 @@ impl std::fmt::Display for LayerId {
 
 
 #[derive(Clone)]
-pub(crate) struct Layer {
+pub struct Layer {
     /// Layer ID
     pub layer_id: LayerId,
     /// Order of the layer
@@ -60,7 +60,7 @@ impl std::fmt::Debug for Layer {
 }
 
 /// A list of layers that is returned by the pipeline stage
-pub(crate) struct LayerList {
+pub struct LayerList {
     /// Wrapped layout tree
     pub layout_tree: Arc<LayoutTree>,
     /// List of all (unique) layer IDs

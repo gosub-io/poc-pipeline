@@ -93,7 +93,7 @@ impl RenderTree {
 const INVISIBLE_ELEMENTS: [&str; 6] = [ "head",  "style",  "script",  "meta",  "link",  "title" ];
 
 impl RenderTree {
-    pub(crate) fn new(doc: Document) -> Self {
+    pub fn new(doc: Document) -> Self {
         RenderTree {
             doc,
             arena: HashMap::new(),

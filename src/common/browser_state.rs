@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 use std::sync::{Arc, OnceLock, RwLock};
-use crate::Rect;
+use crate::common::geo::Rect;
 use crate::layouter::LayoutElementId;
 use crate::tiler::TileList;
 

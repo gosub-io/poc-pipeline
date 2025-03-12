@@ -1,37 +1,29 @@
+#[cfg(not(feature="backend_cairo"))]
+compile_error!("This binary can only be used with the feature 'backend_cairo' enabled");
+
 use std::sync::RwLock;
 use gtk4::{glib, Adjustment, Application, ApplicationWindow, DrawingArea, EventControllerMotion, ScrolledWindow};
 use gtk4::glib::clone;
 use gtk4::prelude::{AdjustmentExt, ApplicationExt, ApplicationExtManual, DrawingAreaExt, DrawingAreaExtManual, GtkWindowExt, WidgetExt};
-use rendertree_builder::RenderTree;
-use crate::common::browser_state::{get_browser_state, init_browser_state, BrowserState, WireframeState};
-use crate::common::geo::{Dimension, Rect};
-use crate::layering::layer::{LayerId, LayerList};
-use crate::painter::Painter;
-use crate::tiler::{TileList, TileState};
-use crate::compositor::Composable;
-use crate::compositor::cairo::{CairoCompositor, CairoCompositorConfig};
-use crate::layouter::taffy::TaffyLayouter;
-use crate::layouter::CanLayout;
-use crate::rasterizer::cairo::CairoRasterizer;
-use crate::rasterizer::Rasterable;
+use poc_pipeline::common;
+use poc_pipeline::rendertree_builder::RenderTree;
+use poc_pipeline::common::browser_state::{get_browser_state, init_browser_state, BrowserState, WireframeState};
+use poc_pipeline::common::geo::{Dimension, Rect};
+use poc_pipeline::layering::layer::{LayerId, LayerList};
+use poc_pipeline::painter::Painter;
+use poc_pipeline::tiler::{TileList, TileState};
+use poc_pipeline::compositor::Composable;
+use poc_pipeline::compositor::cairo::{CairoCompositor, CairoCompositorConfig};
+use poc_pipeline::layouter::taffy::TaffyLayouter;
+use poc_pipeline::layouter::CanLayout;
+use poc_pipeline::rasterizer::cairo::CairoRasterizer;
+use poc_pipeline::rasterizer::Rasterable;
 
 const TILE_DIMENSION : f64 = 256.0;
 
 const WINDOW_WIDTH: f64 = 800.0;
 const WINDOW_HEIGHT: f64 = 600.0;
 
-#[allow(unused)]
-mod rendertree_builder;
-#[allow(unused)]
-mod layouter;
-mod layering;
-#[allow(unused)]
-mod tiler;
-#[allow(unused)]
-mod painter;
-mod rasterizer;
-mod compositor;
-mod common;
 
 fn main() {
     // --------------------------------------------------------------------
@@ -306,7 +298,8 @@ fn do_rasterize(layer_id: LayerId) {
 
         // Rasterize the tile into a texture
         // println!("Generating painting commands for tile");
-        let texture_id = CairoRasterizer::rasterize(tile);
+        let rasterizer = CairoRasterizer::new();
+        let texture_id = rasterizer.rasterize(tile);
 
         let Some(tile) = binding.get_tile_mut(tile_id) else {
             log::warn!("Tile not found: {:?}", tile_id);

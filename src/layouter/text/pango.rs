@@ -2,8 +2,6 @@ use gtk4::cairo::{Context, Error, Format, ImageSurface};
 use gtk4::pango::{FontDescription, SCALE, Layout};
 use pangocairo::functions::{context_set_resolution, create_layout};
 use pangocairo::pango::WrapMode;
-use crate::common;
-use crate::common::document::style::{StyleProperty, StylePropertyList, StyleValue, TextWrap};
 use crate::common::font::pango::{find_available_font, to_pango_weight};
 
 /// Retrieves the pango layout for the given text, font family, font size and maximum width.

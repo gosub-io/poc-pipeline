@@ -16,5 +16,5 @@ pub mod cairo;
 pub mod vello;
 
 pub trait Rasterable {
-    fn rasterize(tile: &Tile) -> TextureId;
+    fn rasterize(&self, tile: &Tile) -> TextureId;
 }

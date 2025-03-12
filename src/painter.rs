@@ -26,14 +26,14 @@ pub struct Painter {
 }
 
 impl Painter {
-    pub(crate) fn new(layer_list: Arc<LayerList>) -> Painter {
+    pub fn new(layer_list: Arc<LayerList>) -> Painter {
         Painter {
             layer_list
         }
     }
 
     // Generate paint commands for the given tile
-    pub(crate) fn paint(&self, element: &TiledLayoutElement) -> Vec<PaintCommand> {
+    pub fn paint(&self, element: &TiledLayoutElement) -> Vec<PaintCommand> {
         let mut commands = Vec::new();
 
         let Some(layout_element) = self.layer_list.layout_tree.get_node_by_id(element.id) else {
