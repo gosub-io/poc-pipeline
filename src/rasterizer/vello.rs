@@ -9,6 +9,10 @@ use crate::common::texture::TextureId;
 use crate::common::get_texture_store;
 use crate::tiler::Tile;
 
+mod rectangle;
+mod brush;
+mod text;
+
 const AA_CONFIGS: [AaConfig; 3] = [AaConfig::Area, AaConfig::Msaa8, AaConfig::Msaa16];
 
 pub struct VelloRasterizer<'a> {

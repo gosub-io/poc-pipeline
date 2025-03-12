@@ -1,7 +1,3 @@
-mod rectangle;
-mod brush;
-mod text;
-
 use gtk4::cairo;
 use crate::painter::commands::PaintCommand;
 use crate::rasterizer::Rasterable;
@@ -9,6 +5,10 @@ use crate::common::texture::TextureId;
 use crate::common::get_texture_store;
 use crate::rasterizer::cairo::text::pango::do_paint_text;
 use crate::tiler::Tile;
+
+mod rectangle;
+mod brush;
+mod text;
 
 pub struct CairoRasterizer {}
 
