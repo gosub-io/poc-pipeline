@@ -11,6 +11,7 @@ pub mod vello;
 
 pub trait Composable {
     type Config;
+    type Return;
 
-    fn compose(config: Self::Config);
+    fn compose(config: Self::Config) -> Self::Return;
 }

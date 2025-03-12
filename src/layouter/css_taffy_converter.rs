@@ -125,7 +125,6 @@ impl CssTaffyConverter {
             }
 
             Some(StyleValue::Display(CssDisplay::Inline)) => {
-                println!("Node {} is inline", node_id);
                 ts.display = Display::Flex;
                 ts.flex_direction = FlexDirection::Row;
                 ts.flex_wrap = FlexWrap::Wrap;

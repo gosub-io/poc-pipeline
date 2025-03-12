@@ -3,9 +3,7 @@ use crate::compositor::Composable;
 use crate::compositor::vello::compositor::vello_compositor;
 use crate::layering::layer::LayerId;
 
-pub struct VelloCompositorConfig {
-    scene: vello::Scene,
-}
+pub struct VelloCompositorConfig {}
 
 mod compositor;
 
@@ -13,8 +11,9 @@ pub struct VelloCompositor {}
 
 impl Composable for VelloCompositor {
     type Config = VelloCompositorConfig;
+    type Return = vello::Scene;
 
-    fn compose(mut config: Self::Config) {
+    fn compose(_config: Self::Config) -> Self::Return {
         let binding = get_browser_state();
         let state = binding.read().expect("Failed to get browser state");
 
@@ -26,6 +25,8 @@ impl Composable for VelloCompositor {
             layers.push(LayerId::new(1));
         }
 
-        vello_compositor(&mut config.scene, layers);
+        // Compose the scene from the different layers we have selected
+        vello_compositor(layers)
     }
 }
+

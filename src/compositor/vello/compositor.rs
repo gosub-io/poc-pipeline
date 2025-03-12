@@ -4,10 +4,14 @@ use crate::common::get_texture_store;
 use crate::layering::layer::LayerId;
 use vello::peniko::{Blob, Image, ImageFormat};
 
-pub fn vello_compositor(scene: &mut vello::Scene, layer_ids: Vec<LayerId>) {
+pub fn vello_compositor(layer_ids: Vec<LayerId>) -> vello::Scene {
+    let mut scene = vello::Scene::new();
+
     for layer_id in layer_ids {
-        crate::compositor::vello::compositor::compose_layer(scene, layer_id);
+        compose_layer(&mut scene, layer_id);
     }
+
+    scene
 }
 
 pub fn compose_layer(scene: &mut vello::Scene, layer_id: LayerId) {
@@ -42,18 +46,6 @@ pub fn compose_layer(scene: &mut vello::Scene, layer_id: LayerId) {
             texture.width as u32,
             texture.height as u32,
         );
-
-        // let rect = Rect::from_origin_size(
-        //     Point::new(tile.rect.x, tile.rect.y),
-        //     Size::new(tile.rect.width, tile.rect.height),
-        // );
-        // scene.fill(
-        //     Fill::NonZero,
-        //     Affine::IDENTITY,
-        //     palette::css::GRAY,
-        //     None,
-        //     &rect
-        // );
 
         scene.draw_image(
             &surface,

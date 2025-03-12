@@ -3,10 +3,9 @@ compile_error!("This binary can only be used with the feature 'backend_vello' en
 
 use std::num::NonZeroUsize;
 use std::sync::Arc;
-use vello::kurbo::{Affine, Circle, Ellipse, Line, RoundedRect, Stroke};
 use vello::peniko::color;
 use vello::util::{DeviceHandle, RenderContext, RenderSurface};
-use vello::{wgpu, AaConfig, RenderParams, Renderer, RendererOptions, Scene};
+use vello::{wgpu, AaConfig, RenderParams, Renderer, RendererOptions};
 use winit::application::ApplicationHandler;
 use winit::event::WindowEvent;
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
@@ -16,22 +15,17 @@ use poc_pipeline::common;
 use poc_pipeline::rendertree_builder::RenderTree;
 use poc_pipeline::common::browser_state::{get_browser_state, init_browser_state, BrowserState, WireframeState};
 use poc_pipeline::common::geo::{Dimension, Rect};
-use poc_pipeline::layering::layer::{LayerId, LayerList};
-use poc_pipeline::painter::Painter;
-use poc_pipeline::tiler::{TileList, TileState};
 use poc_pipeline::compositor::Composable;
-use poc_pipeline::compositor::cairo::{CairoCompositor, CairoCompositorConfig};
+use poc_pipeline::compositor::vello::{VelloCompositor, VelloCompositorConfig};
+use poc_pipeline::layering::layer::{LayerId, LayerList};
+use poc_pipeline::tiler::{TileList, TileState};
 use poc_pipeline::layouter::taffy::TaffyLayouter;
 use poc_pipeline::layouter::CanLayout;
-use poc_pipeline::rasterizer::cairo::CairoRasterizer;
+use poc_pipeline::painter::Painter;
 use poc_pipeline::rasterizer::Rasterable;
-
+use poc_pipeline::rasterizer::vello::VelloRasterizer;
 
 const TILE_DIMENSION : f64 = 256.0;
-
-const WINDOW_WIDTH: f64 = 800.0;
-const WINDOW_HEIGHT: f64 = 600.0;
-
 const AA_CONFIGS: [AaConfig; 3] = [AaConfig::Area, AaConfig::Msaa8, AaConfig::Msaa16];
 
 
@@ -86,14 +80,13 @@ fn main() {
         current_hovered_element: None,
         tile_list: RwLock::new(tile_list),
         show_tilegrid: true,
-        viewport: Rect::ZERO,
+        viewport: Rect::new(0.0, 0.0, 800.0, 600.0),
     };
     init_browser_state(browser_state);
 
 
     let event_loop = EventLoop::new().unwrap();
     event_loop.set_control_flow(ControlFlow::Poll);
-    // event_loop.set_control_flow(ControlFlow::Wait);
 
     let mut app = App::new();
     let _ = event_loop.run_app(&mut app);
@@ -124,7 +117,7 @@ impl ApplicationHandler for App<'_> {
         }
 
         let mut attribs = Window::default_attributes();
-        attribs.title = "Vello Font Test".to_string();
+        attribs.title = "Vello Pipeline Test".to_string();
         let window = Arc::new(event_loop.create_window(attribs).unwrap());
 
         let size = window.inner_size();
@@ -144,28 +137,6 @@ impl ApplicationHandler for App<'_> {
                 num_init_threads: NonZeroUsize::new(0),
             },
         );
-
-        // let size = window.inner_size();
-        // let config = wgpu::SurfaceConfiguration {
-        //     usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-        //     format: surface.get_supported_formats(&adapter)[0],
-        //     width: size.width,
-        //     height: size.height,
-        //     present_mode: wgpu::PresentMode::Fifo,
-        //     alpha_mode: wgpu::CompositeAlphaMode::Auto,
-        //     view_formats: vec![],
-        // };
-        // surface.configure(&device, &config);
-
-        // STEP 2: Create a scene
-
-        // let mut scene = Scene::default();
-        // scene.append(&Draw::Fill(Fill::new(
-        //     FillStyle::default(),
-        //     Transform::identity(),
-        //     Rect::new(100.0, 100.0, 300.0, 300.0).into_path(),
-        //     None,
-        // )));
 
         self.window = Some(window);
         self.surface = Some(surface);
@@ -190,50 +161,34 @@ impl ApplicationHandler for App<'_> {
                 let width = surface.config.width;
                 let height = surface.config.height;
 
+
+                let binding = get_browser_state();
+                let state = binding.read().unwrap();
+                let vis_layers = state.visible_layer_list.clone();
+                drop(state);
+
+                if vis_layers[0] {
+                    do_paint(LayerId::new(0));
+                    do_rasterize(device, queue, LayerId::new(0));
+                }
+                if vis_layers[1] {
+                    do_paint(LayerId::new(1));
+                    do_rasterize(device, queue, LayerId::new(1));
+                }
+
                 let surface_texture = surface
                     .surface
                     .get_current_texture()
                     .expect("Failed to get current texture");
+
                 let render_params = RenderParams {
-                    base_color: color::palette::css::YELLOW_GREEN,
+                    base_color: color::palette::css::LIGHT_BLUE,
                     width,
                     height,
                     antialiasing_method: AaConfig::Area,
                 };
 
-                let mut scene = Scene::new();
-                // Draw an outlined rectangle
-                let stroke = Stroke::new(6.0);
-                let rect = RoundedRect::new(10.0, 10.0, 240.0, 240.0, 20.0);
-                let rect_stroke_color = color::palette::css::YELLOW_GREEN;
-                scene.stroke(&stroke, Affine::IDENTITY, rect_stroke_color, None, &rect);
-
-                // Draw a filled circle
-                let circle = Circle::new((420.0, 200.0), 120.0);
-                let circle_fill_color = color::palette::css::REBECCA_PURPLE;
-                scene.fill(
-                    vello::peniko::Fill::NonZero,
-                    Affine::IDENTITY,
-                    circle_fill_color,
-                    None,
-                    &circle,
-                );
-
-                // Draw a filled ellipse
-                let ellipse = Ellipse::new((250.0, 420.0), (100.0, 160.0), -90.0);
-                let ellipse_fill_color = color::palette::css::BLUE_VIOLET;
-                scene.fill(
-                    vello::peniko::Fill::NonZero,
-                    Affine::IDENTITY,
-                    ellipse_fill_color,
-                    None,
-                    &ellipse,
-                );
-
-                // Draw a straight line
-                let line = Line::new((260.0, 20.0), (620.0, 100.0));
-                let line_stroke_color = color::palette::css::FIREBRICK;
-                scene.stroke(&stroke, Affine::IDENTITY, line_stroke_color, None, &line);
+                let scene = VelloCompositor::compose(VelloCompositorConfig{});
 
                 let _ = self.renderer.as_mut().unwrap().render_to_surface(
                     device,
@@ -247,5 +202,64 @@ impl ApplicationHandler for App<'_> {
             }
             _ => (),
         }
+    }
+}
+
+fn do_paint(layer_id: LayerId) {
+    let binding = get_browser_state();
+    let state = binding.read().unwrap();
+
+    let painter = Painter::new(state.tile_list.read().unwrap().layer_list.clone());
+
+    let tile_ids = state.tile_list.read().unwrap().get_intersecting_tiles(layer_id, state.viewport);
+    for tile_id in tile_ids {
+        // get tile
+        let mut binding = state.tile_list.write().expect("Failed to get tile list");
+        let Some(tile) = binding.get_tile_mut(tile_id) else {
+            log::warn!("Tile not found: {:?}", tile_id);
+            continue;
+        };
+
+        // if not dirty, no need to render and continue
+        if tile.state == TileState::Clean {
+            continue;
+        }
+
+        // Paint all the elements in each tile
+        for tiled_layout_element in &mut tile.elements {
+            tiled_layout_element.paint_commands = painter.paint(tiled_layout_element);
+        }
+    }
+}
+
+fn do_rasterize(device: &wgpu::Device, queue: &wgpu::Queue, layer_id: LayerId) {
+    let binding = get_browser_state();
+    let state = binding.read().unwrap();
+
+    let tile_ids = state.tile_list.read().unwrap().get_intersecting_tiles(layer_id, state.viewport);
+    for tile_id in tile_ids {
+        // get tile
+        let mut binding = state.tile_list.write().expect("Failed to get tile list");
+        let Some(tile) = binding.get_tile(tile_id) else {
+            log::warn!("Tile not found: {:?}", tile_id);
+            continue;
+        };
+
+        // if not dirty, no need to render and continue
+        if tile.state == TileState::Clean {
+            continue;
+        }
+
+        // Rasterize the tile into a texture
+        let rasterizer = VelloRasterizer::new(device, queue);
+        let texture_id = rasterizer.rasterize(tile);
+
+        let Some(tile) = binding.get_tile_mut(tile_id) else {
+            log::warn!("Tile not found: {:?}", tile_id);
+            continue;
+        };
+
+        tile.texture_id = Some(texture_id);
+        tile.state = TileState::Clean;
     }
 }

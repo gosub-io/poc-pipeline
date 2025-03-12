@@ -309,7 +309,6 @@ fn do_rasterize(layer_id: LayerId) {
         tile.texture_id = Some(texture_id);
         tile.state = TileState::Clean;
     }
-
 }
 
 // Function to set up viewport event listeners

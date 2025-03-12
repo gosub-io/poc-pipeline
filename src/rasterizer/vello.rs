@@ -1,6 +1,6 @@
 use std::num::NonZeroUsize;
 use rand::Rng;
-use vello::kurbo::{Affine, Rect};
+use vello::kurbo::{Affine, Point, Rect};
 use vello::peniko::Color;
 use vello::{AaConfig, RendererOptions, Scene};
 use vello::wgpu::{Device, Queue, Texture, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages};
@@ -11,12 +11,21 @@ use crate::tiler::Tile;
 
 const AA_CONFIGS: [AaConfig; 3] = [AaConfig::Area, AaConfig::Msaa8, AaConfig::Msaa16];
 
-pub struct VelloRasterizer {
-    device: Device,
-    queue: Queue,
+pub struct VelloRasterizer<'a> {
+    device: &'a Device,
+    queue: &'a Queue,
 }
 
-impl Rasterable for VelloRasterizer {
+impl<'a> VelloRasterizer<'a> {
+    pub fn new(device: &'a Device, queue: &'a Queue) -> Self {
+        Self {
+            device,
+            queue,
+        }
+    }
+}
+
+impl Rasterable for VelloRasterizer<'_> {
     fn rasterize(&self, tile: &Tile) -> TextureId {
         let mut scene = Scene::new();
         let mut rnd =  rand::rng();
@@ -24,15 +33,10 @@ impl Rasterable for VelloRasterizer {
         let width = tile.rect.width as u32;
         let height = tile.rect.height as u32;
 
-        let rect = Rect::new(
-            tile.rect.x,
-            tile.rect.y,
-            tile.rect.width,
-            tile.rect.height
-        );
+        let rect = Rect::new(0.0, 0.0, width as f64, height as f64);
         scene.fill(
             vello::peniko::Fill::NonZero,
-            Affine::IDENTITY,
+            Affine::rotate_about(rnd.random_range(0.0..std::f64::consts::PI), Point::new(width as f64 / 2.0, height as f64  / 2.0)),
             Color::from_rgb8(rnd.random_range(0..255), rnd.random_range(0..255), rnd.random_range(0..255)),
             None,
             &rect
@@ -81,7 +85,7 @@ fn create_offscreen_texture(device: &Device, width: u32, height: u32) -> Texture
         sample_count: 1,
         dimension: TextureDimension::D2,
         format: TextureFormat::Rgba8Unorm,
-        usage: TextureUsages::RENDER_ATTACHMENT | TextureUsages::COPY_SRC,
+        usage: TextureUsages::RENDER_ATTACHMENT | TextureUsages::COPY_SRC | TextureUsages::STORAGE_BINDING,
         view_formats: &[],
     })
 }
