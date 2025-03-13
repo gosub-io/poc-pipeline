@@ -1,6 +1,7 @@
 #[cfg(not(feature="backend_vello"))]
 compile_error!("This binary can only be used with the feature 'backend_vello' enabled");
 
+use std::cell::RefCell;
 use std::num::NonZeroUsize;
 use std::sync::Arc;
 use vello::peniko::color;
@@ -34,7 +35,8 @@ fn main() {
     // Generate a DOM tree
     // let doc = common::document::create_document();
     // let doc = common::document::parser::document_from_json("tables.json");
-    let doc = common::document::parser::document_from_json("news.ycombinator.com.json");
+    let doc = common::document::parser::document_from_json("codemusings.nl.json");
+    // let doc = common::document::parser::document_from_json("news.ycombinator.com.json");
     let mut output = String::new();
     doc.print_tree(&mut output).expect("");
     println!("{}", output);
@@ -80,7 +82,7 @@ fn main() {
         current_hovered_element: None,
         tile_list: RwLock::new(tile_list),
         show_tilegrid: true,
-        viewport: Rect::new(0.0, 0.0, 800.0, 600.0),
+        viewport: Rect::new(0.0, 0.0, 1024.0, 1600.0),
     };
     init_browser_state(browser_state);
 
@@ -94,7 +96,7 @@ fn main() {
 
 struct App<'s> {
     render_ctx: RenderContext,
-    renderer: Option<Renderer>,
+    renderer: Option<Arc<RefCell<Renderer>>>,
     surface: Option<RenderSurface<'s>>, // Surface must be before window for safety during cleanup
     window: Option<Arc<Window>>,
 }
@@ -140,7 +142,7 @@ impl ApplicationHandler for App<'_> {
 
         self.window = Some(window);
         self.surface = Some(surface);
-        self.renderer = Some(renderer.unwrap());
+        self.renderer = Some(Arc::new(RefCell::new(renderer.unwrap())));
     }
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
@@ -167,13 +169,15 @@ impl ApplicationHandler for App<'_> {
                 let vis_layers = state.visible_layer_list.clone();
                 drop(state);
 
+                let renderer = &mut self.renderer.as_mut().unwrap();
+
                 if vis_layers[0] {
                     do_paint(LayerId::new(0));
-                    do_rasterize(device, queue, LayerId::new(0));
+                    do_rasterize(device, queue, renderer.clone(), LayerId::new(0));
                 }
                 if vis_layers[1] {
                     do_paint(LayerId::new(1));
-                    do_rasterize(device, queue, LayerId::new(1));
+                    do_rasterize(device, queue, renderer.clone(), LayerId::new(1));
                 }
 
                 let surface_texture = surface
@@ -190,7 +194,9 @@ impl ApplicationHandler for App<'_> {
 
                 let scene = VelloCompositor::compose(VelloCompositorConfig{});
 
-                let _ = self.renderer.as_mut().unwrap().render_to_surface(
+                let binding = self.renderer.clone().unwrap();
+                let mut renderer = binding.borrow_mut();
+                let _ = renderer.render_to_surface(
                     device,
                     queue,
                     &scene,
@@ -232,7 +238,7 @@ fn do_paint(layer_id: LayerId) {
     }
 }
 
-fn do_rasterize(device: &wgpu::Device, queue: &wgpu::Queue, layer_id: LayerId) {
+fn do_rasterize(device: &wgpu::Device, queue: &wgpu::Queue, renderer: Arc<RefCell<Renderer>>, layer_id: LayerId) {
     let binding = get_browser_state();
     let state = binding.read().unwrap();
 
@@ -251,7 +257,7 @@ fn do_rasterize(device: &wgpu::Device, queue: &wgpu::Queue, layer_id: LayerId) {
         }
 
         // Rasterize the tile into a texture
-        let rasterizer = VelloRasterizer::new(device, queue);
+        let rasterizer = VelloRasterizer::new(device, queue, &renderer);
         let texture_id = rasterizer.rasterize(tile);
 
         let Some(tile) = binding.get_tile_mut(tile_id) else {

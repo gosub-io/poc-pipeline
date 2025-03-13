@@ -29,6 +29,10 @@ impl Rectangle {
         }
     }
 
+    pub(crate) fn is_rounded(&self) -> bool {
+        self.radius_top > 0.0 || self.radius_right > 0.0 || self.radius_bottom > 0.0 || self.radius_left > 0.0
+    }
+
     pub fn with_radius_tlrb(mut self, top: Radius, right: Radius, bottom: Radius, left: Radius) -> Self {
         self.radius_top = top;
         self.radius_right = right;

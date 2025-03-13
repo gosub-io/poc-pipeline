@@ -1,8 +1,7 @@
-use std::num::NonZeroUsize;
-use rand::Rng;
-use vello::kurbo::{Affine, Point, Rect};
+use std::cell::RefCell;
+use crate::painter::commands::PaintCommand;
 use vello::peniko::Color;
-use vello::{AaConfig, RendererOptions, Scene};
+use vello::{AaConfig, Renderer, Scene};
 use vello::wgpu::{Device, Queue, Texture, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages};
 use crate::rasterizer::Rasterable;
 use crate::common::texture::TextureId;
@@ -13,18 +12,18 @@ mod rectangle;
 mod brush;
 mod text;
 
-const AA_CONFIGS: [AaConfig; 3] = [AaConfig::Area, AaConfig::Msaa8, AaConfig::Msaa16];
-
 pub struct VelloRasterizer<'a> {
     device: &'a Device,
     queue: &'a Queue,
+    renderer: &'a RefCell<Renderer>,
 }
 
 impl<'a> VelloRasterizer<'a> {
-    pub fn new(device: &'a Device, queue: &'a Queue) -> Self {
+    pub fn new(device: &'a Device, queue: &'a Queue, renderer: &'a RefCell<Renderer>) -> Self {
         Self {
             device,
             queue,
+            renderer,
         }
     }
 }
@@ -32,34 +31,39 @@ impl<'a> VelloRasterizer<'a> {
 impl Rasterable for VelloRasterizer<'_> {
     fn rasterize(&self, tile: &Tile) -> TextureId {
         let mut scene = Scene::new();
-        let mut rnd =  rand::rng();
 
         let width = tile.rect.width as u32;
         let height = tile.rect.height as u32;
 
-        let rect = Rect::new(0.0, 0.0, width as f64, height as f64);
-        scene.fill(
-            vello::peniko::Fill::NonZero,
-            Affine::rotate_about(rnd.random_range(0.0..std::f64::consts::PI), Point::new(width as f64 / 2.0, height as f64  / 2.0)),
-            Color::from_rgb8(rnd.random_range(0..255), rnd.random_range(0..255), rnd.random_range(0..255)),
-            None,
-            &rect
-        );
+        for element in &tile.elements {
+            for command in &element.paint_commands {
+                match command {
+                    PaintCommand::Rectangle(command) => {
+                        rectangle::do_paint_rectangle(&mut scene, &tile, &command);
+                    }
+                    PaintCommand::Text(command) => {
+                        println!("Text: {}", command.text);
+                        // match text::do_paint_text(&mut scene, &tile, &command) {
+                        //     Ok(_) => {}
+                        //     Err(e) => {
+                        //         println!("Failed to paint text: {:?}", e);
+                        //     }
+                        // }
+                    }
+                }
+            }
+        }
 
         let texture = create_offscreen_texture(&self.device, width, height);
+
         let render_params = vello::RenderParams {
-            base_color: Color::BLACK,
+            base_color: Color::new([0.0, 0.0, 0.0, 0.0]),   // Transparent texture
             width: tile.rect.width as u32,
             height: tile.rect.height as u32,
-            antialiasing_method: vello::AaConfig::Area,
+            antialiasing_method: AaConfig::Area,
         };
-        let mut renderer = vello::Renderer::new(&self.device, RendererOptions{
-            surface_format: Some(TextureFormat::Rgba8Unorm),
-            use_cpu: false,
-            antialiasing_support: AA_CONFIGS.iter().copied().collect(),
-            num_init_threads: NonZeroUsize::new(0),
-        }).unwrap();
-        renderer.render_to_texture(
+
+        self.renderer.borrow_mut().render_to_texture(
             &self.device,
             &self.queue,
             &scene,

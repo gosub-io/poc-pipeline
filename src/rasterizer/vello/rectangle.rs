@@ -1,12 +1,12 @@
 use vello::kurbo;
-use vello::kurbo::{Affine, Rect, RoundedRect, Shape};
+use vello::kurbo::{Affine, PathEl, Point, Rect, RoundedRect, Shape};
 use vello::peniko::{Fill};
 use crate::painter::commands::border::BorderStyle;
 use crate::painter::commands::rectangle::Rectangle;
 use crate::rasterizer::vello::brush::set_brush;
 use crate::tiler::Tile;
 
-pub(crate) fn do_paint_rectangle(scene: &mut vello::Scene, _tile: &Tile, rect: &Rectangle) {
+pub(crate) fn do_paint_rectangle(scene: &mut vello::Scene, tile: &Tile, rect: &Rectangle) {
     // // Translate the context to the tile's position and clip it.
     // cr.translate(-tile.rect.x, -tile.rect.y);
     // cr.rectangle(tile.rect.x, tile.rect.y, tile.rect.width, tile.rect.height);
@@ -18,13 +18,24 @@ pub(crate) fn do_paint_rectangle(scene: &mut vello::Scene, _tile: &Tile, rect: &
             let vello_rect = setup_rectangle_path(rect);
             let vello_brush = set_brush(brush, rect.rect());
 
-            let vello_shape = vello_rect.get_shape();
+            match vello_brush.clone() {
+                vello::peniko::Brush::Solid(color) => {
+                    println!("Filling with color: {:?}", color);
+                }
+                vello::peniko::Brush::Image(_img) => {
+                    println!("Filling with image");
+                }
+                _ => {
+                    println!("Filling with unknown brush");
+                }
+            }
+
             scene.fill(
                 Fill::NonZero,
-                Affine::IDENTITY,
+                Affine::translate((-tile.rect.x, -tile.rect.y)),
                 &vello_brush,
                 None,
-                &vello_shape,
+                &vello_rect,
             );
         }
         None => {}
@@ -110,38 +121,67 @@ fn draw_double_border(scene: &mut vello::Scene, rect: &Rectangle) {
     );
 }
 
-enum RectType {
-    RoundedRect(RoundedRect),
+enum ShapeEnum {
     Rect(Rect),
+    RoundedRect(RoundedRect),
 }
 
-impl RectType {
-    pub(crate) fn get_shape(&self) -> &impl Shape {
+impl Shape for ShapeEnum {
+    type PathElementsIter<'iter> = Box<dyn Iterator<Item = PathEl> + 'iter>;
+
+    fn path_elements(&self, tolerance: f64) -> Self::PathElementsIter<'_> {
         match self {
-            RectType::RoundedRect(r) => r,
-            RectType::Rect(r) => r,
+            ShapeEnum::Rect(rect) => Box::new(rect.path_elements(tolerance)),
+            ShapeEnum::RoundedRect(rounded_rect) => Box::new(rounded_rect.path_elements(tolerance)),
+        }
+    }
+
+    fn area(&self) -> f64 {
+        match self {
+            ShapeEnum::Rect(rect) => rect.area(),
+            ShapeEnum::RoundedRect(rounded_rect) => rounded_rect.area(),
+        }
+    }
+
+    fn perimeter(&self, accuracy: f64) -> f64 {
+        match self {
+            ShapeEnum::Rect(rect) => rect.perimeter(accuracy),
+            ShapeEnum::RoundedRect(rounded_rect) => rounded_rect.perimeter(accuracy),
+        }
+    }
+
+    fn winding(&self, pt: Point) -> i32 {
+        match self {
+            ShapeEnum::Rect(rect) => rect.winding(pt),
+            ShapeEnum::RoundedRect(rounded_rect) => rounded_rect.winding(pt),
+        }
+    }
+
+    fn bounding_box(&self) -> Rect {
+        match self {
+            ShapeEnum::Rect(rect) => rect.bounding_box(),
+            ShapeEnum::RoundedRect(rounded_rect) => rounded_rect.bounding_box(),
         }
     }
 }
 
-/// Creates a cairo rectangle with either sharp or rounded corners. Does not fill or stroke the path.
-fn setup_rectangle_path(rect: &Rectangle) -> RectType {
-    let (r_tl, r_tr, r_br, r_bl) = rect.radius();
+fn setup_rectangle_path(rect: &Rectangle) -> ShapeEnum {
+    if rect.is_rounded() {
+        let (r_tl, r_tr, r_br, r_bl) = rect.radius();
 
-    if r_tl == 0.0 && r_tr == 0.0 && r_br == 0.0 && r_bl == 0.0 {
-        return RectType::Rect(Rect::new(
+        return ShapeEnum::RoundedRect(RoundedRect::new(
             rect.rect().x,
             rect.rect().y,
-            rect.rect().width,
-            rect.rect().height,
+            rect.rect().x + rect.rect().width,
+            rect.rect().y + rect.rect().height,
+            (r_tl, r_tr, r_br, r_bl)
         ))
     }
 
-    RectType::RoundedRect(RoundedRect::new(
+    ShapeEnum::Rect(Rect::new(
         rect.rect().x,
         rect.rect().y,
-        rect.rect().width,
-        rect.rect().height,
-        (r_tl, r_tr, r_br, r_bl)
+        rect.rect().x + rect.rect().width,
+        rect.rect().y + rect.rect().height,
     ))
 }
