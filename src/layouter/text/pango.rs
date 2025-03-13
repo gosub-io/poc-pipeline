@@ -6,7 +6,7 @@ use crate::common::font::pango::{find_available_font, to_pango_weight};
 
 /// Retrieves the pango layout for the given text, font family, font size and maximum width.
 /// it will wrap any long lines based on the pixels found in width.
-pub fn get_text_layout(text: &str, font_family: &str, font_size: f64, font_weight: usize, line_height: f64, max_width: f64) -> Result<Layout, Error> {
+pub fn get_text_layout(text: &str, font_family: &str, font_size: f64, font_weight: usize, line_height: f64, max_width: f64) -> Result<Dimension, Error> {
     let surface = ImageSurface::create(Format::ARgb32, 1, 1)?;
     let cr = Context::new(&surface)?;
     let layout = create_layout(&cr);
@@ -29,5 +29,8 @@ pub fn get_text_layout(text: &str, font_family: &str, font_size: f64, font_weigh
 
     layout.set_spacing(((line_height - font_size) * SCALE as f64) as i32);
 
-    Ok(layout)
+    Ok(Dimension {
+        width: layout.get_extents().0.width as f64 / SCALE as f64,
+        height: layout.get_extents().0.height as f64 / SCALE as f64,
+    })
 }

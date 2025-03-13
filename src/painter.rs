@@ -2,7 +2,6 @@ pub mod commands;
 
 use std::ops::AddAssign;
 use std::sync::Arc;
-use pangocairo::pango::FontDescription;
 use rand::Rng;
 use crate::common::browser_state::{get_browser_state, BrowserState, WireframeState};
 use crate::common::document::node::{Node, NodeType};

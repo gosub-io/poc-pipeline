@@ -82,7 +82,7 @@ fn main() {
         current_hovered_element: None,
         tile_list: RwLock::new(tile_list),
         show_tilegrid: true,
-        viewport: Rect::new(0.0, 0.0, 1024.0, 1600.0),
+        viewport: Rect::new(0.0, 0.0, 1024.0, 2600.0),
     };
     init_browser_state(browser_state);
 
@@ -136,7 +136,7 @@ impl ApplicationHandler for App<'_> {
                 surface_format: Some(surface.format),
                 use_cpu: false,
                 antialiasing_support: AA_CONFIGS.iter().copied().collect(),
-                num_init_threads: NonZeroUsize::new(0),
+                num_init_threads: NonZeroUsize::new(5),
             },
         );
 
@@ -186,7 +186,7 @@ impl ApplicationHandler for App<'_> {
                     .expect("Failed to get current texture");
 
                 let render_params = RenderParams {
-                    base_color: color::palette::css::LIGHT_BLUE,
+                    base_color: color::palette::css::DARK_MAGENTA,
                     width,
                     height,
                     antialiasing_method: AaConfig::Area,

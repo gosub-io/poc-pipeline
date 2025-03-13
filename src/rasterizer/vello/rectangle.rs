@@ -18,18 +18,6 @@ pub(crate) fn do_paint_rectangle(scene: &mut vello::Scene, tile: &Tile, rect: &R
             let vello_rect = setup_rectangle_path(rect);
             let vello_brush = set_brush(brush, rect.rect());
 
-            match vello_brush.clone() {
-                vello::peniko::Brush::Solid(color) => {
-                    println!("Filling with color: {:?}", color);
-                }
-                vello::peniko::Brush::Image(_img) => {
-                    println!("Filling with image");
-                }
-                _ => {
-                    println!("Filling with unknown brush");
-                }
-            }
-
             scene.fill(
                 Fill::NonZero,
                 Affine::translate((-tile.rect.x, -tile.rect.y)),

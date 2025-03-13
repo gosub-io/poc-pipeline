@@ -6,6 +6,7 @@ use vello::wgpu::{Device, Queue, Texture, TextureDescriptor, TextureDimension, T
 use crate::rasterizer::Rasterable;
 use crate::common::texture::TextureId;
 use crate::common::get_texture_store;
+use crate::rasterizer::vello::text::parley::do_paint_text;
 use crate::tiler::Tile;
 
 mod rectangle;
@@ -42,13 +43,12 @@ impl Rasterable for VelloRasterizer<'_> {
                         rectangle::do_paint_rectangle(&mut scene, &tile, &command);
                     }
                     PaintCommand::Text(command) => {
-                        println!("Text: {}", command.text);
-                        // match text::do_paint_text(&mut scene, &tile, &command) {
-                        //     Ok(_) => {}
-                        //     Err(e) => {
-                        //         println!("Failed to paint text: {:?}", e);
-                        //     }
-                        // }
+                        match do_paint_text(&mut scene, &tile, &command) {
+                            Ok(_) => {}
+                            Err(e) => {
+                                println!("Failed to paint text: {:?}", e);
+                            }
+                        }
                     }
                 }
             }

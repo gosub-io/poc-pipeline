@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
-use gtk4::pango;
 use taffy::prelude::*;
 use taffy::NodeId as TaffyNodeId;
 use crate::rendertree_builder::{RenderTree, RenderNodeId};
@@ -11,7 +10,7 @@ use crate::common::geo::Coordinate;
 use crate::common::image::ImageId;
 use crate::layouter::{LayoutElementNode, LayoutTree, LayoutElementId, CanLayout, ElementContext, box_model, ElementContextText, ElementContextImage};
 use crate::layouter::css_taffy_converter::CssTaffyConverter;
-use crate::layouter::text::pango::get_text_layout;
+use crate::layouter::text::get_text_layout;
 
 const DEFAULT_FONT_SIZE: f64 = 16.0;
 const DEFAULT_FONT_FAMILY: &str = "Sans";
@@ -104,7 +103,7 @@ impl CanLayout for TaffyLayouter {
                     };
 
                     // Calculate the text layout dimensions and return it to taffy
-                    let layout = get_text_layout(
+                    let text_layout = get_text_layout(
                         text,
                         font_family,
                         font_size,
@@ -112,16 +111,10 @@ impl CanLayout for TaffyLayouter {
                         line_height,
                         max_width,
                     );
-                    match layout {
-                        Ok(layout) => {
-                            let (_rect, logical_rect) = layout.extents();
-                            let text_width = logical_rect.width() as f32 / pango::SCALE as f32;
-                            let text_height = logical_rect.height() as f32 / pango::SCALE as f32;
-
-                            Size {
-                                width: text_width,
-                                height: text_height,
-                            }
+                    match text_layout {
+                        Ok(text_layout) => Size {
+                            width: text_layout.width as f32,
+                            height: text_layout.height as f32
                         },
                         Err(_) => Size::ZERO
                     }
