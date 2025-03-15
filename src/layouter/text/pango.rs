@@ -3,6 +3,7 @@ use gtk4::pango::{FontDescription, SCALE, Layout};
 use pangocairo::functions::{context_set_resolution, create_layout};
 use pangocairo::pango::WrapMode;
 use crate::common::font::pango::{find_available_font, to_pango_weight};
+use crate::common::geo::Dimension;
 
 /// Retrieves the pango layout for the given text, font family, font size and maximum width.
 /// it will wrap any long lines based on the pixels found in width.
@@ -27,10 +28,11 @@ pub fn get_text_layout(text: &str, font_family: &str, font_size: f64, font_weigh
     // @TODO: This should be configurable
     layout.set_wrap(WrapMode::Word);
 
-    layout.set_spacing(((line_height - font_size) * SCALE as f64) as i32);
+    layout.set_spacing(0);
+    layout.set_line_spacing(0.0);
 
     Ok(Dimension {
-        width: layout.get_extents().0.width as f64 / SCALE as f64,
-        height: layout.get_extents().0.height as f64 / SCALE as f64,
+        width: layout.extents().1.width() as f64 / SCALE as f64,
+        height: layout.extents().1.height() as f64 / SCALE as f64,
     })
 }

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::ops::AddAssign;
 use crate::common::document::document::Document;
 use crate::common::document::node::{Node, NodeType, NodeId};
-use crate::common::document::style::{StyleProperty, StyleValue};
+use crate::common::document::style::{StyleProperty, StyleValue, Display as CssDisplay};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct RenderNodeId(u64);
@@ -123,8 +123,15 @@ impl RenderTree {
                     return false;
                 }
 
-                if element.get_style(StyleProperty::Display) == Some(&StyleValue::None) {
-                    return false;
+                println!("Display style element: {:?}", element.get_style(StyleProperty::Display));
+                match element.get_style(StyleProperty::Display) {
+                    Some(StyleValue::Display(display)) => {
+                        if *display == CssDisplay::None {
+                            println!("Skipping element");
+                            return false;
+                        }
+                    }
+                    _ => {}
                 }
 
                 true

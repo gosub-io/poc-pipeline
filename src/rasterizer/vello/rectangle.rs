@@ -7,11 +7,6 @@ use crate::rasterizer::vello::brush::set_brush;
 use crate::tiler::Tile;
 
 pub(crate) fn do_paint_rectangle(scene: &mut vello::Scene, tile: &Tile, rect: &Rectangle) {
-    // // Translate the context to the tile's position and clip it.
-    // cr.translate(-tile.rect.x, -tile.rect.y);
-    // cr.rectangle(tile.rect.x, tile.rect.y, tile.rect.width, tile.rect.height);
-    // cr.clip();
-
     // Draw background (if any background brush is defined)
     match rect.background() {
         Some(brush) => {
@@ -32,10 +27,10 @@ pub(crate) fn do_paint_rectangle(scene: &mut vello::Scene, tile: &Tile, rect: &R
     // Create border
     match rect.border().style() {
         BorderStyle::None => {},
-        BorderStyle::Solid => draw_single_border(scene, rect, vec![]),
-        BorderStyle::Dashed => draw_single_border(scene, rect, vec![50.0, 10.0, 10.0, 10.0]),
-        BorderStyle::Dotted => draw_single_border(scene, rect, vec![10.0, 10.0]),
-        BorderStyle::Double => draw_double_border(scene, rect),
+        BorderStyle::Solid => draw_single_border(scene, rect, vec![], tile),
+        BorderStyle::Dashed => draw_single_border(scene, rect, vec![50.0, 10.0, 10.0, 10.0], tile),
+        BorderStyle::Dotted => draw_single_border(scene, rect, vec![10.0, 10.0], tile),
+        BorderStyle::Double => draw_double_border(scene, rect, tile),
         BorderStyle::Groove => { unimplemented!() }
         BorderStyle::Ridge => { unimplemented!() }
         BorderStyle::Inset => { unimplemented!() }
@@ -47,21 +42,21 @@ pub(crate) fn do_paint_rectangle(scene: &mut vello::Scene, tile: &Tile, rect: &R
     }
 }
 
-fn draw_single_border(scene: &mut vello::Scene, rect: &Rectangle, dashes: Vec<f64>) {
+fn draw_single_border(scene: &mut vello::Scene, rect: &Rectangle, dashes: Vec<f64>, tile: &Tile) {
     let vello_shape = setup_rectangle_path(rect);
     let vello_brush = set_brush(&rect.border().brush(), rect.rect());
     let vello_stroke = kurbo::Stroke::new(rect.border().width() as f64).with_dashes(0.0, dashes);
 
     scene.stroke(
         &vello_stroke,
-        Affine::IDENTITY,
+        Affine::translate((-tile.rect.x, -tile.rect.y)),
         &vello_brush,
         None,
         &vello_shape,
     );
 }
 
-fn draw_double_border(scene: &mut vello::Scene, rect: &Rectangle) {
+fn draw_double_border(scene: &mut vello::Scene, rect: &Rectangle, tile: &Tile) {
     let vello_shape = setup_rectangle_path(rect);
     let vello_brush = set_brush(&rect.border().brush(), rect.rect());
 
@@ -70,7 +65,7 @@ fn draw_double_border(scene: &mut vello::Scene, rect: &Rectangle) {
         // a double border
         scene.stroke(
             &kurbo::Stroke::new(rect.border().width() as f64),
-            Affine::IDENTITY,
+            Affine::translate((-tile.rect.x, -tile.rect.y)),
             &vello_brush,
             None,
             &vello_shape,

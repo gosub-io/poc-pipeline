@@ -46,7 +46,8 @@ fn create_text_layout(cmd: &Text) -> Result<ImageSurface, Error> {
     layout.set_width((cmd.rect.width * SCALE as f64) as i32);
     layout.set_wrap(gtk4::pango::WrapMode::Word);
 
-    layout.set_spacing(((cmd.line_height - cmd.font_size) * SCALE as f64) as i32);
+    layout.set_spacing(0);
+    layout.set_line_spacing(0.0);
 
     set_brush(&cr, &cmd.brush, cmd.rect);
     cr.move_to(0.0, 0.0);

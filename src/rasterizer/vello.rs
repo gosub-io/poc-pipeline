@@ -1,7 +1,8 @@
 use std::cell::RefCell;
 use crate::painter::commands::PaintCommand;
-use vello::peniko::Color;
+use vello::peniko::{Color, Mix};
 use vello::{AaConfig, Renderer, Scene};
+use vello::kurbo::{Affine, Rect};
 use vello::wgpu::{Device, Queue, Texture, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages};
 use crate::rasterizer::Rasterable;
 use crate::common::texture::TextureId;
@@ -36,6 +37,12 @@ impl Rasterable for VelloRasterizer<'_> {
         let width = tile.rect.width as u32;
         let height = tile.rect.height as u32;
 
+        // Painting commands are in absolute coordinates, so we need to clip the scene to the tile's rect
+        // so only this tile gets painted.
+        let clip = Rect::new(0.0, 0.0, width as f64, height as f64);
+        let transform = Affine::IDENTITY;
+        scene.push_layer(Mix::Clip, 1.0, transform, &clip);
+
         for element in &tile.elements {
             for command in &element.paint_commands {
                 match command {
@@ -53,6 +60,8 @@ impl Rasterable for VelloRasterizer<'_> {
                 }
             }
         }
+
+        scene.pop_layer();
 
         let texture = create_offscreen_texture(&self.device, width, height);
 

@@ -14,6 +14,7 @@ pub struct CairoCompositor {}
 
 impl Composable for CairoCompositor {
     type Config = CairoCompositorConfig;
+    type Return = ();
 
     fn compose(config: Self::Config) {
 

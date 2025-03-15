@@ -2,11 +2,10 @@
 compile_error!("This binary can only be used with the feature 'backend_vello' enabled");
 
 use std::cell::RefCell;
-use std::num::NonZeroUsize;
 use std::sync::Arc;
 use vello::peniko::color;
 use vello::util::{DeviceHandle, RenderContext, RenderSurface};
-use vello::{wgpu, AaConfig, RenderParams, Renderer, RendererOptions};
+use vello::{wgpu, AaConfig, AaSupport, RenderParams, Renderer, RendererOptions};
 use winit::application::ApplicationHandler;
 use winit::event::WindowEvent;
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
@@ -27,7 +26,6 @@ use poc_pipeline::rasterizer::Rasterable;
 use poc_pipeline::rasterizer::vello::VelloRasterizer;
 
 const TILE_DIMENSION : f64 = 256.0;
-const AA_CONFIGS: [AaConfig; 3] = [AaConfig::Area, AaConfig::Msaa8, AaConfig::Msaa16];
 
 
 fn main() {
@@ -35,7 +33,8 @@ fn main() {
     // Generate a DOM tree
     // let doc = common::document::create_document();
     // let doc = common::document::parser::document_from_json("tables.json");
-    let doc = common::document::parser::document_from_json("codemusings.nl.json");
+    // let doc = common::document::parser::document_from_json("codemusings.nl.json");
+    let doc = common::document::parser::document_from_json("cm.json");
     // let doc = common::document::parser::document_from_json("news.ycombinator.com.json");
     let mut output = String::new();
     doc.print_tree(&mut output).expect("");
@@ -135,8 +134,8 @@ impl ApplicationHandler for App<'_> {
             RendererOptions {
                 surface_format: Some(surface.format),
                 use_cpu: false,
-                antialiasing_support: AA_CONFIGS.iter().copied().collect(),
-                num_init_threads: NonZeroUsize::new(5),
+                antialiasing_support: AaSupport::all(),
+                num_init_threads: None,
             },
         );
 
@@ -162,7 +161,6 @@ impl ApplicationHandler for App<'_> {
 
                 let width = surface.config.width;
                 let height = surface.config.height;
-
 
                 let binding = get_browser_state();
                 let state = binding.read().unwrap();

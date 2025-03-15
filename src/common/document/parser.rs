@@ -70,8 +70,13 @@ fn create_dom_from_json(doc: &mut Document, node: &DomNode, parent_id: Option<No
         return None;
     };
 
+
     let style = get_style_from_node(node);
     let node_id = doc.new_element(parent_id, &tag, Some(attrs), node.self_closing, Some(style.clone()));
+
+    if node_id.is_greater_than(24) {
+        return None
+    }
 
     for child in &node.children {
         match create_dom_from_json(doc, child, Some(node_id)) {

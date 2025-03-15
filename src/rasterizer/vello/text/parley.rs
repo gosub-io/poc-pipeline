@@ -34,8 +34,8 @@ fn render_glyph_run(scene: &mut Scene, glyph_run: GlyphRun<[u8;4]>, brush: &Brus
 
     // @TODO: we need font decorations like underline, strike through, maybe sub sup?
 
-    let mut x = glyph_run.offset();
-    let y = glyph_run.baseline();
+    let mut x = glyph_run.offset() + rect.x as f32;
+    let y = glyph_run.baseline() + rect.y as f32;
     let run = glyph_run.run();
     let font = run.font();
     let font_size = run.font_size();

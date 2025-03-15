@@ -102,8 +102,27 @@ pub enum NodeType {
     Element(ElementData),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd)]
 pub struct NodeId(u64);
+
+#[allow(unused)]
+impl NodeId {
+    pub(crate) fn is_greater_than(&self, node_id: u64) -> bool {
+        self.0 > node_id
+    }
+    pub(crate) fn is_less_than(&self, node_id: u64) -> bool {
+        self.0 < node_id
+    }
+    pub(crate) fn is_less_than_equal(&self, node_id: u64) -> bool {
+        self.0 <= node_id
+    }
+    pub(crate) fn is_greater_than_equal(&self, node_id: u64) -> bool {
+        self.0 >= node_id
+    }
+    pub(crate) fn is_equal(&self, node_id: u64) -> bool {
+        self.0 == node_id
+    }
+}
 
 impl NodeId {
     pub fn to_u64(&self) -> u64 {

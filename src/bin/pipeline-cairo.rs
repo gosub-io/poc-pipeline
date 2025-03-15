@@ -21,8 +21,8 @@ use poc_pipeline::rasterizer::Rasterable;
 
 const TILE_DIMENSION : f64 = 256.0;
 
-const WINDOW_WIDTH: f64 = 800.0;
-const WINDOW_HEIGHT: f64 = 600.0;
+const WINDOW_WIDTH: f64 = 1024.0;
+const WINDOW_HEIGHT: f64 = 768.0;
 
 
 fn main() {
@@ -30,7 +30,8 @@ fn main() {
     // Generate a DOM tree
     // let doc = common::document::create_document();
     // let doc = common::document::parser::document_from_json("tables.json");
-    let doc = common::document::parser::document_from_json("news.ycombinator.com.json");
+    // let doc = common::document::parser::document_from_json("news.ycombinator.com.json");
+    let doc = common::document::parser::document_from_json("cm.json");
     let mut output = String::new();
     doc.print_tree(&mut output).expect("");
     println!("{}", output);
@@ -183,6 +184,16 @@ fn build_ui(app: &Application) {
 
         let mut state = binding.write().expect("Failed to get browser state");
         if state.current_hovered_element != el_id {
+
+            if el_id.is_some() {
+                let binding = state.tile_list.read().unwrap();
+                let layout_element = binding.layer_list.layout_tree.get_node_by_id(el_id.unwrap()).unwrap();
+                println!("Hovered element id:");
+                println!("   Layout ID : {:?}", el_id);
+                println!("   DOM ID    : {:?}", layout_element.dom_node_id);
+                drop(binding);
+            }
+
             for tile_id in &tile_ids {
                 // It's ok when we have double tiles in the list. We just set the tile to dirty again.
                 state.tile_list.write().unwrap().invalidate_tile(*tile_id);

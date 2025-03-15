@@ -56,6 +56,7 @@ impl CssTaffyConverter {
         };
         ts.scrollbar_width = self.get_f32(StyleProperty::ScrollbarWidth, ts.scrollbar_width);
         ts.position = self.get_position(ts.position);
+
         ts.inset = self.get_inset(ts.inset);
         ts.margin.top = self.get_lpa(StyleProperty::MarginTop, ts.margin.top);
         ts.margin.right = self.get_lpa(StyleProperty::MarginRight, ts.margin.right);
@@ -123,7 +124,6 @@ impl CssTaffyConverter {
                 ts.display = Display::Flex;
                 ts.flex_direction = FlexDirection::Column;
             }
-
             Some(StyleValue::Display(CssDisplay::Inline)) => {
                 ts.display = Display::Flex;
                 ts.flex_direction = FlexDirection::Row;
@@ -215,6 +215,9 @@ impl CssTaffyConverter {
                 match val.as_str() {
                     "relative" => Position::Relative,
                     "absolute" => Position::Absolute,
+                    "static" => Position::Relative,
+                    "fixed" => Position::Absolute,
+                    "sticky" => Position::Relative,
                     _ => default,
                 }
             },
