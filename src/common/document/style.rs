@@ -89,6 +89,7 @@ pub enum Color {
 pub enum Display {
     Block,
     Inline,
+    InlineBlock,
     None,
     Flex,
     Table,
@@ -122,11 +123,27 @@ pub enum StyleValue {
     Display(Display),
     FontWeight(FontWeight),
     TextWrap(TextWrap),
+    TextAlign(TextAlign),
 }
 
 #[derive(Debug, Clone)]
 pub struct StylePropertyList {
     pub properties: HashMap<StyleProperty, StyleValue>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum TextAlign {
+    Left,
+    Right,
+    Center,
+    Justify,
+    Start,
+    End,
+    MatchParent,
+    Initial,
+    Inherit,
+    Revert,
+    Unset,
 }
 
 #[derive(Debug, Clone, PartialEq)]

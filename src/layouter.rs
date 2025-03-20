@@ -7,6 +7,7 @@ use crate::rendertree_builder::{RenderTree, RenderNodeId};
 use crate::common::document::node::{NodeId as DomNodeId, NodeId};
 use crate::common::geo::{Coordinate, Dimension};
 use crate::common::image::ImageId;
+use crate::layouter::text::Alignment;
 
 pub mod taffy;
 pub mod text;
@@ -51,6 +52,8 @@ pub struct ElementContextText {
     pub text: String,
     /// Additional offset for the text. This can happen when we have a lineheight and the text needs to be centered in the block
     pub text_offset: Coordinate,
+    /// Alignment of font
+    pub alignment: Alignment,
 }
 
 #[derive(Clone, Debug)]
@@ -75,13 +78,14 @@ pub enum ElementContext {
 }
 
 impl ElementContext {
-    pub(crate) fn text(font_family: &str, font_size: f64, font_weight: usize, line_height: f64, text: &str, node_id: DomNodeId, text_offset: Coordinate) -> ElementContext {
+    pub(crate) fn text(font_family: &str, font_size: f64, font_weight: usize, line_height: f64, alignment: Alignment, text: &str, node_id: DomNodeId, text_offset: Coordinate) -> ElementContext {
         Self::Text(ElementContextText{
             node_id,
             font_family: font_family.to_string(),
             font_size,
             font_weight,
             line_height,
+            alignment,
             text: text.to_string(),
             text_offset,
         })

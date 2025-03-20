@@ -11,6 +11,7 @@ use winit::event::WindowEvent;
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::window::{Window, WindowId};
 use std::sync::RwLock;
+use winit::dpi::{PhysicalSize, Size};
 use poc_pipeline::common;
 use poc_pipeline::rendertree_builder::RenderTree;
 use poc_pipeline::common::browser_state::{get_browser_state, init_browser_state, BrowserState, WireframeState};
@@ -33,12 +34,12 @@ fn main() {
     // Generate a DOM tree
     // let doc = common::document::create_document();
     // let doc = common::document::parser::document_from_json("tables.json");
-    // let doc = common::document::parser::document_from_json("codemusings.nl.json");
-    let doc = common::document::parser::document_from_json("cm.json");
+    let doc = common::document::parser::document_from_json("button.json");
+    // let doc = common::document::parser::document_from_json("cm.json");
     // let doc = common::document::parser::document_from_json("news.ycombinator.com.json");
-    let mut output = String::new();
-    doc.print_tree(&mut output).expect("");
-    println!("{}", output);
+    // let mut output = String::new();
+    // doc.print_tree(&mut output).expect("");
+    // println!("{}", output);
 
     // --------------------------------------------------------------------
     // Convert the DOM tree into a render-tree that has all the non-visible elements removed
@@ -119,6 +120,7 @@ impl ApplicationHandler for App<'_> {
 
         let mut attribs = Window::default_attributes();
         attribs.title = "Vello Pipeline Test".to_string();
+        attribs.inner_size = Some(Size::Physical(PhysicalSize::new(1280, 1114)));
         let window = Arc::new(event_loop.create_window(attribs).unwrap());
 
         let size = window.inner_size();

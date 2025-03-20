@@ -30,6 +30,7 @@ impl CssTaffyConverter {
             StyleValue::FontWeight(_) => default,
             StyleValue::TextWrap(_) => default,
             StyleValue::Percentage(_) => default,
+            StyleValue::TextAlign(_) => default,
         }
     }
 
@@ -44,7 +45,7 @@ impl CssTaffyConverter {
         }
     }
 
-    pub fn convert(&self, node_id: NodeId) -> Style {
+    pub fn convert(&self, node_id: NodeId, is_inline: bool) -> Style {
         let mut ts = Style::default();
 
         ts.display = self.get_display(ts.display);
@@ -133,6 +134,11 @@ impl CssTaffyConverter {
             _ => {},
         }
 
+        // if is_inline {
+        //     ts.text_align = TextAlign::LegacyCenter;
+        //     ts.align_content = Some(AlignContent::Center);
+        // }
+
         ts
     }
 
@@ -195,10 +201,11 @@ impl CssTaffyConverter {
             StyleValue::Display(val) => {
                 match val {
                     CssDisplay::Block => Display::Block,
+                    CssDisplay::InlineBlock => Display::Block,  // We override this later
+                    CssDisplay::Inline => Display::Block,  // We override this later
                     CssDisplay::Flex => Display::Flex,
                     CssDisplay::None => Display::None,
-                    CssDisplay::Inline => Display::Flex,
-                    _ => default,
+                    _ => unimplemented!("Display type not implemented: {:?}", val),
                 }
             }
             _ => default,

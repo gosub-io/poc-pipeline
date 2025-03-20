@@ -1,4 +1,5 @@
 use crate::common::geo::Rect;
+use crate::layouter::text::Alignment;
 use crate::painter::commands::brush::Brush;
 
 #[derive(Clone, Debug)]
@@ -17,10 +18,12 @@ pub struct Text {
     pub text: String,
     /// Brush to paint the text with
     pub brush: Brush,
+    /// Text alignment
+    pub alignment: Alignment
 }
 
 impl Text {
-    pub fn new(rect: Rect, text: &str, font_family: &str, font_size: f64, font_weight: usize, line_height: f64, brush: Brush) -> Self {
+    pub fn new(rect: Rect, text: &str, font_family: &str, font_size: f64, font_weight: usize, line_height: f64, brush: Brush, alignment: Alignment) -> Self {
         Text {
             rect,
             font_family: font_family.to_string(),
@@ -29,6 +32,7 @@ impl Text {
             line_height,
             text: text.to_string(),
             brush,
+            alignment,
         }
     }
 }

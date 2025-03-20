@@ -4,13 +4,13 @@ use taffy::prelude::*;
 use taffy::NodeId as TaffyNodeId;
 use crate::rendertree_builder::{RenderTree, RenderNodeId};
 use crate::common::document::node::{NodeType, NodeId as DomNodeId};
-use crate::common::document::style::{FontWeight, StyleProperty, StyleValue, Unit};
+use crate::common::document::style::{FontWeight, StyleProperty, StyleValue, TextAlign, Unit};
 use crate::common::{geo, get_image_store};
 use crate::common::geo::Coordinate;
 use crate::common::image::ImageId;
 use crate::layouter::{LayoutElementNode, LayoutTree, LayoutElementId, CanLayout, ElementContext, box_model, ElementContextText, ElementContextImage};
 use crate::layouter::css_taffy_converter::CssTaffyConverter;
-use crate::layouter::text::get_text_layout;
+use crate::layouter::text::{get_text_layout, Alignment};
 
 const DEFAULT_FONT_SIZE: f64 = 16.0;
 const DEFAULT_FONT_FAMILY: &str = "Sans";
@@ -33,7 +33,7 @@ pub enum TaffyContext {
 }
 
 impl TaffyContext {
-    fn text(font_family: &str, font_size: f64, font_weight: usize, line_height: f64, text: &str, node_id: DomNodeId, text_offset: Coordinate) -> TaffyContext {
+    fn text(font_family: &str, font_size: f64, font_weight: usize, line_height: f64, alignment: Alignment, text: &str, node_id: DomNodeId, text_offset: Coordinate) -> TaffyContext {
         TaffyContext::Text(ElementContextText{
             node_id,
             font_family: font_family.to_string(),
@@ -42,6 +42,7 @@ impl TaffyContext {
             line_height,
             text: text.to_string(),
             text_offset,
+            alignment,
         })
     }
 
@@ -95,6 +96,7 @@ impl CanLayout for TaffyLayouter {
                     let font_family = text_ctx.font_family.as_str();
                     let text = text_ctx.text.as_str();
                     let line_height = text_ctx.line_height;
+                    let alignment = text_ctx.alignment;
 
                     let max_width = match v_as.width {
                         AvailableSpace::Definite(width) => width as f64,
@@ -110,13 +112,17 @@ impl CanLayout for TaffyLayouter {
                         font_weight,
                         line_height,
                         max_width,
+                        alignment,
                     );
+                    dbg!(&text);
+                    dbg!(&text_layout);
+                    dbg!(v_ni);
                     match text_layout {
                         Ok(text_layout) => Size {
                             width: text_layout.width as f32,
                             height: text_layout.height as f32
                         },
-                        Err(_) => Size::ZERO
+                        Err(_) => Size::ZERO,
                     }
                 },
                 _ => Size::ZERO
@@ -151,8 +157,8 @@ impl TaffyLayouter {
 
         for child_id in child_ids {
             self.populate_boxmodel(layout_tree, child_id, Coordinate::new(
-                offset.x + layout.location.x as f64 + layout.margin.left as f64,
-                offset.y + layout.location.y as f64 + layout.margin.top as f64
+                offset.x + layout.location.x as f64 + layout.padding.left as f64 + layout.margin.left as f64,
+                offset.y + layout.location.y as f64 + layout.padding.top as f64 + layout.margin.top as f64
             ));
         }
     }
@@ -202,7 +208,7 @@ impl TaffyLayouter {
             NodeType::Element(data) => {
                 // Create the taffy style from our CSS and push it into the stack
                 let conv = CssTaffyConverter::new(&data.styles);
-                taffy_style = conv.convert(dom_node.node_id);
+                taffy_style = conv.convert(dom_node.node_id, false);
 
                 // Check if element type is an image, if so, set the taffy context
                 if data.tag_name.eq_ignore_ascii_case("img") {
@@ -270,6 +276,23 @@ impl TaffyLayouter {
                     _ => 400.0,
                 };
 
+                let alignment = match node_style.get_property(StyleProperty::TextAlign) {
+                    Some(StyleValue::TextAlign(value)) => match value {
+                        TextAlign::Center => Alignment::Middle,
+                        TextAlign::Right => Alignment::Start,
+                        TextAlign::Left => Alignment::End,
+                        TextAlign::Justify => Alignment::Justified,
+                        TextAlign::Start => Alignment::Start,
+                        TextAlign::End => Alignment::Start,
+                        TextAlign::MatchParent => unimplemented!("TextAlign::MatchParent is not implemented yet"),
+                        TextAlign::Initial => unimplemented!("TextAlign::Initial is not implemented yet"),
+                        TextAlign::Inherit => unimplemented!("TextAlign::Inherit is not implemented yet"),
+                        TextAlign::Revert => unimplemented!("TextAlign::Revert is not implemented yet"),
+                        TextAlign::Unset => unimplemented!("TextAlign::Unset is not implemented yet"),
+                    }
+                    _ => Alignment::Start,
+                };
+
                 let line_height = match node_style.get_property(StyleProperty::LineHeight) {
                     Some(StyleValue::Unit(value, unit)) => {
                         match unit {
@@ -296,6 +319,7 @@ impl TaffyLayouter {
                     font_size,
                     font_weight as usize,
                     line_height,
+                    alignment,
                     text.as_str(),
                     dom_node.node_id,
                     text_offset,
@@ -339,12 +363,18 @@ impl TaffyLayouter {
             });
 
             if has_inline_children {
-                // Create our container and add to the taffy tree
+                // Create our (anonymous) container and add to the taffy tree
                 let Ok(taffy_container_id) = self.tree.new_leaf(Style {
-                    display: Display::Flex,
-                    flex_direction: FlexDirection::Row,
-                    flex_wrap: FlexWrap::Wrap,
-                    align_items: Some(AlignItems::Baseline),
+                    display: Display::Block,
+                    // flex_direction: FlexDirection::Row,
+                    // flex_wrap: FlexWrap::Wrap,
+                    // size: Size{width: Dimension::Length(200.0), height: Dimension::Length(100.0)},
+                    // min_size: Size{width: Dimension::Percent(1.0), height: Dimension::Percent(1.0)},
+                    // max_size: Size{width: Dimension::Percent(1.0), height: Dimension::Percent(1.0)},
+                    // text_align: taffy::style::TextAlign::LegacyRight,
+                    // align_items: Some(AlignItems::Center),
+                    // justify_items: Some(JustifyItems::Center),
+                    // align_content: Some(AlignContent::Center),
                     ..Style::default()
                 }) else {
                     return None;
@@ -402,6 +432,7 @@ fn to_element_context(taffy_context: Option<&TaffyContext>) -> ElementContext {
             text_ctx.font_size,
             text_ctx.font_weight,
             text_ctx.line_height,
+            text_ctx.alignment,
             text_ctx.text.as_str(),
             text_ctx.node_id,
             text_ctx.text_offset,

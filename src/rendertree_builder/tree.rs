@@ -123,11 +123,9 @@ impl RenderTree {
                     return false;
                 }
 
-                println!("Display style element: {:?}", element.get_style(StyleProperty::Display));
                 match element.get_style(StyleProperty::Display) {
                     Some(StyleValue::Display(display)) => {
                         if *display == CssDisplay::None {
-                            println!("Skipping element");
                             return false;
                         }
                     }

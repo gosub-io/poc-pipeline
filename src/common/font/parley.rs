@@ -1,5 +1,7 @@
+use parley::GenericFamily;
+use crate::layouter::text::Alignment;
 use std::sync::{Mutex, OnceLock};
-use parley::{AlignmentOptions, GenericFamily, Layout};
+use parley::{AlignmentOptions, Layout};
 
 static FONT_CTX: OnceLock<Mutex<parley::FontContext>> = OnceLock::new();
 static LAYOUT_CTX: OnceLock<Mutex<parley::LayoutContext>> = OnceLock::new();
@@ -19,7 +21,7 @@ fn get_layout_context() -> std::sync::MutexGuard<'static, parley::LayoutContext>
 }
 
 
-pub fn get_parley_layout(text: &str, font_family: &str, font_size: f64, line_height: f64, max_width: f64) -> Layout<[u8; 4]> {
+pub fn get_parley_layout(text: &str, font_family: &str, font_size: f64, line_height: f64, max_width: f64, alignment: Alignment) -> Layout<[u8; 4]> {
     let font_stack = parley::FontStack::from(font_family);
 
     let display_scale = 1.0;
@@ -32,11 +34,18 @@ pub fn get_parley_layout(text: &str, font_family: &str, font_size: f64, line_hei
     builder.push_default(font_stack);
     builder.push_default(parley::StyleProperty::LineHeight(line_height as f32 / font_size as f32));
     builder.push_default(parley::StyleProperty::FontSize(font_size as f32));
-    // builder.push_default(GenericFamily::SystemUi);
+    builder.push_default(GenericFamily::SystemUi);
+
+    let align = match alignment {
+        Alignment::Start => parley::layout::Alignment::Start,
+        Alignment::Middle => parley::layout::Alignment::Middle,
+        Alignment::End => parley::layout::Alignment::End,
+        Alignment::Justified => parley::layout::Alignment::Justified,
+    };
 
     let mut layout: Layout<[u8; 4]> = builder.build(text);
     layout.break_all_lines(Some(max_advance * 1.01));
-    layout.align(Some(max_advance), parley::layout::Alignment::Start, AlignmentOptions::default());
+    layout.align(Some(max_advance), align, AlignmentOptions::default());
 
     layout
 }

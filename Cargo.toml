@@ -32,7 +32,7 @@ winit = { version = "0.30.9", optional = true }
 pollster = { version = "0.2.0", optional = true }
 
 [features]
-default = ["pango", "backend_cairo"]
+default = ["parley", "backend_vello"]
 pango = ["dep:pangocairo"]
 parley = ["dep:parley"]
 backend_cairo = ["dep:gtk4"]

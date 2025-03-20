@@ -183,7 +183,7 @@ impl Node {
             NodeType::Element(data) => {
                 match data.get_style(StyleProperty::Display) {
                     Some(StyleValue::Display(display)) => {
-                        *display == Display::Inline /* || display == Display::InlineBlock */
+                        *display == Display::Inline || *display == Display::InlineBlock
                     }
                     _ => false,
                 }

@@ -147,7 +147,8 @@ impl Painter {
                     ctx.font_size,
                     ctx.font_weight,
                     ctx.line_height,
-                    brush
+                    brush,
+                    ctx.alignment,
                 );
                 commands.push(PaintCommand::text(t));
 

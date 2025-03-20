@@ -1,10 +1,10 @@
+use crate::common::document::style::TextAlign;
 use regex::Regex;
 use serde::Deserialize;
 use std::collections::HashMap;
 use crate::common::document::document::Document;
 use crate::common::document::node::{AttrMap, NodeId, NodeType};
 use crate::common::document::style::{Color, Display, FontWeight, StyleProperty, StylePropertyList, StyleValue, TextWrap, Unit};
-
 // This parses uses the tools/souper.py to load a JSON file and create a DOM from it. This allows us to render
 // a webpage with minimal effort, and without connecting a whole html5 and css parser to it.
 
@@ -74,9 +74,9 @@ fn create_dom_from_json(doc: &mut Document, node: &DomNode, parent_id: Option<No
     let style = get_style_from_node(node);
     let node_id = doc.new_element(parent_id, &tag, Some(attrs), node.self_closing, Some(style.clone()));
 
-    if node_id.is_greater_than(24) {
-        return None
-    }
+    // if node_id.is_greater_than(24) {
+    //     return None
+    // }
 
     for child in &node.children {
         match create_dom_from_json(doc, child, Some(node_id)) {
@@ -140,7 +140,7 @@ fn get_style_from_node(node: &DomNode) -> StylePropertyList {
             "align-items" => style.set_property(StyleProperty::AlignItems, parse_style_str(value)),
             "align-self" => style.set_property(StyleProperty::AlignSelf, parse_style_str(value)),
             "align-content" => style.set_property(StyleProperty::AlignContent, parse_style_str(value)),
-            "text-align" => style.set_property(StyleProperty::TextAlign, parse_style_str(value)),
+            "text-align" => style.set_property(StyleProperty::TextAlign, parse_text_align(value)),
             "line-height" => style.set_property(StyleProperty::LineHeight, parse_style_value(value)),
             "text-wrap" => style.set_property(StyleProperty::TextWrap, parse_text_wrap(value)),
 
@@ -188,6 +188,18 @@ fn parse_style_str(val: &str) -> StyleValue {
     StyleValue::Keyword(val.to_string())
 }
 
+fn parse_text_align(val: &str) -> StyleValue {
+    match val {
+        "left" => StyleValue::TextAlign(TextAlign::Start),
+        "right" => StyleValue::TextAlign(TextAlign::End),
+        "start" => StyleValue::TextAlign(TextAlign::Start),
+        "end" => StyleValue::TextAlign(TextAlign::End),
+        "center" => StyleValue::TextAlign(TextAlign::Center),
+        "justify" => StyleValue::TextAlign(TextAlign::Justify),
+        _ => unimplemented!("Text align not implemented: {}", val),
+    }
+}
+
 fn parse_style_num(val: &str) -> StyleValue {
     if let Ok(num) = val.parse::<f32>() {
         StyleValue::Number(num)
@@ -200,6 +212,7 @@ fn parse_display(value: &String) -> StyleValue {
     match value.as_str() {
         "block" => StyleValue::Display(Display::Block),
         "inline" => StyleValue::Display(Display::Inline),
+        "inline-block" => StyleValue::Display(Display::InlineBlock),
         "none" => StyleValue::Display(Display::None),
         "flex" => StyleValue::Display(Display::Flex),
         "table" => StyleValue::Display(Display::Table),

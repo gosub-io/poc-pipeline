@@ -13,3 +13,17 @@ pub use crate::layouter::text::parley::get_text_layout;
 pub mod pango;
 #[cfg(feature = "pango")]
 pub use crate::layouter::text::pango::get_text_layout;
+
+
+/// Text alignment
+#[derive(Clone, Debug, Copy)]
+pub enum Alignment {
+    /// Alignment of text is at the start (depends on LTR)
+    Start,
+    /// Alignment of text is at the end (depends on LTR)
+    End,
+    /// Alignment is centered
+    Middle,
+    /// alignment is justified (full column width)
+    Justified,
+}
