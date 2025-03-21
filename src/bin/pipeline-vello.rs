@@ -175,10 +175,10 @@ impl ApplicationHandler for App<'_> {
                     do_paint(LayerId::new(0));
                     do_rasterize(device, queue, renderer.clone(), LayerId::new(0));
                 }
-                if vis_layers[1] {
-                    do_paint(LayerId::new(1));
-                    do_rasterize(device, queue, renderer.clone(), LayerId::new(1));
-                }
+                // if vis_layers[1] {
+                //     do_paint(LayerId::new(1));
+                //     do_rasterize(device, queue, renderer.clone(), LayerId::new(1));
+                // }
 
                 let surface_texture = surface
                     .surface
@@ -189,7 +189,7 @@ impl ApplicationHandler for App<'_> {
                     base_color: color::palette::css::DARK_MAGENTA,
                     width,
                     height,
-                    antialiasing_method: AaConfig::Area,
+                    antialiasing_method: AaConfig::Msaa16,
                 };
 
                 let scene = VelloCompositor::compose(VelloCompositorConfig{});

@@ -1,20 +1,22 @@
-use vello::kurbo::Affine;
+use skia_safe::{AlphaType, ColorType, Data, ISize, ImageInfo};
 use crate::common::browser_state::get_browser_state;
 use crate::common::get_texture_store;
 use crate::layering::layer::LayerId;
-use vello::peniko::{Blob, Image, ImageFormat};
 
-pub fn vello_compositor(layer_ids: Vec<LayerId>) -> vello::Scene {
-    let mut scene = vello::Scene::new();
+pub fn skia_compositor(layer_ids: Vec<LayerId>) -> skia_safe::Surface {
+    let mut surface = skia_safe::surfaces::raster_n32_premul(
+        ISize::new(1024, 786),
+    ).unwrap();
+    let canvas = surface.canvas();
 
     for layer_id in layer_ids {
-        compose_layer(&mut scene, layer_id);
+        compose_layer(&canvas, layer_id);
     }
 
-    scene
+    surface
 }
 
-pub fn compose_layer(scene: &mut vello::Scene, layer_id: LayerId) {
+pub fn compose_layer(canvas: &skia_safe::canvas::Canvas, layer_id: LayerId) {
     let binding = get_browser_state();
     let state = binding.read().expect("Failed to get browser state");
 
@@ -40,16 +42,23 @@ pub fn compose_layer(scene: &mut vello::Scene, layer_id: LayerId) {
         };
         drop(texture_store);
 
-        let surface = Image::new(
-            Blob::from(texture.data.clone()),   // Don't clone :(
-            ImageFormat::Rgba8,
-            texture.width as u32,
-            texture.height as u32,
+        let image_info = ImageInfo::new(
+            ISize::new(texture.width as i32, texture.height as i32),
+            ColorType::RGBA8888,
+            AlphaType::Premul,
+            None,
         );
 
-        scene.draw_image(
-            &surface,
-            Affine::translate((tile.rect.x.round(), tile.rect.y.round())),
+        let data = unsafe { Data::new_bytes(&texture.data.as_slice()) };
+
+        let img = skia_safe::images::raster_from_data(
+            &image_info, &data, texture.width * 4
+        ).unwrap();
+
+        canvas.draw_image(
+            &img,
+            (tile.rect.x.round() as f32, tile.rect.y.round() as f32),
+            None,
         );
     }
 

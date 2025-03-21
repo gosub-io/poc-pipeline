@@ -1,5 +1,5 @@
 use crate::layouter::text::Alignment;
-use skia_safe::Paint;
+use skia_safe::{Color, Color4f, ColorSpace, Paint};
 use skia_safe::textlayout::{Paragraph, ParagraphBuilder, ParagraphStyle, TextStyle};
 
 thread_local! {
@@ -10,15 +10,29 @@ thread_local! {
     };
 }
 
-pub fn get_skia_paragraph(text: &str, _font_family: &str, _font_size: f64, line_height: f64, max_width: f64, _alignment: Alignment) -> Paragraph {
+pub fn get_skia_paragraph(text: &str, font_family: &str, font_size: f64, line_height: f64, max_width: f64, _alignment: Alignment) -> Paragraph {
     let paragraph_style = ParagraphStyle::new();
     let mut paragraph_builder = ParagraphBuilder::new(&paragraph_style, FC.with(|fc| fc.clone()));
 
-    let mut ts = TextStyle::new();
-    ts.set_foreground_paint(&Paint::default());
+    let mut paint = Paint::default();
+    paint.set_anti_alias(false);
 
-    ts.set_font_size(_font_size as f32);
-    ts.set_font_families(&[_font_family]);
+    let mut ts = TextStyle::new();
+    ts.set_foreground_paint(&paint);
+    ts.set_font_size(font_size as f32);
+    ts.set_font_families(&[font_family]);
+    ts.set_height(line_height as f32);
+
+    paragraph_builder.push_style(&ts);
+    paragraph_builder.add_text(text);
+
+    let mut paint = Paint::new(Color4f::from(Color::RED), &ColorSpace::new_srgb());
+    paint.set_anti_alias(false);
+
+    let mut ts = TextStyle::new();
+    ts.set_foreground_paint(&paint);
+    ts.set_font_size((font_size / 2.0) as f32);
+    ts.set_font_families(&[font_family]);
     ts.set_height(line_height as f32);
 
     paragraph_builder.push_style(&ts);

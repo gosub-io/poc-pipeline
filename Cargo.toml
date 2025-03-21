@@ -33,9 +33,10 @@ pollster = { version = "0.4.0", optional = true }
 skia-safe = { version = "0.82.0", optional = true, features = ["textlayout"] }
 
 [features]
-default = ["text_skia", "backend_vello"]
+default = ["text_skia", "backend_skia"]
 text_pango = ["dep:pangocairo"]
 text_parley = ["dep:parley"]
 text_skia = ["dep:skia-safe"]
 backend_cairo = ["dep:gtk4"]
 backend_vello = ["dep:vello", "dep:winit", "dep:pollster"]
+backend_skia = ["dep:skia-safe"]
