@@ -196,7 +196,7 @@ fn parse_text_align(val: &str) -> StyleValue {
         "end" => StyleValue::TextAlign(TextAlign::End),
         "center" => StyleValue::TextAlign(TextAlign::Center),
         "justify" => StyleValue::TextAlign(TextAlign::Justify),
-        _ => unimplemented!("Text align not implemented: {}", val),
+        _ => StyleValue::TextAlign(TextAlign::Start)
     }
 }
 

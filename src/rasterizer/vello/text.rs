@@ -1,10 +1,17 @@
-#[cfg(not(any(feature = "parley", feature = "pango")))]
-compile_error!("Either the 'parley' or 'pango' feature must be enabled");
+#[cfg(not(any(feature = "text_parley", feature = "text_pango", feature = "text_skia")))]
+compile_error!("Either the 'text_parley' 'text_skia' or 'text_pango' feature must be enabled");
 
-#[cfg(all(feature = "parley", feature = "pango"))]
-compile_error!("Only one of the 'parley' or 'pango' features can be enabled");
-
-#[cfg(feature = "parley")]
+#[cfg(feature = "text_parley")]
 pub mod parley;
-#[cfg(feature = "pango")]
+#[cfg(feature = "text_parley")]
+pub use crate::rasterizer::vello::text::parley::do_paint_text;
+
+#[cfg(feature = "text_pango")]
 pub mod pango;
+#[cfg(feature = "text_pango")]
+pub use crate::rasterizer::vello::text::pango::do_paint_text;
+
+#[cfg(feature = "text_skia")]
+pub mod skia;
+#[cfg(feature = "text_skia")]
+pub use crate::rasterizer::vello::text::skia::do_paint_text;

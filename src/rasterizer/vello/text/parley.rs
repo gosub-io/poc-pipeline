@@ -10,7 +10,7 @@ use crate::common::geo::Rect;
 use crate::painter::commands::brush::Brush;
 use crate::rasterizer::vello::brush::set_brush;
 
-pub(crate) fn do_paint_text(scene: &mut Scene, tile: &Tile, cmd: &Text) -> Result<(), Error> {
+pub fn do_paint_text(scene: &mut Scene, tile: &Tile, cmd: &Text) -> Result<(), Error> {
     let layout = get_parley_layout(cmd.text.as_str(), cmd.font_family.as_str(), cmd.font_size, cmd.line_height, cmd.rect.width, cmd.alignment);
 
     for line in layout.lines() {

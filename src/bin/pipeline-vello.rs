@@ -34,8 +34,8 @@ fn main() {
     // Generate a DOM tree
     // let doc = common::document::create_document();
     // let doc = common::document::parser::document_from_json("tables.json");
-    let doc = common::document::parser::document_from_json("button.json");
-    // let doc = common::document::parser::document_from_json("cm.json");
+    // let doc = common::document::parser::document_from_json("button.json");
+    let doc = common::document::parser::document_from_json("cm.json");
     // let doc = common::document::parser::document_from_json("news.ycombinator.com.json");
     // let mut output = String::new();
     // doc.print_tree(&mut output).expect("");

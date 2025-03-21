@@ -1,3 +1,4 @@
+use crate::rasterizer::vello::text::do_paint_text;
 use std::cell::RefCell;
 use crate::painter::commands::PaintCommand;
 use vello::peniko::{Color, Mix};
@@ -7,7 +8,6 @@ use vello::wgpu::{Device, Queue, Texture, TextureDescriptor, TextureDimension, T
 use crate::rasterizer::Rasterable;
 use crate::common::texture::TextureId;
 use crate::common::get_texture_store;
-use crate::rasterizer::vello::text::parley::do_paint_text;
 use crate::tiler::Tile;
 
 mod rectangle;

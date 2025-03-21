@@ -205,7 +205,10 @@ impl CssTaffyConverter {
                     CssDisplay::Inline => Display::Block,  // We override this later
                     CssDisplay::Flex => Display::Flex,
                     CssDisplay::None => Display::None,
-                    _ => unimplemented!("Display type not implemented: {:?}", val),
+                    _ => {
+                        Display::Block
+                        // unimplemented!("Display type not implemented: {:?}", val)
+                    },
                 }
             }
             _ => default,
