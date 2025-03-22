@@ -36,10 +36,10 @@ impl Rasterable for SkiaRasterizer {
             for command in &element.paint_commands {
                 match command {
                     PaintCommand::Rectangle(command) => {
-                        rectangle::do_paint_rectangle(&mut canvas, &tile, &command);
+                        rectangle::do_paint_rectangle(canvas, &tile, &command);
                     }
                     PaintCommand::Text(command) => {
-                        match text::do_paint_text(&mut canvas, &tile, &command) {
+                        match text::do_paint_text(canvas, &tile, &command) {
                             Ok(_) => {}
                             Err(e) => {
                                 println!("Failed to paint text: {:?}", e);

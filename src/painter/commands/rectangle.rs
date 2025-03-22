@@ -2,8 +2,33 @@ use crate::common::geo::Rect;
 use crate::painter::commands::border::Border;
 use crate::painter::commands::brush::Brush;
 
-// @TODO: Radius is actually 2x f64 as both edges can have a different radius.
-pub type Radius = f64;
+#[derive(Clone, Debug, Copy)]
+pub struct Radius {
+    pub x: f64,
+    pub y: f64,
+}
+
+impl Default for Radius {
+    fn default() -> Self {
+        Radius { x: 0.0, y: 0.0 }
+    }
+}
+
+impl Radius {
+    pub const NONE: Radius = Radius { x: 0.0, y: 0.0 };
+
+    pub fn new(radius: f64) -> Self {
+        Radius { x: radius, y: radius }
+    }
+
+    pub fn new_double(x: f64, y: f64) -> Self {
+        Radius { x, y }
+    }
+
+    pub fn as_64(&self) -> (f64, f64) {
+        (self.x, self.y)
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct Rectangle {
@@ -22,15 +47,15 @@ impl Rectangle {
             rect,
             background: None,
             border: Border::new(0.0, Default::default(), Brush::Solid(Default::default())),
-            radius_top: 0.0,
-            radius_right: 0.0,
-            radius_bottom: 0.0,
-            radius_left: 0.0,
+            radius_top: Radius::NONE,
+            radius_right: Radius::NONE,
+            radius_bottom: Radius::NONE,
+            radius_left: Radius::NONE,
         }
     }
 
     pub(crate) fn is_rounded(&self) -> bool {
-        self.radius_top > 0.0 || self.radius_right > 0.0 || self.radius_bottom > 0.0 || self.radius_left > 0.0
+        self.radius_top.x > 0.0 || self.radius_right.x > 0.0 || self.radius_bottom.x > 0.0 || self.radius_left.x > 0.0
     }
 
     pub fn with_radius_tlrb(mut self, top: Radius, right: Radius, bottom: Radius, left: Radius) -> Self {

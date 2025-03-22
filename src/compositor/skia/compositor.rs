@@ -3,17 +3,10 @@ use crate::common::browser_state::get_browser_state;
 use crate::common::get_texture_store;
 use crate::layering::layer::LayerId;
 
-pub fn skia_compositor(layer_ids: Vec<LayerId>) -> skia_safe::Surface {
-    let mut surface = skia_safe::surfaces::raster_n32_premul(
-        ISize::new(1024, 786),
-    ).unwrap();
-    let canvas = surface.canvas();
-
+pub fn skia_compositor(canvas: &skia_safe::Canvas, layer_ids: Vec<LayerId>) {
     for layer_id in layer_ids {
-        compose_layer(&canvas, layer_id);
+        compose_layer(canvas, layer_id);
     }
-
-    surface
 }
 
 pub fn compose_layer(canvas: &skia_safe::canvas::Canvas, layer_id: LayerId) {

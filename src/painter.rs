@@ -201,10 +201,10 @@ impl Painter {
 
                 if (radius_bottom_left != 0.0 || radius_bottom_right != 0.0 || radius_top_left != 0.0 || radius_top_right != 0.0) {
                     r = r.with_radius_tlrb(
-                        radius_top_left as Radius,
-                        radius_top_right as Radius,
-                        radius_bottom_right as Radius,
-                        radius_bottom_left as Radius
+                        Radius::new(radius_top_left as f64),
+                        Radius::new(radius_top_right as f64),
+                        Radius::new(radius_bottom_right as f64),
+                        Radius::new(radius_bottom_left as f64)
                     );
                 }
 

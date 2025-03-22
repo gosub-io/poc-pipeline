@@ -3,17 +3,21 @@ use crate::compositor::Composable;
 use crate::compositor::skia::compositor::skia_compositor;
 use crate::layering::layer::LayerId;
 
-pub struct SkiaCompositorConfig {}
+pub struct SkiaCompositorConfig<'a> {
+    pub canvas: &'a skia_safe::Canvas,
+}
 
 mod compositor;
 
-pub struct SkiaCompositor {}
+pub struct SkiaCompositor<'a> {
+    _marker: std::marker::PhantomData<&'a ()>,
+}
 
-impl Composable for SkiaCompositor {
-    type Config = SkiaCompositorConfig;
-    type Return = skia_safe::Surface;
+impl<'a> Composable for SkiaCompositor<'a> {
+    type Config = SkiaCompositorConfig<'a>;
+    type Return = ();
 
-    fn compose(_config: Self::Config) -> Self::Return {
+    fn compose(config: Self::Config) -> Self::Return {
         let binding = get_browser_state();
         let state = binding.read().expect("Failed to get browser state");
 
@@ -26,7 +30,7 @@ impl Composable for SkiaCompositor {
         }
 
         // Compose the scene from the different layers we have selected
-        skia_compositor(layers)
+        skia_compositor(config.canvas, layers);
     }
 }
 
