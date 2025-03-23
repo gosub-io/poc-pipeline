@@ -31,6 +31,7 @@ impl Rasterable for SkiaRasterizer {
             None,
             None,
         );
+        canvas.translate((-tile.rect.x as f32, -tile.rect.y as f32));
 
         for element in &tile.elements {
             for command in &element.paint_commands {

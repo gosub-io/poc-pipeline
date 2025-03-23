@@ -4,9 +4,8 @@ use vello::peniko::{Fill};
 use crate::painter::commands::border::BorderStyle;
 use crate::painter::commands::rectangle::Rectangle;
 use crate::rasterizer::vello::brush::set_brush;
-use crate::tiler::Tile;
 
-pub(crate) fn do_paint_rectangle(scene: &mut vello::Scene, tile: &Tile, rect: &Rectangle) {
+pub(crate) fn do_paint_rectangle(scene: &mut vello::Scene, rect: &Rectangle, affine: Affine) {
     // Draw background (if any background brush is defined)
     match rect.background() {
         Some(brush) => {
@@ -15,7 +14,7 @@ pub(crate) fn do_paint_rectangle(scene: &mut vello::Scene, tile: &Tile, rect: &R
 
             scene.fill(
                 Fill::NonZero,
-                Affine::translate((-tile.rect.x, -tile.rect.y)),
+                affine,
                 &vello_brush,
                 None,
                 &vello_rect,
@@ -27,10 +26,10 @@ pub(crate) fn do_paint_rectangle(scene: &mut vello::Scene, tile: &Tile, rect: &R
     // Create border
     match rect.border().style() {
         BorderStyle::None => {},
-        BorderStyle::Solid => draw_single_border(scene, rect, vec![], tile),
-        BorderStyle::Dashed => draw_single_border(scene, rect, vec![50.0, 10.0, 10.0, 10.0], tile),
-        BorderStyle::Dotted => draw_single_border(scene, rect, vec![10.0, 10.0], tile),
-        BorderStyle::Double => draw_double_border(scene, rect, tile),
+        BorderStyle::Solid => draw_single_border(scene, rect, affine, vec![]),
+        BorderStyle::Dashed => draw_single_border(scene, rect, affine, vec![50.0, 10.0, 10.0, 10.0]),
+        BorderStyle::Dotted => draw_single_border(scene, rect, affine, vec![10.0, 10.0]),
+        BorderStyle::Double => draw_double_border(scene, rect, affine),
         BorderStyle::Groove => { unimplemented!() }
         BorderStyle::Ridge => { unimplemented!() }
         BorderStyle::Inset => { unimplemented!() }
@@ -42,21 +41,21 @@ pub(crate) fn do_paint_rectangle(scene: &mut vello::Scene, tile: &Tile, rect: &R
     }
 }
 
-fn draw_single_border(scene: &mut vello::Scene, rect: &Rectangle, dashes: Vec<f64>, tile: &Tile) {
+fn draw_single_border(scene: &mut vello::Scene, rect: &Rectangle, affine: Affine, dashes: Vec<f64>) {
     let vello_shape = setup_rectangle_path(rect);
     let vello_brush = set_brush(&rect.border().brush(), rect.rect());
     let vello_stroke = kurbo::Stroke::new(rect.border().width() as f64).with_dashes(0.0, dashes);
 
     scene.stroke(
         &vello_stroke,
-        Affine::translate((-tile.rect.x, -tile.rect.y)),
+        affine,
         &vello_brush,
         None,
         &vello_shape,
     );
 }
 
-fn draw_double_border(scene: &mut vello::Scene, rect: &Rectangle, tile: &Tile) {
+fn draw_double_border(scene: &mut vello::Scene, rect: &Rectangle, affine: Affine) {
     let vello_shape = setup_rectangle_path(rect);
     let vello_brush = set_brush(&rect.border().brush(), rect.rect());
 
@@ -65,7 +64,7 @@ fn draw_double_border(scene: &mut vello::Scene, rect: &Rectangle, tile: &Tile) {
         // a double border
         scene.stroke(
             &kurbo::Stroke::new(rect.border().width() as f64),
-            Affine::translate((-tile.rect.x, -tile.rect.y)),
+            affine,
             &vello_brush,
             None,
             &vello_shape,
@@ -80,7 +79,7 @@ fn draw_double_border(scene: &mut vello::Scene, rect: &Rectangle, tile: &Tile) {
     let width = (rect.border().width() / 2.0).floor();
     scene.stroke(
         &kurbo::Stroke::new(width as f64),
-        Affine::IDENTITY,
+        affine,
         &vello_brush,
         None,
         &vello_shape,
@@ -97,7 +96,7 @@ fn draw_double_border(scene: &mut vello::Scene, rect: &Rectangle, tile: &Tile) {
     );
     scene.stroke(
         &kurbo::Stroke::new(width as f64),
-        Affine::IDENTITY,
+        affine,
         &vello_brush,
         None,
         &inner_border_rect,
@@ -157,7 +156,7 @@ fn setup_rectangle_path(rect: &Rectangle) -> ShapeEnum {
             rect.rect().y,
             rect.rect().x + rect.rect().width,
             rect.rect().y + rect.rect().height,
-            (r_tl, r_tr, r_br, r_bl)
+            (r_tl.x, r_tr.x, r_br.x, r_bl.x)
         ))
     }
 

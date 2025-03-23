@@ -6,18 +6,18 @@ use crate::common::font::parley::get_parley_layout;
 use parley::layout::{GlyphRun, PositionedLayoutItem};
 use vello::kurbo::Affine;
 use vello::peniko::Fill;
-use crate::common::geo::Rect;
+use crate::common::geo::{Dimension, Rect};
 use crate::painter::commands::brush::Brush;
 use crate::rasterizer::vello::brush::set_brush;
 
-pub fn do_paint_text(scene: &mut Scene, tile: &Tile, cmd: &Text) -> Result<(), Error> {
+pub fn do_paint_text(scene: &mut Scene,  cmd: &Text, _tile_size: Dimension, affine: Affine) -> Result<(), Error> {
     let layout = get_parley_layout(cmd.text.as_str(), cmd.font_family.as_str(), cmd.font_size, cmd.line_height, cmd.rect.width, cmd.alignment);
 
     for line in layout.lines() {
         for item in line.items() {
             match item {
                 PositionedLayoutItem::GlyphRun(glyph_run) => {
-                    render_glyph_run(scene, glyph_run, &cmd.brush, &cmd.rect, tile);
+                    render_glyph_run(scene, glyph_run, &cmd.brush, &cmd.rect, affine);
                 }
                 PositionedLayoutItem::InlineBox(_inline_box) => {
                     todo!("Inline boxes are not supported yet");
@@ -29,7 +29,7 @@ pub fn do_paint_text(scene: &mut Scene, tile: &Tile, cmd: &Text) -> Result<(), E
     Ok(())
 }
 
-fn render_glyph_run(scene: &mut Scene, glyph_run: GlyphRun<[u8;4]>, brush: &Brush, rect: &Rect, tile: &Tile) {
+fn render_glyph_run(scene: &mut Scene, glyph_run: GlyphRun<[u8;4]>, brush: &Brush, rect: &Rect, affine: Affine) {
     let vello_brush = set_brush(brush, *rect);
 
     // @TODO: we need font decorations like underline, strike through, maybe sub sup?
@@ -49,7 +49,7 @@ fn render_glyph_run(scene: &mut Scene, glyph_run: GlyphRun<[u8;4]>, brush: &Brus
         .glyph_transform(glyph_xform)
         .font_size(font_size)
         .hint(true)
-        .transform(Affine::translate((-tile.rect.x, -tile.rect.y)))
+        .transform(affine)
         .normalized_coords(coords)
         .draw(
             Fill::NonZero,

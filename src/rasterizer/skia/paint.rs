@@ -1,14 +1,10 @@
-use skia_safe::{AlphaType, Color, ColorType, Data, ISize, ImageInfo, Paint, SamplingOptions};
-use crate::common::geo::Rect;
+use skia_safe::{AlphaType, Color4f, ColorType, Data, ISize, ImageInfo, Paint, SamplingOptions};
 use crate::painter::commands::brush::Brush;
 
-pub fn set_paint(brush: &Brush, _rect: Rect) -> Paint {
+pub fn create_paint(brush: &Brush) -> Paint {
     match brush {
         Brush::Solid(color) => {
-            let mut p = Paint::default();
-            p.set_color(Color::from_argb(color.a8(), color.r8(), color.g8(), color.b8()));
-
-            p
+            Paint::new(Color4f::new(color.r(), color.g(), color.b(), color.a()), None)
         }
         Brush::Image(img) => {
             let mut p = Paint::default();

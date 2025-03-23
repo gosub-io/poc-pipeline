@@ -114,9 +114,6 @@ impl CanLayout for TaffyLayouter {
                         max_width,
                         alignment,
                     );
-                    dbg!(&text);
-                    dbg!(&text_layout);
-                    dbg!(v_ni);
                     match text_layout {
                         Ok(text_layout) => Size {
                             width: text_layout.width as f32,

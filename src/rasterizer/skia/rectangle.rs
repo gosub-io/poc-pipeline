@@ -2,17 +2,18 @@ use skia_safe::{Paint, Vector};
 use crate::common::geo::Rect;
 use crate::painter::commands::border::BorderStyle;
 use crate::painter::commands::rectangle::Rectangle;
-use crate::rasterizer::skia::paint::set_paint;
+use crate::rasterizer::skia::paint::create_paint;
 use crate::tiler::Tile;
 
 pub(crate) fn do_paint_rectangle(canvas: &skia_safe::Canvas, _tile: &Tile, rect: &Rectangle) {
     // Draw background (if any background brush is defined)
     match rect.background() {
         Some(brush) => {
-            let shape = setup_rectangle_path(rect);
-            let skia_paint = set_paint(brush, rect.rect());
+            let shape = create_rect_shape(rect);
+            let mut skia_paint = create_paint(brush);
+            skia_paint.set_style(skia_safe::PaintStyle::Fill);
 
-            draw_rect(shape, canvas, skia_paint);
+            shape.draw(canvas, &skia_paint);
         }
         None => {}
     }
@@ -36,35 +37,36 @@ pub(crate) fn do_paint_rectangle(canvas: &skia_safe::Canvas, _tile: &Tile, rect:
 }
 
 fn draw_single_border(canvas: &skia_safe::Canvas, rect: &Rectangle, dashes: Vec<f64>) {
-    let dashes = dashes.iter().map(|x| *x as f32).collect::<Vec<f32>>();
-
-    let shape = setup_rectangle_path(rect);
-
-    let mut skia_paint = set_paint(&rect.border().brush(), rect.rect());
-    skia_paint.set_stroke(true);
+    let mut skia_paint = create_paint(&rect.border().brush());
+    skia_paint.set_style(skia_safe::PaintStyle::Stroke);
+    // skia_paint.set_stroke(true);
     skia_paint.set_stroke_width(rect.border().width());
-    skia_paint.set_stroke_cap(skia_safe::PaintCap::Round);
-    skia_paint.set_path_effect(skia_safe::PathEffect::dash(&dashes, 0.0));
+    // skia_paint.set_stroke_width(10.0);
+    // if !dashes.is_empty() {
+    //     let dashes = dashes.iter().map(|x| *x as f32).collect::<Vec<f32>>();
+    //     skia_paint.set_path_effect(skia_safe::PathEffect::dash(&dashes, 0.0));
+    // }
 
-    draw_rect(shape, canvas, skia_paint);
+    let shape = create_rect_shape(rect);
+    shape.draw(canvas, &skia_paint);
 }
 
 fn draw_double_border(canvas: &skia_safe::Canvas, rect: &Rectangle, dashes: Vec<f64>) {
-    let dashes = dashes.iter().map(|x| *x as f32).collect::<Vec<f32>>();
-
-    let shape = setup_rectangle_path(rect);
-
-    let mut skia_paint = set_paint(&rect.border().brush(), rect.rect());
+    let mut skia_paint = create_paint(&rect.border().brush());
     skia_paint.set_stroke(true);
     skia_paint.set_stroke_width(rect.border().width());
     skia_paint.set_stroke_cap(skia_safe::PaintCap::Round);
-    skia_paint.set_path_effect(skia_safe::PathEffect::dash(&dashes, 0.0));
+    if !dashes.is_empty() {
+        let dashes = dashes.iter().map(|x| *x as f32).collect::<Vec<f32>>();
+        skia_paint.set_path_effect(skia_safe::PathEffect::dash(&dashes, 0.0));
+    }
+
+    let shape = create_rect_shape(rect);
 
     if rect.border().width() < 3.0 {
         // When the width is less than 3.0, we just draw a single line as there is no room for
         // a double border
-        draw_rect(shape, canvas, skia_paint);
-
+        shape.draw(canvas, &skia_paint);
         return;
     }
 
@@ -73,31 +75,20 @@ fn draw_double_border(canvas: &skia_safe::Canvas, rect: &Rectangle, dashes: Vec<
     // Outer border
     let width = (rect.border().width() / 2.0).floor();
     skia_paint.set_stroke_width(width);
-    draw_rect(shape, canvas, skia_paint);
+    shape.draw(canvas, &skia_paint);
 
     let gap_size = 1.0;
 
     // inner border
-    let inner_border_rect = Rect::new(
+    let inner_border_rect = Rectangle::new(Rect::new(
         rect.rect().x + width as f64 + gap_size,
         rect.rect().y + width as f64 + gap_size,
         rect.rect().width - width as f64 - gap_size,
         rect.rect().height - width as f64 - gap_size
-    );
-    let shape = setup_rectangle_path(rect);
-    let skia_paint = set_paint(&rect.border().brush(), inner_border_rect);
-    draw_rect(shape, canvas, skia_paint);
-}
-
-fn draw_rect(shape: ShapeEnum, canvas: &skia_safe::Canvas, paint: Paint) {
-    match shape {
-        ShapeEnum::Rect(rect) => {
-            canvas.draw_rect(&rect, &paint);
-        }
-        ShapeEnum::RoundedRect(rounded_rect) => {
-            canvas.draw_rrect(&rounded_rect, &paint);
-        }
-    }
+    ));
+    let shape = create_rect_shape(&inner_border_rect);
+    let skia_paint = create_paint(&rect.border().brush());
+    shape.draw(canvas, &skia_paint);
 }
 
 enum ShapeEnum {
@@ -105,30 +96,35 @@ enum ShapeEnum {
     RoundedRect(skia_safe::RRect),
 }
 
-fn setup_rectangle_path(rect: &Rectangle) -> ShapeEnum {
-    if rect.is_rounded() {
-        let (r_tl, r_tr, r_br, r_bl) = rect.radius();
-
-        return ShapeEnum::RoundedRect(skia_safe::RRect::new_rect_radii(
-            skia_safe::Rect::new(
-                rect.rect().x as f32,
-                rect.rect().y as f32,
-                (rect.rect().x + rect.rect().width) as f32,
-                (rect.rect().y + rect.rect().height) as f32,
-            ),
-            &[
-                Vector::new(r_tl.x as f32, r_tl.y as f32),
-                Vector::new(r_tr.x as f32, r_tr.y as f32),
-                Vector::new(r_br.x as f32, r_br.y as f32),
-                Vector::new(r_bl.x as f32, r_bl.y as f32)
-            ],
-        ))
+impl ShapeEnum {
+    fn draw(&self, canvas: &skia_safe::Canvas, paint: &Paint) {
+        match self {
+            ShapeEnum::Rect(rect) => canvas.draw_rect(rect, paint),
+            ShapeEnum::RoundedRect(rrect) => canvas.draw_rrect(rrect, paint),
+        };
     }
+}
 
-    ShapeEnum::Rect(skia_safe::Rect::new(
+fn create_rect_shape(rect: &Rectangle) -> ShapeEnum {
+    let skia_rect = skia_safe::Rect::new(
         rect.rect().x as f32,
         rect.rect().y as f32,
         (rect.rect().x + rect.rect().width) as f32,
         (rect.rect().y + rect.rect().height) as f32,
+    );
+
+    if !rect.is_rounded() {
+        return ShapeEnum::Rect(skia_rect);
+    }
+
+    let (r_tl, r_tr, r_br, r_bl) = rect.radius();
+    ShapeEnum::RoundedRect(skia_safe::RRect::new_rect_radii(
+        skia_rect,
+        &[
+            Vector::new(r_tl.x as f32, r_tl.y as f32),
+            Vector::new(r_tr.x as f32, r_tr.y as f32),
+            Vector::new(r_br.x as f32, r_br.y as f32),
+            Vector::new(r_bl.x as f32, r_bl.y as f32)
+        ],
     ))
 }

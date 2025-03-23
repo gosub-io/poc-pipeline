@@ -68,7 +68,7 @@ impl Coordinate {
 
 /// Dimension in width and height. Together with a Dimension it forms a Rect.
 #[allow(unused)]
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Copy)]
 pub struct Dimension {
     pub width: f64,
     pub height: f64,

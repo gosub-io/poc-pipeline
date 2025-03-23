@@ -51,12 +51,15 @@ use poc_pipeline::rasterizer::skia::SkiaRasterizer;
 const TILE_DIMENSION : f64 = 256.0;
 
 fn main() {
+    colog::init();
+
     // --------------------------------------------------------------------
     // Generate a DOM tree
     // let doc = common::document::create_document();
     // let doc = common::document::parser::document_from_json("tables.json");
     // let doc = common::document::parser::document_from_json("button.json");
     let doc = common::document::parser::document_from_json("cm.json");
+    // let doc = common::document::parser::document_from_json("codemusings.nl.json");
     // let doc = common::document::parser::document_from_json("news.ycombinator.com.json");
     // let mut output = String::new();
     // doc.print_tree(&mut output).expect("");
@@ -72,8 +75,8 @@ fn main() {
     // Layout the render-tree into a layout-tree
     let mut layouter = TaffyLayouter::new();
     let layout_tree = layouter.layout(render_tree, None);
-    layouter.print_tree();
-    println!("Layout width: {}, height: {}", layout_tree.root_dimension.width, layout_tree.root_dimension.height);
+    // layouter.print_tree();
+    // println!("Layout width: {}, height: {}", layout_tree.root_dimension.width, layout_tree.root_dimension.height);
 
     // -------------------------------------------------------------------  -
     // Generate render layers
@@ -239,7 +242,7 @@ impl ApplicationHandler for App {
                 }
 
                 if physical_key >= Code(KeyCode::Digit0) && physical_key <= Code(KeyCode::Digit9) {
-                    let mut binding = get_browser_state();
+                    let binding = get_browser_state();
                     let mut state = binding.write().unwrap();
 
                     let layer_id = match physical_key {
@@ -260,7 +263,7 @@ impl ApplicationHandler for App {
                 }
 
                 if logical_key == "w" {
-                    let mut binding = get_browser_state();
+                    let binding = get_browser_state();
                     let mut state = binding.write().unwrap();
 
                     match state.wireframed {
@@ -273,7 +276,7 @@ impl ApplicationHandler for App {
                 }
 
                 if logical_key == "d" {
-                    let mut binding = get_browser_state();
+                    let binding = get_browser_state();
                     let mut state = binding.write().unwrap();
 
                     state.debug_hover = !state.debug_hover;
@@ -281,7 +284,7 @@ impl ApplicationHandler for App {
                 }
 
                 if logical_key == "t" {
-                    let mut binding = get_browser_state();
+                    let binding = get_browser_state();
                     let mut state = binding.write().unwrap();
 
                     state.show_tilegrid = !state.show_tilegrid;
@@ -410,7 +413,6 @@ fn create_window_env(el: &ActiveEventLoop, title: &str, size: (i32, i32)) -> Env
     };
 
     info!("OpenGL window created");
-    dbg!(&env);
 
     env
 }

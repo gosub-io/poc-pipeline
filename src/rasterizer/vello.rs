@@ -4,8 +4,9 @@ use image::{ImageBuffer, Rgba};
 use crate::painter::commands::PaintCommand;
 use vello::peniko::{Color, Mix};
 use vello::{AaConfig, Renderer, Scene};
-use vello::kurbo::{Affine, Rect};
+use vello::kurbo::{Affine, Rect, Vec2};
 use vello::wgpu::{Device, Queue, Texture, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages};
+use crate::common::geo::Dimension;
 use crate::rasterizer::Rasterable;
 use crate::common::texture::TextureId;
 use crate::common::get_texture_store;
@@ -35,23 +36,29 @@ impl Rasterable for VelloRasterizer<'_> {
     fn rasterize(&self, tile: &Tile) -> TextureId {
         let mut scene = Scene::new();
 
-        let width = tile.rect.width as u32;
-        let height = tile.rect.height as u32;
+        let tile_size = Dimension::new(tile.rect.width, tile.rect.height);
 
         // Painting commands are in absolute coordinates, so we need to clip the scene to the tile's rect
-        // so only this tile gets painted.
-        let clip = Rect::new(0.0, 0.0, width as f64, height as f64);
-        let transform = Affine::IDENTITY;
-        scene.push_layer(Mix::Clip, 1.0, transform, &clip);
+        // so only things on this tile gets painted.
+        let clip = Rect::new(0.0, 0.0, tile_size.width, tile_size.height);
+        scene.push_layer(Mix::Clip, 1.0, Affine::IDENTITY, &clip);
+
+        // let shape = Rect::new(10.0, 10.0, 20.0, 20.0);
+        // let brush = Brush::Solid(Color::new([1.0, 0.0, 0.0, 1.0]));
+        // scene.fill(Fill::NonZero, Affine::IDENTITY, &brush, None, &shape);
+
+        // Vello does not allow us to transform the scene so we can use relative coordinates (ie: 0,0 is the top left of the tile)
+        // So we need to render each element by adding the transform manually
+        let affine = Affine::translate(Vec2::new(-tile.rect.x, -tile.rect.y));
 
         for element in &tile.elements {
             for command in &element.paint_commands {
                 match command {
                     PaintCommand::Rectangle(command) => {
-                        rectangle::do_paint_rectangle(&mut scene, &tile, &command);
+                        rectangle::do_paint_rectangle(&mut scene, &command, affine);
                     }
                     PaintCommand::Text(command) => {
-                        match do_paint_text(&mut scene, &tile, &command) {
+                        match do_paint_text(&mut scene, &command, tile_size, affine) {
                             Ok(_) => {}
                             Err(e) => {
                                 println!("Failed to paint text: {:?}", e);
@@ -64,7 +71,7 @@ impl Rasterable for VelloRasterizer<'_> {
 
         scene.pop_layer();
 
-        let texture = create_offscreen_texture(&self.device, width, height);
+        let texture = create_offscreen_texture(&self.device, tile_size.width as u32, tile_size.height as u32);
 
         let render_params = vello::RenderParams {
             base_color: Color::new([0.0, 0.0, 0.0, 0.0]),   // Transparent texture
@@ -81,11 +88,11 @@ impl Rasterable for VelloRasterizer<'_> {
             &render_params,
         ).unwrap();
 
-        let texture_data = read_texture_to_image(&self.device, &self.queue, &texture, width, height, tile.id);
+        let texture_data = read_texture_to_image(&self.device, &self.queue, &texture, tile_size.width as u32, tile_size.height as u32, tile.id);
 
         let binding = get_texture_store();
         let mut texture_store = binding.write().expect("Failed to get texture store");
-        let texture_id = texture_store.add(width as usize, height as usize, texture_data.to_vec());
+        let texture_id = texture_store.add(tile_size.width as usize, tile_size.height as usize, texture_data.to_vec());
 
         texture_id
     }
@@ -152,11 +159,9 @@ fn read_texture_to_image(device: &Device, queue: &Queue, texture: &Texture, widt
     drop(data);
     buffer.unmap();
 
-    // // write bytes to file
-    // let image = ImageBuffer::<Rgba<u8>, _>::from_raw(width, height, result.clone()).unwrap();
-    // // let file = File::create("test.png").unwrap();
-    // // let writer = BufWriter::new(file);
-    // image.save_with_format(format!("test-{}.png", id), image::ImageFormat::Png).unwrap();
+    // write bytes to file
+    let image = ImageBuffer::<Rgba<u8>, _>::from_raw(width, height, result.clone()).unwrap();
+    image.save_with_format(format!("test-{}.png", id), image::ImageFormat::Png).unwrap();
 
     result
 }
