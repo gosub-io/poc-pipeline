@@ -9,14 +9,17 @@ pub struct Document {
     pub arena: HashMap<NodeId, Node>,
     next_node_id: Arc<RwLock<NodeId>>,
     pub root_id: Option<NodeId>,
+
+    pub base_url: String,
 }
 
 impl Document {
-    pub fn new() -> Document {
+    pub fn new(base_url: &str) -> Document {
         Document {
             arena: HashMap::new(),
             root_id: None,
             next_node_id: Arc::new(RwLock::new(NodeId::new(1))),
+            base_url: base_url.to_string(),
         }
     }
 
@@ -69,6 +72,10 @@ pub enum NodeVisit {
 }
 
 impl Document {
+    pub fn base_url(&self) -> &str {
+        &self.base_url
+    }
+
     #[allow(unused)]
     pub fn walk_depth_first<F>(&self, node_id: NodeId, cb: &mut F)
     where

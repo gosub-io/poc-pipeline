@@ -1,9 +1,7 @@
 use std::collections::HashMap;
-use std::fs::File;
-use std::io::BufReader;
 use std::sync::{Arc, OnceLock, RwLock};
-use image::ImageFormat;
-use crate::common::image::{Image, ImageId};
+use image::RgbaImage;
+use crate::common::image::ImageId;
 
 /// Image store is global
 pub static IMAGE_STORE: OnceLock<RwLock<ImageStore>> = OnceLock::new();
@@ -15,7 +13,7 @@ pub fn get_image_store() -> &'static RwLock<ImageStore> {
 /// Image store keeps all the loaded images in memory so it can be referenced by its ImageID
 pub struct ImageStore {
     /// List of all images
-    pub images: RwLock<HashMap<ImageId, Arc<Image>>>,
+    pub images: RwLock<HashMap<ImageId, Arc<RgbaImage>>>,
     /// Next image ID
     next_image_id: RwLock<ImageId>,
 }
@@ -28,27 +26,31 @@ impl ImageStore {
         }
     }
 
-    pub fn store_from_path(&self, _filepath: &str) -> ImageId {
-        // @TODO: Overwrite the file with a placeholder image found locally
-        let filepath = "sub.png";
+    pub fn store_from_path(&self, src: &str) -> ImageId {
+        let response = reqwest::blocking::get(src).expect("Failed to get image");
+        if !response.status().is_success() {
+            panic!("Failed to get image");
+        }
 
-        // println!("Store from path: {}", filepath);
-        let fmt = ImageFormat::from_path(filepath).expect("Failed to get image format");
-
-        let file = File::open(filepath).expect("Failed to open file");
-        let reader = BufReader::new(file);
-        let rgb_img = image::load(reader, fmt).expect("Failed to load image").to_rgba8();
-
-        let img = Image::new(rgb_img.width() as usize, rgb_img.height() as usize, rgb_img.into_raw(), fmt);
+        let img_data = response.bytes().expect("Failed to get image");
+        let rgb_img = match image::load_from_memory(&img_data) {
+            Ok(img) => img.to_rgba8(),
+            Err(_) => {
+                // Load bytes from path 'p':
+                let p = "sub.png";
+                let img_data = std::fs::read(p).expect("Failed to read image");
+                image::load_from_memory(&img_data).expect("Failed to load image").to_rgba8()
+            },
+        };
 
         let mut images = self.images.write().expect("Failed to lock images");
         let image_id = *self.next_image_id.read().expect("Failed to lock next image ID");
-        images.insert(image_id, Arc::new(img));
+        images.insert(image_id, Arc::new(rgb_img));
         *self.next_image_id.write().expect("Failed to lock next image ID") += 1;
         image_id
     }
 
-    pub fn get(&self, image_id: ImageId) -> Option<Arc<Image>> {
+    pub fn get(&self, image_id: ImageId) -> Option<Arc<RgbaImage>> {
         let images = self.images.read().expect("Failed to lock images");
         images.get(&image_id).cloned()
     }

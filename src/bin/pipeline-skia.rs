@@ -3,7 +3,7 @@ compile_error!("This binary can only be used with the feature 'backend_skia' ena
 
 use std::ffi::CString;
 use std::num::NonZeroU32;
-use std::sync::RwLock;
+use std::sync::{Arc, RwLock};
 use std::time::Instant;
 use gl::types::*;
 use gl_rs as gl;
@@ -51,52 +51,14 @@ use poc_pipeline::rasterizer::skia::SkiaRasterizer;
 const TILE_DIMENSION : f64 = 256.0;
 
 fn main() {
-    colog::init();
-
-    // --------------------------------------------------------------------
-    // Generate a DOM tree
-    // let doc = common::document::create_document();
-    // let doc = common::document::parser::document_from_json("tables.json");
-    // let doc = common::document::parser::document_from_json("button.json");
-    let doc = common::document::parser::document_from_json("cm.json");
-    // let doc = common::document::parser::document_from_json("codemusings.nl.json");
+    let doc = common::document::parser::document_from_json("https://codemusings.nl","cm.json");
     // let doc = common::document::parser::document_from_json("news.ycombinator.com.json");
     // let mut output = String::new();
     // doc.print_tree(&mut output).expect("");
     // println!("{}", output);
 
-    // --------------------------------------------------------------------
-    // Convert the DOM tree into a render-tree that has all the non-visible elements removed
-    let mut render_tree = RenderTree::new(doc);
-    render_tree.parse();
-    // render_tree.print();
-
-    // --------------------------------------------------------------------
-    // Layout the render-tree into a layout-tree
-    let mut layouter = TaffyLayouter::new();
-    let layout_tree = layouter.layout(render_tree, None);
-    // layouter.print_tree();
-    // println!("Layout width: {}, height: {}", layout_tree.root_dimension.width, layout_tree.root_dimension.height);
-
-    // -------------------------------------------------------------------  -
-    // Generate render layers
-    let layer_list = LayerList::new(layout_tree);
-    // for (layer_id, layer) in layer_list.layers.read().expect("").iter() {
-    //     println!("Layer: {} (order: {})", layer_id, layer.order);
-    //     for element in layer.elements.iter() {
-    //         println!("  Element: {}", element);
-    //     }
-    // }
-
-    // --------------------------------------------------------------------
-    // Tiling phase
-    let mut tile_list = TileList::new(layer_list, Dimension::new(TILE_DIMENSION, TILE_DIMENSION));
-    tile_list.generate();
-    // tile_list.print_list();
-
-    // --------------------------------------------------------------------
-    // At this point, we have done everything we can before painting. The rest
-    // is completed in the draw function of the UI.
+    let window_dimension = Dimension::new(800.0, 600.0);
+    let viewport_dimension = Dimension::new(1024.0, 768.0);
 
 
     let browser_state = BrowserState {
@@ -104,17 +66,44 @@ fn main() {
         wireframed: WireframeState::None,
         debug_hover: false,
         current_hovered_element: None,
-        tile_list: RwLock::new(tile_list),
         show_tilegrid: true,
-        viewport: Rect::new(0.0, 0.0, 1024.0, 2600.0),
+        viewport: Rect::new(0.0, 0.0, viewport_dimension.width, viewport_dimension.height),
+        document: Arc::new(doc),
+        tile_list: None,
     };
     init_browser_state(browser_state);
 
     let event_loop = EventLoop::new().unwrap();
     event_loop.set_control_flow(ControlFlow::Poll);
 
-    let mut app = App::new();
+    let mut app = App::new("Skia Pipeline Test", window_dimension);
     let _ = event_loop.run_app(&mut app);
+}
+
+// This will reflow EVERYTHING. This is not efficient, but it's good enough for now.
+fn reflow() {
+    let binding = get_browser_state();
+    let state = binding.read().unwrap();
+
+    let mut render_tree = RenderTree::new(state.document.clone());
+    render_tree.parse();
+
+    let mut layouter = TaffyLayouter::new();
+    let layout_tree = layouter.layout(
+        render_tree,
+        Some(Dimension::new(state.viewport.width, state.viewport.height))
+    );
+
+    let layer_list = LayerList::new(layout_tree);
+
+    let mut tile_list = TileList::new(layer_list, Dimension::new(TILE_DIMENSION, TILE_DIMENSION));
+    tile_list.generate();
+
+    drop(state);
+
+    let binding = get_browser_state();
+    let mut state = binding.write().unwrap();
+    state.tile_list = Some(RwLock::new(tile_list));
 }
 
 // Application environment. Mostly OpenGL stuff.
@@ -148,16 +137,22 @@ struct App {
     /// Previous frame start time
     pfs: Instant,
     /// Current FPS
+    #[allow(unused)]
     fps: f32,
+    ///
+    window_size: Dimension,
+    window_title: String,
 }
 
 impl App {
-    fn new() -> Self {
+    fn new(window_title: &str, window_size: Dimension) -> Self {
         App {
             env: None,
             frame: 0,
             pfs: Instant::now(),
             fps: 0.0,
+            window_size,
+            window_title: window_title.to_string(),
         }
     }
 }
@@ -170,7 +165,7 @@ impl ApplicationHandler for App {
 
         self.pfs = Instant::now();
         self.frame = 0;
-        self.env = Some(create_window_env(event_loop, "Skia Pipeline Test", (1280, 1114)));
+        self.env = Some(create_window_env(event_loop, &self.window_title, self.window_size));
     }
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
@@ -183,6 +178,7 @@ impl ApplicationHandler for App {
                 event_loop.exit();
             }
             WindowEvent::Resized(physical_size) => {
+                println!("Resized to {:?}", physical_size);
                 env.surface = create_surface(
                     &env.window,
                     env.fb_info,
@@ -198,14 +194,21 @@ impl ApplicationHandler for App {
                     NonZeroU32::new(width.max(1)).unwrap(),
                     NonZeroU32::new(height.max(1)).unwrap(),
                 );
+
+                let binding = get_browser_state();
+                let mut state = binding.write().unwrap();
+                state.viewport = Rect::new(0.0, 0.0, width as f64, height as f64);
+                drop(state);
+
+                reflow();
             }
             WindowEvent::RedrawRequested => {
                 self.frame += 1;
 
                 // This is wrong
-                self.fps = 1.0 / self.pfs.elapsed().as_secs_f32();
+                // self.fps = 1.0 / self.pfs.elapsed().as_secs_f32();
                 self.pfs = Instant::now();
-                println!("FPS: {:.2}", self.fps);
+                // println!("FPS: {:.2}", self.fps);
 
                 let canvas = env.surface.canvas();
                 canvas.clear(Color::WHITE);
@@ -271,7 +274,13 @@ impl ApplicationHandler for App {
                         WireframeState::Only => state.wireframed = WireframeState::Both,
                         WireframeState::Both => state.wireframed = WireframeState::None,
                     }
-                    state.tile_list.write().expect("Failed to get tile list").invalidate_all();
+
+                    let Some(ref tile_list) = state.tile_list else {
+                        log::error!("No tile list found");
+                        return;
+                    };
+
+                    tile_list.write().expect("Failed to get tile list").invalidate_all();
                     env.window.request_redraw();
                 }
 
@@ -296,14 +305,14 @@ impl ApplicationHandler for App {
     }
 }
 
-fn create_window_env(el: &ActiveEventLoop, title: &str, size: (i32, i32)) -> Env {
-    info!("Creating ({}x{}) window with title: {} ", size.0, size.1,  title);
+fn create_window_env(el: &ActiveEventLoop, title: &str, size: Dimension) -> Env {
+    info!("Creating ({}x{}) window with title: {} ", size.width, size.height,  title);
 
     // --------------------------------------------------------------------
     // Initialize Skia/OpenGl stuff
     let window_attrs = WindowAttributes::default()
         .with_title(title)
-        .with_inner_size(winit::dpi::PhysicalSize::new(size.0, size.1));
+        .with_inner_size(winit::dpi::PhysicalSize::new(size.width, size.height));
 
     let template = ConfigTemplateBuilder::new()
         .with_alpha_size(8)
@@ -448,12 +457,17 @@ fn do_paint(layer_id: LayerId) {
     let binding = get_browser_state();
     let state = binding.read().unwrap();
 
-    let painter = Painter::new(state.tile_list.read().unwrap().layer_list.clone());
+    let Some(ref tile_list) = state.tile_list else {
+        log::error!("No tile list found");
+        return;
+    };
 
-    let tile_ids = state.tile_list.read().unwrap().get_intersecting_tiles(layer_id, state.viewport);
+    let painter = Painter::new(tile_list.read().unwrap().layer_list.clone());
+
+    let tile_ids = tile_list.read().unwrap().get_intersecting_tiles(layer_id, state.viewport);
     for tile_id in tile_ids {
         // get tile
-        let mut binding = state.tile_list.write().expect("Failed to get tile list");
+        let mut binding = tile_list.write().expect("Failed to get tile list");
         let Some(tile) = binding.get_tile_mut(tile_id) else {
             log::warn!("Tile not found: {:?}", tile_id);
             continue;
@@ -475,10 +489,15 @@ fn do_rasterize(layer_id: LayerId) {
     let binding = get_browser_state();
     let state = binding.read().unwrap();
 
-    let tile_ids = state.tile_list.read().unwrap().get_intersecting_tiles(layer_id, state.viewport);
+    let Some(ref tile_list) = state.tile_list else {
+        log::error!("No tile list found");
+        return;
+    };
+
+    let tile_ids = tile_list.read().unwrap().get_intersecting_tiles(layer_id, state.viewport);
     for tile_id in tile_ids {
         // get tile
-        let mut binding = state.tile_list.write().expect("Failed to get tile list");
+        let mut binding = tile_list.write().expect("Failed to get tile list");
         let Some(tile) = binding.get_tile(tile_id) else {
             log::warn!("Tile not found: {:?}", tile_id);
             continue;

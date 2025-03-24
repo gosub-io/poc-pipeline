@@ -1,5 +1,6 @@
 use std::fmt::Debug;
 use std::sync::{Arc, OnceLock, RwLock};
+use crate::common::document::document::Document;
 use crate::common::geo::Rect;
 use crate::layouter::LayoutElementId;
 use crate::tiler::TileList;
@@ -24,10 +25,12 @@ pub struct BrowserState {
     pub show_tilegrid: bool,
     /// When set, this is the element that is currently hovered upon
     pub current_hovered_element: Option<LayoutElementId>,
-    /// LayerList that is currently being rendered
-    pub tile_list: RwLock<TileList>,
     /// Current viewport offset + size
     pub viewport: Rect,
+    /// Main document that is currently being rendered
+    pub document: Arc<Document>,
+    /// LayerList that is currently being rendered
+    pub tile_list: Option<RwLock<TileList>>,
 }
 
 impl Debug for BrowserState {

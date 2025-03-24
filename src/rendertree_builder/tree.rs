@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::ops::AddAssign;
+use std::sync::Arc;
 use crate::common::document::document::Document;
 use crate::common::document::node::{Node, NodeType, NodeId};
 use crate::common::document::style::{StyleProperty, StyleValue, Display as CssDisplay};
@@ -47,7 +48,7 @@ pub struct RenderNode {
 /// the DOM.
 #[derive(Clone)]
 pub struct RenderTree {
-    pub doc: Document,
+    pub doc: Arc<Document>,
     pub arena: HashMap<RenderNodeId, RenderNode>,
     pub root_id: Option<RenderNodeId>,
 }
@@ -93,9 +94,9 @@ impl RenderTree {
 const INVISIBLE_ELEMENTS: [&str; 6] = [ "head",  "style",  "script",  "meta",  "link",  "title" ];
 
 impl RenderTree {
-    pub fn new(doc: Document) -> Self {
+    pub fn new(doc: Arc<Document>) -> Self {
         RenderTree {
-            doc,
+            doc: doc.clone(),
             arena: HashMap::new(),
             root_id: None,
         }

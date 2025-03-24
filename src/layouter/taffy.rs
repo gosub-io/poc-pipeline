@@ -196,6 +196,8 @@ impl TaffyLayouter {
         };
         let render_node_children = render_node.children.clone();
 
+        let base_url = layout_tree.render_tree.doc.base_url();
+
         // Create taffy context and style, which depends on type of node we have
         let mut taffy_context = None;
         let mut taffy_style = Style::default();
@@ -210,13 +212,21 @@ impl TaffyLayouter {
                 // Check if element type is an image, if so, set the taffy context
                 if data.tag_name.eq_ignore_ascii_case("img") {
                     let src = data.get_attribute("src").unwrap();
+
+                    // @TODO: we assume if we don't start with http:// or https:// we have a relative image
+                    let src = if src.starts_with("http://") || src.starts_with("https://") {
+                        src.to_string()
+                    } else {
+                        // We have a relative path, so we need to prepend the base URL
+                        format!("{}{}", base_url, src)
+                    };
                     println!("Loading image: {}", src);
 
                     let store = get_image_store();
                     let image_id = store.read().unwrap().store_from_path(src.as_str());
 
                     let image = store.read().unwrap().get(image_id).unwrap();
-                    let dimension = geo::Dimension::new(image.width as f64, image.height as f64);
+                    let dimension = geo::Dimension::new(image.width() as f64, image.height() as f64);
 
                     taffy_context = Some(TaffyContext::image(src.as_str(), image_id, dimension, dom_node.node_id));
                 }
@@ -227,7 +237,7 @@ impl TaffyLayouter {
                     let image_id = store.read().unwrap().store_from_path(src);
 
                     let image = store.read().unwrap().get(image_id).unwrap();
-                    let dimension = geo::Dimension::new(image.width as f64, image.height as f64);
+                    let dimension = geo::Dimension::new(image.width() as f64, image.height() as f64);
 
                     taffy_context = Some(TaffyContext::image(src, image_id, dimension, dom_node.node_id));
                 }

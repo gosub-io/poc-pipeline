@@ -13,9 +13,14 @@ pub fn compose_layer(canvas: &skia_safe::canvas::Canvas, layer_id: LayerId) {
     let binding = get_browser_state();
     let state = binding.read().expect("Failed to get browser state");
 
-    let tile_ids = state.tile_list.read().expect("Failed to get tile list").get_intersecting_tiles(layer_id, state.viewport);
+    let Some(ref tile_list) = state.tile_list else {
+        log::error!("No tile list found");
+        return;
+    };
+
+    let tile_ids = tile_list.read().expect("Failed to get tile list").get_intersecting_tiles(layer_id, state.viewport);
     for tile_id in tile_ids {
-        let binding = state.tile_list.write().expect("Failed to get tile list");
+        let binding = tile_list.write().expect("Failed to get tile list");
         let Some(tile) = binding.get_tile(tile_id) else {
             log::warn!("Tile not found: {:?}", tile_id);
             continue;
@@ -42,6 +47,7 @@ pub fn compose_layer(canvas: &skia_safe::canvas::Canvas, layer_id: LayerId) {
             None,
         );
 
+        #[allow(unsafe_code)]
         let data = unsafe { Data::new_bytes(&texture.data.as_slice()) };
 
         let img = skia_safe::images::raster_from_data(

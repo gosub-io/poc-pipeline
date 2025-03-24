@@ -249,8 +249,8 @@ fn parse_font_weight(value: &str) -> StyleValue {
     }
 }
 
-pub fn document_from_json(path: &str) -> Document {
-    let mut doc = Document::new();
+pub fn document_from_json(base_url: &str, path: &str) -> Document {
+    let mut doc = Document::new(base_url);
 
     let json_data = std::fs::read_to_string(path).expect("Failed to read JSON file");
     let dom_root: DomRoot = serde_json::from_str(&json_data).expect("Failed to parse JSON");

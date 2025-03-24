@@ -39,13 +39,11 @@ pub(crate) fn do_paint_rectangle(canvas: &skia_safe::Canvas, _tile: &Tile, rect:
 fn draw_single_border(canvas: &skia_safe::Canvas, rect: &Rectangle, dashes: Vec<f64>) {
     let mut skia_paint = create_paint(&rect.border().brush());
     skia_paint.set_style(skia_safe::PaintStyle::Stroke);
-    // skia_paint.set_stroke(true);
     skia_paint.set_stroke_width(rect.border().width());
-    // skia_paint.set_stroke_width(10.0);
-    // if !dashes.is_empty() {
-    //     let dashes = dashes.iter().map(|x| *x as f32).collect::<Vec<f32>>();
-    //     skia_paint.set_path_effect(skia_safe::PathEffect::dash(&dashes, 0.0));
-    // }
+    if !dashes.is_empty() {
+        let dashes = dashes.iter().map(|x| *x as f32).collect::<Vec<f32>>();
+        skia_paint.set_path_effect(skia_safe::PathEffect::dash(&dashes, 0.0));
+    }
 
     let shape = create_rect_shape(rect);
     shape.draw(canvas, &skia_paint);

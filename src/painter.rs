@@ -162,7 +162,7 @@ impl Painter {
                 let image_store = binding.read().expect("Failed to get image store");
                 let image = image_store.get(image_ctx.image_id).unwrap();
 
-                let brush = Brush::image(image.data.clone(), image.width as u32, image.height as u32);
+                let brush = Brush::image(image.to_vec(), image.width(), image.height());
                 // let border = Border::new(3.0, BorderStyle::None, Brush::Solid(Color::GREEN));
                 let r = Rectangle::new(layout_element.box_model.border_box()).with_background(brush);
                 commands.push(PaintCommand::rectangle(r));
