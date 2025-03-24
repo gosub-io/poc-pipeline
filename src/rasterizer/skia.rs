@@ -7,6 +7,7 @@ use crate::tiler::Tile;
 mod rectangle;
 mod paint;
 mod text;
+mod svg;
 
 pub struct SkiaRasterizer;
 
@@ -46,6 +47,9 @@ impl Rasterable for SkiaRasterizer {
                                 println!("Failed to paint text: {:?}", e);
                             }
                         }
+                    }
+                    PaintCommand::Svg(command) => {
+                        svg::do_paint_svg(canvas, &tile, command.svg_id, &command.rect);
                     }
                 }
             }

@@ -1,3 +1,4 @@
+use crate::common::svg::{Svg, SvgId};
 use crate::painter::commands::rectangle::Rectangle;
 use crate::painter::commands::text::Text;
 
@@ -18,14 +19,28 @@ pub struct Trbl<T> {
 }
 
 #[derive(Clone, Debug)]
+pub struct PaintSvg {
+    pub rect: Rectangle,
+    pub svg_id: SvgId,
+}
+
+#[derive(Clone, Debug)]
 pub enum PaintCommand {
     Text(Text),
     Rectangle(Rectangle),
+    Svg(PaintSvg),
 }
 
 impl PaintCommand {
     pub fn text(text: Text) -> Self {
         PaintCommand::Text(text)
+    }
+
+    pub fn svg(svg_id: SvgId, rect: Rectangle) -> Self {
+        PaintCommand::Svg(PaintSvg{
+            rect,
+            svg_id,
+        })
     }
 
     pub fn rectangle(rectangle: Rectangle) -> Self {

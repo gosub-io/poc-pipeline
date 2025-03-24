@@ -12,7 +12,7 @@ use crate::painter::commands::brush::Brush;
 use crate::painter::commands::color::Color;
 use crate::painter::commands::rectangle::{Radius, Rectangle};
 use crate::painter::commands::PaintCommand;
-use crate::common::get_image_store;
+use crate::common::{get_image_store, get_svg_store};
 use crate::painter::commands::border::{Border, BorderStyle};
 use crate::painter::commands::text::Text;
 use crate::tiler::{Tile, TiledLayoutElement};
@@ -156,6 +156,15 @@ impl Painter {
                 // let r = Rectangle::new(layout_element.box_model.border_box()).with_border(border);
                 // let r = Rectangle::new(layout_element.box_model.border_box()); // .with_border(border);
                 // commands.push(PaintCommand::rectangle(r));
+            }
+            ElementContext::Svg(svg_ctx) => {
+                // let binding = get_svg_store();
+                // let svg_store = binding.read().expect("Failed to get svg store");
+                // let svg = svg_store.get(svg_ctx.svg_id).unwrap();
+
+                let brush = Brush::solid(Color::from_rgb8(130, 130, 130));
+                let r = Rectangle::new(layout_element.box_model.border_box()).with_background(brush);
+                commands.push(PaintCommand::svg(svg_ctx.svg_id, r));
             }
             ElementContext::Image(image_ctx) => {
                 let binding = get_image_store();

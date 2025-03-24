@@ -7,6 +7,7 @@ use crate::rendertree_builder::{RenderTree, RenderNodeId};
 use crate::common::document::node::{NodeId as DomNodeId, NodeId};
 use crate::common::geo::{Coordinate, Dimension};
 use crate::common::image::ImageId;
+use crate::common::svg::SvgId;
 use crate::layouter::text::Alignment;
 
 pub mod taffy;
@@ -56,6 +57,18 @@ pub struct ElementContextText {
     pub alignment: Alignment,
 }
 
+#[derive(Debug, Clone)]
+pub struct ElementContextSvg {
+    /// Node ID of the SVG in the DOM
+    pub node_id: DomNodeId,
+    /// Source of the SVG
+    pub src: String,
+    /// ID of the SVG inside the image store
+    pub svg_id: SvgId,
+    /// Dimension of the SVG. Can be Dimension::ZERO if not known yet
+    pub dimension: Dimension,
+}
+
 #[derive(Clone, Debug)]
 pub struct ElementContextImage {
     /// Node ID of the image in the DOM
@@ -75,6 +88,7 @@ pub enum ElementContext {
     None,
     Text(ElementContextText),
     Image(ElementContextImage),
+    Svg(ElementContextSvg)
 }
 
 impl ElementContext {
