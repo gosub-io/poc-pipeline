@@ -1,5 +1,5 @@
-use crate::layouter::text::Alignment;
 use skia_safe::Paint;
+use crate::layouter::text::Alignment;
 use skia_safe::textlayout::{Paragraph, ParagraphBuilder, ParagraphStyle, TextStyle};
 
 thread_local! {
@@ -10,12 +10,14 @@ thread_local! {
     };
 }
 
-pub fn get_skia_paragraph(text: &str, font_family: &str, font_size: f64, line_height: f64, max_width: f64, _alignment: Alignment) -> Paragraph {
+pub fn get_skia_paragraph(text: &str, font_family: &str, font_size: f64, line_height: f64, max_width: f64, _alignment: Alignment, paint: Option<&Paint>) -> Paragraph {
     let paragraph_style = ParagraphStyle::new();
     let mut paragraph_builder = ParagraphBuilder::new(&paragraph_style, FC.with(|fc| fc.clone()));
 
-    let mut paint = Paint::default();
-    paint.set_anti_alias(false);
+    let paint = match paint {
+        Some(p) => p.clone(),
+        None => Paint::default(),
+    };
 
     let mut ts = TextStyle::new();
     ts.set_foreground_paint(&paint);

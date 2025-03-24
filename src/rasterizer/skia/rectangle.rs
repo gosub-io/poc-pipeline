@@ -1,8 +1,9 @@
-use skia_safe::{Paint, Vector};
+use skia_safe::Vector;
+use skia_safe::Paint as SkiaPaint;
 use crate::common::geo::Rect;
 use crate::painter::commands::border::BorderStyle;
 use crate::painter::commands::rectangle::Rectangle;
-use crate::rasterizer::skia::paint::create_paint;
+use crate::rasterizer::skia::paint::{create_paint, Paint};
 use crate::tiler::Tile;
 
 pub(crate) fn do_paint_rectangle(canvas: &skia_safe::Canvas, _tile: &Tile, rect: &Rectangle) {
@@ -11,7 +12,7 @@ pub(crate) fn do_paint_rectangle(canvas: &skia_safe::Canvas, _tile: &Tile, rect:
         Some(brush) => {
             let shape = create_rect_shape(rect);
             let mut skia_paint = create_paint(brush);
-            skia_paint.set_style(skia_safe::PaintStyle::Fill);
+            skia_paint.paint_mut().set_style(skia_safe::PaintStyle::Fill);
 
             shape.draw(canvas, &skia_paint);
         }
@@ -38,11 +39,11 @@ pub(crate) fn do_paint_rectangle(canvas: &skia_safe::Canvas, _tile: &Tile, rect:
 
 fn draw_single_border(canvas: &skia_safe::Canvas, rect: &Rectangle, dashes: Vec<f64>) {
     let mut skia_paint = create_paint(&rect.border().brush());
-    skia_paint.set_style(skia_safe::PaintStyle::Stroke);
-    skia_paint.set_stroke_width(rect.border().width());
+    skia_paint.paint_mut().set_style(skia_safe::PaintStyle::Stroke);
+    skia_paint.paint_mut().set_stroke_width(rect.border().width());
     if !dashes.is_empty() {
         let dashes = dashes.iter().map(|x| *x as f32).collect::<Vec<f32>>();
-        skia_paint.set_path_effect(skia_safe::PathEffect::dash(&dashes, 0.0));
+        skia_paint.paint_mut().set_path_effect(skia_safe::PathEffect::dash(&dashes, 0.0));
     }
 
     let shape = create_rect_shape(rect);
@@ -51,12 +52,12 @@ fn draw_single_border(canvas: &skia_safe::Canvas, rect: &Rectangle, dashes: Vec<
 
 fn draw_double_border(canvas: &skia_safe::Canvas, rect: &Rectangle, dashes: Vec<f64>) {
     let mut skia_paint = create_paint(&rect.border().brush());
-    skia_paint.set_stroke(true);
-    skia_paint.set_stroke_width(rect.border().width());
-    skia_paint.set_stroke_cap(skia_safe::PaintCap::Round);
+    skia_paint.paint_mut().set_stroke(true);
+    skia_paint.paint_mut().set_stroke_width(rect.border().width());
+    skia_paint.paint_mut().set_stroke_cap(skia_safe::PaintCap::Round);
     if !dashes.is_empty() {
         let dashes = dashes.iter().map(|x| *x as f32).collect::<Vec<f32>>();
-        skia_paint.set_path_effect(skia_safe::PathEffect::dash(&dashes, 0.0));
+        skia_paint.paint_mut().set_path_effect(skia_safe::PathEffect::dash(&dashes, 0.0));
     }
 
     let shape = create_rect_shape(rect);
@@ -72,7 +73,7 @@ fn draw_double_border(canvas: &skia_safe::Canvas, rect: &Rectangle, dashes: Vec<
 
     // Outer border
     let width = (rect.border().width() / 2.0).floor();
-    skia_paint.set_stroke_width(width);
+    skia_paint.paint_mut().set_stroke_width(width);
     shape.draw(canvas, &skia_paint);
 
     let gap_size = 1.0;
@@ -96,10 +97,67 @@ enum ShapeEnum {
 
 impl ShapeEnum {
     fn draw(&self, canvas: &skia_safe::Canvas, paint: &Paint) {
-        match self {
-            ShapeEnum::Rect(rect) => canvas.draw_rect(rect, paint),
-            ShapeEnum::RoundedRect(rrect) => canvas.draw_rrect(rrect, paint),
+        // Fetch the rect dimensions
+        let rect = self.rect();
+
+        // Since skia can't scale automatically, we need to do this manually. This is why
+        // we have a custom SkiaPaint enum that can handle this, as we cannot fetch the dimensions
+        // of the image from skia's paint object.
+        let skia_paint = match paint {
+            Paint::Image(ip) => {
+                if let Some(image_filter) = paint.paint().image_filter() {
+                    let sx = rect.width / ip.dimension.width;
+                    let sy = rect.height / ip.dimension.height;
+
+                    // We scale the image from the top-left corner. We must translate the image to the correct
+                    // position after scaling
+                    let mut matrix = skia_safe::Matrix::default();
+                    matrix.set_scale((sx as f32, sy as f32), None);
+                    matrix.set_translate_x(rect.x as f32);
+                    matrix.set_translate_y(rect.y as f32);
+
+                    let scaled_image_filter = image_filter.with_local_matrix(&matrix);
+                    let mut p = SkiaPaint::default();
+                    p.set_image_filter(scaled_image_filter);
+                    p
+                } else {
+                    paint.paint().clone()
+                }
+            },
+            // Non-images just use the paint as is
+            _ => paint.paint().clone(),
         };
+
+
+        match self {
+            ShapeEnum::Rect(rect) => {
+                canvas.draw_rect(rect, skia_paint.as_ref());
+            },
+            ShapeEnum::RoundedRect(rrect) => {
+                canvas.draw_rrect(rrect, skia_paint.as_ref());
+            },
+        }
+    }
+
+    fn rect(&self) -> Rect {
+        match self {
+            ShapeEnum::Rect(rect) => {
+                Rect::new(
+                    rect.left as f64,
+                    rect.top as f64,
+                    rect.width() as f64,
+                    rect.height() as f64
+                )
+            },
+            ShapeEnum::RoundedRect(rrect) => {
+                Rect::new(
+                    rrect.rect().left as f64,
+                    rrect.rect().top as f64,
+                    rrect.rect().width() as f64,
+                    rrect.rect().height() as f64
+                )
+            },
+        }
     }
 }
 
