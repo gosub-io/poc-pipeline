@@ -5,10 +5,11 @@ use taffy::NodeId as TaffyNodeId;
 use crate::rendertree_builder::{RenderTree, RenderNodeId};
 use crate::common::document::node::{NodeType, NodeId as DomNodeId};
 use crate::common::document::style::{FontWeight, StyleProperty, StyleValue, TextAlign, Unit};
-use crate::common::{geo, get_image_store};
+use crate::common::{geo, get_media_store};
 use crate::common::geo::Coordinate;
 use crate::common::image::ImageId;
-use crate::layouter::{LayoutElementNode, LayoutTree, LayoutElementId, CanLayout, ElementContext, box_model, ElementContextText, ElementContextImage};
+use crate::common::media::{Media, MediaId, MediaType};
+use crate::layouter::{LayoutElementNode, LayoutTree, LayoutElementId, CanLayout, ElementContext, box_model, ElementContextText, ElementContextImage, ElementContextSvg};
 use crate::layouter::css_taffy_converter::CssTaffyConverter;
 use crate::layouter::text::{get_text_layout, Alignment};
 
@@ -30,6 +31,7 @@ pub struct TaffyLayouter {
 pub enum TaffyContext {
     Text(ElementContextText),
     Image(ElementContextImage),
+    Svg(ElementContextSvg),
 }
 
 impl TaffyContext {
@@ -46,12 +48,21 @@ impl TaffyContext {
         })
     }
 
-    fn image(src: &str, image_id: ImageId, dimension: geo::Dimension, node_id: DomNodeId) -> TaffyContext {
+    fn image(src: &str, media_id: MediaId, dimension: geo::Dimension, node_id: DomNodeId) -> TaffyContext {
         TaffyContext::Image(ElementContextImage{
             node_id,
             src: src.to_string(),
-            image_id,
+            media_id,
             dimension,
+        })
+    }
+
+    fn svg(src: &str, media_id: MediaId, node_id: DomNodeId) -> TaffyContext {
+        TaffyContext::Svg(ElementContextSvg{
+            node_id,
+            src: src.to_string(),
+            media_id,
+            dimension: geo::Dimension::ZERO,
         })
     }
 }
@@ -212,34 +223,41 @@ impl TaffyLayouter {
                 // Check if element type is an image, if so, set the taffy context
                 if data.tag_name.eq_ignore_ascii_case("img") {
                     let src = data.get_attribute("src").unwrap();
+                    let src = to_absolute_url(src, base_url);
 
-                    // @TODO: we assume if we don't start with http:// or https:// we have a relative image
-                    let src = if src.starts_with("http://") || src.starts_with("https://") {
-                        src.to_string()
-                    } else {
-                        // We have a relative path, so we need to prepend the base URL
-                        format!("{}{}", base_url, src)
+                    println!("Loading (image) resource: {}", src);
+
+                    let media_store = get_media_store();
+                    let Ok(media_id) = media_store.read().unwrap().load_media(src.as_str()) else {
+                        // Could not load media
+                        log::info!("Could not load media from path: {}", src);
+                        return None;
                     };
-                    println!("Loading image: {}", src);
 
-                    let store = get_image_store();
-                    let image_id = store.read().unwrap().store_from_path(src.as_str());
-
-                    let image = store.read().unwrap().get(image_id).unwrap();
-                    let dimension = geo::Dimension::new(image.width() as f64, image.height() as f64);
-
-                    taffy_context = Some(TaffyContext::image(src.as_str(), image_id, dimension, dom_node.node_id));
+                    let media_store = get_media_store();
+                    let binding = media_store.read().unwrap();
+                    let media = binding.get(media_id, MediaType::Image);
+                    taffy_context = match media {
+                        Media::Svg(_) => {
+                            Some(TaffyContext::svg(src.as_str(), media_id, dom_node.node_id))
+                        }
+                        Media::Image(media_image) => {
+                            let dimension = geo::Dimension::new(media_image.image.width() as f64, media_image.image.height() as f64);
+                            Some(TaffyContext::image(src.as_str(), media_id, dimension, dom_node.node_id))
+                        }
+                    }
                 }
 
                 if data.tag_name.eq_ignore_ascii_case("svg") {
-                    let src = "dummy";
-                    let store = get_image_store();
-                    let image_id = store.read().unwrap().store_from_path(src);
-
-                    let image = store.read().unwrap().get(image_id).unwrap();
-                    let dimension = geo::Dimension::new(image.width() as f64, image.height() as f64);
-
-                    taffy_context = Some(TaffyContext::image(src, image_id, dimension, dom_node.node_id));
+                    unimplemented!("Encountered an SVG tag");
+                    // let src = "inline";
+                    // let store = get_media_store();
+                    // let media_id = store.read().unwrap().store_from_path(src);
+                    //
+                    // let media = store.read().unwrap().get_image(media_id);
+                    // let dimension = geo::Dimension::new(media.image.width as f64, media.image.height as f64);
+                    //
+                    // taffy_context = Some(TaffyContext::image(src, media_id, dimension, dom_node.node_id));
                 }
             }
             NodeType::Text(text, node_style) => {
@@ -430,6 +448,20 @@ impl TaffyLayouter {
     }
 }
 
+fn to_absolute_url(uri: &str, base_uri: &str) -> String {
+    if uri.starts_with("http://") || uri.starts_with("https://") {
+        return uri.to_string()
+    }
+
+    // We have a relative path, so we need to prepend the base URL
+    // Make sure we don't have double slashes
+    if base_uri.ends_with("/") && uri.starts_with("/") {
+        return format!("{}{}", base_uri, &uri[1..]).to_string()
+    }
+
+    format!("{}{}", base_uri, uri).to_string()
+}
+
 /// Convert a taffy context to an element context. Optionally, these two structures should be merged
 /// and only ElementContext should be used.
 fn to_element_context(taffy_context: Option<&TaffyContext>) -> ElementContext {
@@ -446,9 +478,15 @@ fn to_element_context(taffy_context: Option<&TaffyContext>) -> ElementContext {
         ),
         Some(TaffyContext::Image(image_ctx)) => ElementContext::image(
             image_ctx.src.as_str(),
-            image_ctx.image_id,
+            image_ctx.media_id,
             image_ctx.dimension.clone(),
             image_ctx.node_id,
+        ),
+        Some(TaffyContext::Svg(svg_ctx)) => ElementContext::svg(
+            svg_ctx.src.as_str(),
+            svg_ctx.media_id,
+            svg_ctx.dimension,
+            svg_ctx.node_id,
         ),
         None => ElementContext::None,
     }

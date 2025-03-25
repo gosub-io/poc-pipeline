@@ -6,8 +6,7 @@ use crate::layouter::box_model::BoxModel;
 use crate::rendertree_builder::{RenderTree, RenderNodeId};
 use crate::common::document::node::{NodeId as DomNodeId, NodeId};
 use crate::common::geo::{Coordinate, Dimension};
-use crate::common::image::ImageId;
-use crate::common::svg::SvgId;
+use crate::common::media::MediaId;
 use crate::layouter::text::Alignment;
 
 pub mod taffy;
@@ -63,8 +62,8 @@ pub struct ElementContextSvg {
     pub node_id: DomNodeId,
     /// Source of the SVG
     pub src: String,
-    /// ID of the SVG inside the image store
-    pub svg_id: SvgId,
+    /// ID of the SVG inside the media store
+    pub media_id: MediaId,
     /// Dimension of the SVG. Can be Dimension::ZERO if not known yet
     pub dimension: Dimension,
 }
@@ -76,7 +75,7 @@ pub struct ElementContextImage {
     /// Source of the image
     pub src: String,
     /// ID of the image inside the image store
-    pub image_id: ImageId,
+    pub media_id: MediaId,
     /// Dimension of the image. Can be Dimension::ZERO if not known yet
     pub dimension: Dimension,
 }
@@ -105,14 +104,24 @@ impl ElementContext {
         })
     }
 
-    pub fn image(src: &str, image_id: ImageId, dimension: Dimension, node_id: DomNodeId) -> ElementContext {
+    pub fn image(src: &str, media_id: MediaId, dimension: Dimension, node_id: DomNodeId) -> ElementContext {
         Self::Image(ElementContextImage {
             node_id,
             src: src.to_string(),
-            image_id,
+            media_id,
             dimension,
         })
     }
+
+    pub fn svg(src: &str, media_id: MediaId, dimension: Dimension, node_id: DomNodeId) -> ElementContext {
+        Self::Svg(ElementContextSvg {
+            node_id,
+            src: src.to_string(),
+            media_id,
+            dimension,
+        })
+    }
+
 }
 
 #[derive(Debug, Clone)]

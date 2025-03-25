@@ -13,7 +13,7 @@ pub fn find_available_font(families: &str, ctx: &pango::Context) -> String {
         // System-ui is a special font that should be handled by us.
         if font == "system-ui" {
             return "Ubuntu Sans".into();
-            return get_system_ui_font();
+            // return get_system_ui_font();
         }
 
         let font_name = font.trim().replace('"', "");

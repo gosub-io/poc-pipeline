@@ -1,5 +1,6 @@
 use skia_safe::{image_filters, AlphaType, Color4f, ColorSpace, ColorType, Data, ISize, ImageInfo, Paint as SkiaPaint};
 use crate::common::geo::Dimension;
+use crate::common::get_media_store;
 use crate::painter::commands::brush::Brush;
 
 // Instead of sending a (skia) Paint object, we encapsulate this, as we might need to store additional information
@@ -37,29 +38,34 @@ pub fn create_paint(brush: &Brush) -> Paint {
             let paint = SkiaPaint::new(Color4f::new(color.b(), color.g(), color.r(), color.a()), &ColorSpace::new_srgb());
             Paint::Solid(paint)
         }
-        Brush::Image(img) => {
+        Brush::Image(media_id) => {
+            let binding = get_media_store();
+            let media_store = binding.read().expect("Failed to get image store");
+            let media = media_store.get_image(*media_id);
+
             let mut p = SkiaPaint::default();
 
             let img_info = ImageInfo::new(
-                ISize::new(img.width() as i32, img.height() as i32),
+                ISize::new(media.image.width() as i32, media.image.height() as i32),
                 ColorType::RGBA8888,
                 AlphaType::Premul,
                 None,
             );
 
-            let skia_img = skia_safe::images::raster_from_data(
-                &img_info,
-                // @TODO: We don't need to copy, just use img.data() in unsafe{} block
-                Data::new_copy(img.data()),
-                (img_info.width() * 4) as usize,
-            ).unwrap();
+            let skia_img = unsafe {
+                skia_safe::images::raster_from_data(
+                    &img_info,
+                    Data::new_bytes(media.image.to_vec().as_slice()),
+                    (img_info.width() * 4) as usize,
+                ).unwrap()
+            };
 
             let image_filter = image_filters::image(skia_img, None, None, None);
             p.set_image_filter(image_filter);
 
             Paint::Image(ImagePaint{
                 paint: p,
-                dimension: Dimension::new(img.width() as f64, img.height() as f64),
+                dimension: Dimension::new(media.image.width() as f64, media.image.height() as f64),
             })
         }
     }

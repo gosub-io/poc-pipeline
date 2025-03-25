@@ -31,6 +31,9 @@ impl Rasterable for CairoRasterizer {
             for element in &tile.elements {
                 for command in &element.paint_commands {
                     match command {
+                        PaintCommand::Svg(command) => {
+                            svg::do_paint_svg(&cr.clone(), &tile, &command);
+                        }
                         PaintCommand::Rectangle(command) => {
                             rectangle::do_paint_rectangle(&cr.clone(), &tile, &command);
                         }

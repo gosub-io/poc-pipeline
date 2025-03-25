@@ -1,3 +1,4 @@
+use crate::common::media::MediaId;
 use crate::painter::commands::color::Color;
 use crate::painter::commands::image::Image;
 
@@ -6,7 +7,7 @@ pub enum Brush {
     /// Paint with fixed solid color
     Solid(Color),
     /// Paint with an image. This allows us to display images
-    Image(Image),
+    Image(MediaId),
     // Gradient(Gradient),
 }
 
@@ -15,8 +16,8 @@ impl Brush {
         Brush::Solid(color)
     }
 
-    pub fn image(data: Vec<u8>, width: u32, height: u32) -> Self {
-        Brush::Image(Image::new(data, width, height))
+    pub fn image(media_id: MediaId) -> Self {
+        Brush::Image(media_id)
     }
 
     // pub fn gradient(gradient: Gradient) -> Self {

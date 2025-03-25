@@ -1,17 +1,17 @@
 use resvg::usvg::Transform;
 use skia_safe::{images, Data, ImageInfo};
-use crate::common::get_svg_store;
-use crate::common::svg::SvgId;
+use crate::common::get_media_store;
+use crate::common::media::MediaId;
 use crate::painter::commands::rectangle::Rectangle;
 use crate::tiler::Tile;
 
-pub(crate) fn do_paint_svg(canvas: &skia_safe::Canvas, _tile: &Tile, svg_id: SvgId, rect: &Rectangle) {
-    let store = get_svg_store();
-    let svg = store.read().unwrap().get(svg_id).unwrap();
+pub(crate) fn do_paint_svg(canvas: &skia_safe::Canvas, _tile: &Tile, media_id: MediaId, rect: &Rectangle) {
+    let binding = get_media_store().read().unwrap();
+    let media = binding.get_svg(media_id);
 
-    let pixmap_size = svg.tree.size().to_int_size();
+    let pixmap_size = media.svg.tree.size().to_int_size();
     let mut pixmap = resvg::tiny_skia::Pixmap::new(pixmap_size.width(), pixmap_size.height()).unwrap();
-    resvg::render(&svg.tree, Transform::default(), &mut pixmap.as_mut());
+    resvg::render(&media.svg.tree, Transform::default(), &mut pixmap.as_mut());
 
     // // Ok, so we render from tiny_skia::pixmap, to skia_safe::Bitmap, to skia_safe::Image, to skia_safe::Canvas.
     // // This sounds absolutely like the most efficient way to do this...
@@ -21,7 +21,6 @@ pub(crate) fn do_paint_svg(canvas: &skia_safe::Canvas, _tile: &Tile, svg_id: Svg
     //     Some(true)
     // );
     // bitmap.set_pixel_ref(Some(pixmap.data()), (0, 0));
-
 
     let info = ImageInfo::new(
         skia_safe::ISize::new(rect.rect().width as i32, rect.rect().height as i32),

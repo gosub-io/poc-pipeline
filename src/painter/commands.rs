@@ -1,4 +1,5 @@
-use crate::common::svg::{Svg, SvgId};
+use crate::common::media::MediaId;
+use crate::common::svg::Svg;
 use crate::painter::commands::rectangle::Rectangle;
 use crate::painter::commands::text::Text;
 
@@ -21,7 +22,7 @@ pub struct Trbl<T> {
 #[derive(Clone, Debug)]
 pub struct PaintSvg {
     pub rect: Rectangle,
-    pub svg_id: SvgId,
+    pub media_id: MediaId,
 }
 
 #[derive(Clone, Debug)]
@@ -36,10 +37,10 @@ impl PaintCommand {
         PaintCommand::Text(text)
     }
 
-    pub fn svg(svg_id: SvgId, rect: Rectangle) -> Self {
+    pub fn svg(media_id: MediaId, rect: Rectangle) -> Self {
         PaintCommand::Svg(PaintSvg{
             rect,
-            svg_id,
+            media_id,
         })
     }
 

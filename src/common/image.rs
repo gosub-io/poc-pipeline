@@ -1,6 +1,4 @@
 use std::ops::AddAssign;
-use image::ImageFormat;
-use sha2::{Digest, Sha256};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ImageId(u64);
@@ -23,45 +21,22 @@ impl std::fmt::Display for ImageId {
     }
 }
 
-#[derive(Clone)]
-pub struct Image {
-    /// Width of the image in pixels
-    pub width: usize,
-    /// Height of the image in pixels
-    pub height: usize,
-    /// Binary data that represents the image
-    pub data: Vec<u8>,
-    /// Actual image format of the binary data
-    pub format: ImageFormat,
-    /// Sha256 hash of the image (not really used yet)
-    pub hash: [u8; 32],
-}
+pub type Image = image::RgbaImage;
 
-impl Image {
-    #[allow(unused)]
-    pub fn new(width: usize, height: usize, data: Vec<u8>, format: ImageFormat) -> Image {
-        let mut hasher = Sha256::new();
-        hasher.update(data.as_slice());
-        let hash = hasher.finalize();
+// impl Image {
+//     #[allow(unused)]
+//     pub fn new(image: image::RgbaImage) -> Image {
+//         Image {
+//             image
+//         }
+//     }
+// }
 
-        Image {
-            width,
-            height,
-            data,
-            format,
-            hash: hash.into(),
-        }
-    }
-}
-
-impl std::fmt::Debug for Image {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Image")
-            .field("width", &self.width)
-            .field("height", &self.height)
-            .field("format", &self.format)
-            .field("size", &self.data.len())
-            .field("hash", &hex::encode(&self.hash))
-            .finish()
-    }
-}
+// impl std::fmt::Debug for Image {
+//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+//         f.debug_struct("Image")
+//             .field("width", &self.image.width())
+//             .field("height", &self.image.height())
+//             .finish()
+//     }
+// }

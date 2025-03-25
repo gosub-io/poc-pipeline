@@ -49,7 +49,7 @@ impl Rasterable for SkiaRasterizer {
                         }
                     }
                     PaintCommand::Svg(command) => {
-                        svg::do_paint_svg(canvas, &tile, command.svg_id, &command.rect);
+                        svg::do_paint_svg(canvas, &tile, command.media_id, &command.rect);
                     }
                 }
             }

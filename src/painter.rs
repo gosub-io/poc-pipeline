@@ -12,7 +12,8 @@ use crate::painter::commands::brush::Brush;
 use crate::painter::commands::color::Color;
 use crate::painter::commands::rectangle::{Radius, Rectangle};
 use crate::painter::commands::PaintCommand;
-use crate::common::{get_image_store, get_svg_store};
+use crate::common::get_media_store;
+use crate::common::media::{Media, MediaType};
 use crate::painter::commands::border::{Border, BorderStyle};
 use crate::painter::commands::text::Text;
 use crate::tiler::{Tile, TiledLayoutElement};
@@ -164,15 +165,10 @@ impl Painter {
 
                 let brush = Brush::solid(Color::from_rgb8(130, 130, 130));
                 let r = Rectangle::new(layout_element.box_model.border_box()).with_background(brush);
-                commands.push(PaintCommand::svg(svg_ctx.svg_id, r));
+                commands.push(PaintCommand::svg(svg_ctx.media_id, r));
             }
             ElementContext::Image(image_ctx) => {
-                let binding = get_image_store();
-                let image_store = binding.read().expect("Failed to get image store");
-                let image = image_store.get(image_ctx.image_id).unwrap();
-
-                let brush = Brush::image(image.to_vec(), image.width(), image.height());
-                // let border = Border::new(3.0, BorderStyle::None, Brush::Solid(Color::GREEN));
+                let brush = Brush::image(image_ctx.media_id);
                 let r = Rectangle::new(layout_element.box_model.border_box()).with_background(brush);
                 commands.push(PaintCommand::rectangle(r));
             }

@@ -883,6 +883,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "file_type"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e237c2e6ae6183998137b1157b9e0fddfa25ce480f99f40ec1a5c2d49747c6d1"
+dependencies = [
+ "phf",
+]
+
+[[package]]
 name = "filetime"
 version = "0.2.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3029,8 +3038,11 @@ dependencies = [
 name = "poc-pipeline"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
+ "bytes",
  "colog",
  "csscolorparser",
+ "file_type",
  "gl",
  "glutin",
  "glutin-winit",
@@ -3052,6 +3064,7 @@ dependencies = [
  "sha2",
  "skia-safe",
  "taffy",
+ "thiserror 1.0.69",
  "vello",
  "winit",
 ]
