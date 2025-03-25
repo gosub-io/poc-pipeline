@@ -1,5 +1,4 @@
 use crate::common::media::MediaId;
-use crate::common::svg::Svg;
 use crate::painter::commands::rectangle::Rectangle;
 use crate::painter::commands::text::Text;
 

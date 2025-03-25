@@ -7,7 +7,6 @@ use crate::common::document::node::{NodeType, NodeId as DomNodeId};
 use crate::common::document::style::{FontWeight, StyleProperty, StyleValue, TextAlign, Unit};
 use crate::common::{geo, get_media_store};
 use crate::common::geo::Coordinate;
-use crate::common::image::ImageId;
 use crate::common::media::{Media, MediaId, MediaType};
 use crate::layouter::{LayoutElementNode, LayoutTree, LayoutElementId, CanLayout, ElementContext, box_model, ElementContextText, ElementContextImage, ElementContextSvg};
 use crate::layouter::css_taffy_converter::CssTaffyConverter;

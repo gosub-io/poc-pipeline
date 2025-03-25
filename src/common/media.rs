@@ -1,81 +1,16 @@
-use std::ops::AddAssign;
-use std::sync::Arc;
-use crate::common::hash::{hash_from_string, Sha256Hash};
-use crate::common::image::Image;
-use crate::common::svg::Svg;
+mod image;
+mod svg;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct MediaId(u64);
+mod media;
+mod media_store;
 
-impl MediaId {
-    pub const fn new(val: u64) -> Self {
-        Self(val)
-    }
-}
+pub use media::Media;
+pub use media::MediaImage;
+pub use media::MediaType;
+pub use media::MediaSvg;
+pub use media::MediaId;
 
-impl AddAssign<i32> for MediaId {
-    fn add_assign(&mut self, rhs: i32) {
-        self.0 += rhs as u64;
-    }
-}
+pub use svg::Svg;
+pub use image::Image;
 
-impl std::fmt::Display for MediaId {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "MediaId({})", self.0)
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum MediaType {
-    Svg,
-    Image,
-}
-
-#[allow(unused)]
-#[derive(Debug, Clone)]
-pub struct MediaSvg {
-    src: String,
-    hash: Sha256Hash,
-    pub svg: Svg,
-}
-
-#[allow(unused)]
-#[derive(Debug, Clone)]
-pub struct MediaImage {
-    src: String,
-    hash: Sha256Hash,
-    pub image: Image,
-}
-
-#[derive(Clone)]
-pub enum Media {
-    Svg(Arc<MediaSvg>),
-    Image(Arc<MediaImage>),
-}
-
-impl Media {
-    pub fn svg(src: &str, svg: Svg) -> Self {
-        Media::Svg(Arc::new(MediaSvg {
-            src: src.to_string(),
-            hash: hash_from_string(&src),
-            svg
-        }))
-    }
-
-    pub fn image(src: &str, image: Image) -> Self {
-        Media::Image(Arc::new(MediaImage {
-            src: src.to_string(),
-            hash: hash_from_string(&src),
-            image
-        }))
-    }
-}
-
-impl std::fmt::Debug for Media {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Media::Svg(svg) => write!(f, "Media::Svg({:?})", svg),
-            Media::Image(image) => write!(f, "Media::Image({:?})", image),
-        }
-    }
-}
+pub use media_store::get_media_store;

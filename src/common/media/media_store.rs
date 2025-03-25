@@ -6,14 +6,14 @@ use reqwest::header::HeaderValue;
 use resvg::usvg;
 use crate::common::hash::{hash_from_string, Sha256Hash};
 use crate::common::media::{Media, MediaId, MediaImage, MediaSvg, MediaType};
-use crate::common::svg::Svg;
+use crate::common::media::Svg;
 
 const DEFAULT_SVG_ID: MediaId = MediaId::new(0);
 const DEFAULT_IMAGE_ID: MediaId = MediaId::new(1);
 const FIRST_FREE_IMAGE_ID: u64 = 100;
 
-const DEFAULT_SVG_DATA: &[u8] = include_bytes!("../../resources/not-found.svg");
-const DEFAULT_IMAGE_DATA: &[u8] = include_bytes!("../../resources/default-image.png");
+const DEFAULT_SVG_DATA: &[u8] = include_bytes!("../../../resources/not-found.svg");
+const DEFAULT_IMAGE_DATA: &[u8] = include_bytes!("../../../resources/default-image.png");
 
 /// Media store is global
 pub static MEDIA_STORE: OnceLock<RwLock<MediaStore>> = OnceLock::new();
