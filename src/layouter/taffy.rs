@@ -12,6 +12,7 @@ use crate::common::media::{Media, MediaId, MediaType};
 use crate::layouter::{LayoutElementNode, LayoutTree, LayoutElementId, CanLayout, ElementContext, box_model, ElementContextText, ElementContextImage, ElementContextSvg};
 use crate::layouter::css_taffy_converter::CssTaffyConverter;
 use crate::layouter::text::{get_text_layout, Alignment};
+use std::borrow::Borrow;
 
 const DEFAULT_FONT_SIZE: f64 = 16.0;
 const DEFAULT_FONT_FAMILY: &str = "Sans";
@@ -237,7 +238,7 @@ impl TaffyLayouter {
                     let media_store = get_media_store();
                     let binding = media_store.read().unwrap();
                     let media = binding.get(media_id, MediaType::Image);
-                    taffy_context = match media {
+                    taffy_context = match media.borrow() {
                         Media::Svg(_) => {
                             Some(TaffyContext::svg(src.as_str(), media_id, dom_node.node_id))
                         }

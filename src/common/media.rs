@@ -1,4 +1,5 @@
 use std::ops::AddAssign;
+use std::sync::Arc;
 use crate::common::hash::{hash_from_string, Sha256Hash};
 use crate::common::image::Image;
 use crate::common::svg::Svg;
@@ -24,11 +25,13 @@ impl std::fmt::Display for MediaId {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub enum MediaType {
     Svg,
     Image,
 }
 
+#[allow(unused)]
 #[derive(Debug, Clone)]
 pub struct MediaSvg {
     src: String,
@@ -36,6 +39,7 @@ pub struct MediaSvg {
     pub svg: Svg,
 }
 
+#[allow(unused)]
 #[derive(Debug, Clone)]
 pub struct MediaImage {
     src: String,
@@ -45,25 +49,25 @@ pub struct MediaImage {
 
 #[derive(Clone)]
 pub enum Media {
-    Svg(MediaSvg),
-    Image(MediaImage),
+    Svg(Arc<MediaSvg>),
+    Image(Arc<MediaImage>),
 }
 
 impl Media {
     pub fn svg(src: &str, svg: Svg) -> Self {
-        Media::Svg(MediaSvg {
+        Media::Svg(Arc::new(MediaSvg {
             src: src.to_string(),
             hash: hash_from_string(&src),
             svg
-        })
+        }))
     }
 
     pub fn image(src: &str, image: Image) -> Self {
-        Media::Image(MediaImage {
+        Media::Image(Arc::new(MediaImage {
             src: src.to_string(),
             hash: hash_from_string(&src),
             image
-        })
+        }))
     }
 }
 
