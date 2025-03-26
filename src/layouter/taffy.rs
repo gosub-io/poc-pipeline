@@ -249,7 +249,7 @@ impl TaffyLayouter {
                 }
 
                 if data.tag_name.eq_ignore_ascii_case("svg") {
-                    unimplemented!("Encountered an SVG tag");
+                    // unimplemented!("Encountered an SVG tag");
                     // let src = "inline";
                     // let store = get_media_store();
                     // let media_id = store.read().unwrap().store_from_path(src);
@@ -457,6 +457,11 @@ fn to_absolute_url(uri: &str, base_uri: &str) -> String {
     // Make sure we don't have double slashes
     if base_uri.ends_with("/") && uri.starts_with("/") {
         return format!("{}{}", base_uri, &uri[1..]).to_string()
+    }
+
+    // Neither has a /
+    if !base_uri.ends_with("/") && !uri.starts_with("/") {
+        return format!("{}/{}", base_uri, uri).to_string()
     }
 
     format!("{}{}", base_uri, uri).to_string()

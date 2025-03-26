@@ -3064,7 +3064,6 @@ dependencies = [
  "sha2",
  "skia-safe",
  "taffy",
- "thiserror 1.0.69",
  "vello",
  "winit",
 ]
