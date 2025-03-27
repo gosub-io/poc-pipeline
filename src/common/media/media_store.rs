@@ -195,6 +195,11 @@ impl MediaStore {
         }
     }
 
+    pub fn update_svg(&self, media_id: MediaId, media: Arc<Media>) {
+        let mut entries = self.entries.write().expect("Failed to lock images");
+        entries.insert(media_id, media);
+    }
+
     /// Returns a media resource. If the media does not exist, it will return the default media resource as specified by the media_type
     pub fn get(&self, media_id: MediaId, media_type: MediaType) -> Arc<Media> {
         let entries = self.entries.read().expect("Failed to lock images");

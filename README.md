@@ -94,10 +94,25 @@ be split into a module with the corresponding name. Some code is shared between 
 `common` module. Note that it's possible for any pipeline module to use the `common` module, but not the other way around.
 
 
-# Main demo application
-The `main.rs` holds a simple GTK application to demonstrate the pipeline. The pipeline accepts a DOM document and stylesheets, but since this is a POC, we haven't 
-implemented a html5 and css parser. Instead, you can use the `soupertoo.py` tool in the `tools` directory to generate a JSON file that contains the DOM tree and the
-css styles which can be used in the `main.rs` file.
+# Main demo applications
+There are three demo applications, each running with its own backend.
+
+| Binary         | 2d rendering lib | text rendering lib |
+|----------------|------------------|--------------------|
+| pipeline-cairo | `cairo`            | `pangocairo`         |
+| pipeline-vello | `vello`            | `parley` or `skia`     |
+| pipeline-skia  | `skia`             | `skia`               |
+
+
+# Media store
+The media store is a simple in-memory store that keeps external (or inline) resources. It's used for storing images and SVG files but it allows to store 
+any kind of data. This media-store can be an offline cache for resources in the future. 
+
+
+# Texture store
+The texture store keeps all the textures from page tiles. This way we only need to rerender tiles when elements on them are dirty. For scrolling and other 
+purposes, we do not need to rerender the tiles but the compositor can take care of this. Even though we can use GPU accelerated rendering, we still need to 
+store the textures in memory. A good optimization might be to store the textures on the GPU and reference them in the texture store.
 
 # Rstar
 This pipeline relies on rstar for spatial searched. For instance, we need to know which elements are visible on the screen. Or which elements are at a certain position.

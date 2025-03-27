@@ -3,7 +3,7 @@ use crate::common::media::MediaId;
 use crate::painter::commands::rectangle::Rectangle;
 use crate::tiler::Tile;
 use resvg::usvg::Transform;
-use skia_safe::{images, Data, ImageInfo};
+use skia_safe::{images, AlphaType, ColorType, Data, ISize, ImageInfo};
 
 // At this point we can render an SVG. This is a two-step process: first, we need to render the svg to a pixmap
 // for a certain size. Then, the next step is to render that pixmap into an image which is rendered onto the canvas.
@@ -22,28 +22,44 @@ pub(crate) fn do_paint_svg(
     let binding = get_media_store().read().unwrap();
     let media = binding.get_svg(media_id);
 
-    // Check if we need to re-render the SVG. This happens when we need a different dimension
-    if media.svg.rendered_dimension != rect.rect().dimension() {
+    let lock = media.svg.rendered_dimension.read().unwrap();
+    let media_dimension = lock.clone();
+    drop(lock);
+
+    // Check if we need to re-render the SVG. This happens when we need a different dimension for the same SVG.
+    // With "normal" images, we would just scale the image, but since SVG is vector-based, we want to re-render it from
+    // the source. It might be better to either render each dimension into a separate media, or store only an X amount of
+    // different dimensions. This is a trade-off between memory and CPU usage.
+    if  media_dimension != rect.rect().dimension() {
+        println("Re-rendering SVG to {}", rect.rect().dimension());
         let pixmap_size = media.svg.tree.size().to_int_size();
         let mut pixmap =
             resvg::tiny_skia::Pixmap::new(pixmap_size.width(), pixmap_size.height()).unwrap();
         resvg::render(&media.svg.tree, Transform::default(), &mut pixmap.as_mut());
 
-        let info = ImageInfo::new(
-            skia_safe::ISize::new(rect.rect().width as i32, rect.rect().height as i32),
-            skia_safe::ColorType::BGRA8888,
-            skia_safe::AlphaType::Premul,
-            None,
-        );
-
-        let data = unsafe { Data::new_bytes(pixmap.data()) };
-        media.svg.rendered_image =
-            images::raster_from_data(&info, &data, (pixmap.width() * 4) as usize).unwrap();
-        media.svg.rendered_dimension = rect.rect().dimension();
+        let mut var = media.svg.rendered_data.write().unwrap();
+        *var = pixmap.data().to_vec();
+        let mut var = media.svg.rendered_dimension.write().unwrap();
+        *var = rect.rect().dimension();
     }
 
+    // At this point, we have the SVG rendered to raw image data. We can now render that data onto an image.
+
+    let svg_dimension = media.svg.rendered_dimension.read().unwrap();
+    let img_info = ImageInfo::new(
+        ISize::new(svg_dimension.width as i32, svg_dimension.height as i32),
+        // ColorType::RGBA8888,
+        ColorType::BGRA8888,
+        AlphaType::Premul,
+        None,
+    );
+
+    let svg_rendered_data = media.svg.rendered_data.read().unwrap();
+    let data = Data::new_copy(svg_rendered_data.as_slice());
+
+    let skia_image = images::raster_from_data(&img_info, data, svg_dimension.width as usize * 4).unwrap();
     canvas.draw_image(
-        &media.svg.rendered_image.as_ref(),
+        &skia_image,
         (rect.rect().x as f32, rect.rect().y as f32),
         None,
     );
