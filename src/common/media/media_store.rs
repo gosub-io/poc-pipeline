@@ -4,7 +4,7 @@ use bytes::Bytes;
 use file_type::FileType;
 use reqwest::header::HeaderValue;
 use resvg::usvg;
-use crate::common::hash::{hash_from_string, Sha256Hash};
+use crate::common::hash::{hash_from_data, hash_from_string, Sha256Hash};
 use crate::common::media::{Media, MediaId, MediaImage, MediaSvg, MediaType};
 use crate::common::media::Svg;
 
@@ -81,6 +81,64 @@ impl MediaStore {
         result
     }
 
+    pub fn load_media_from_data(&self, media_type: MediaType, data: &[u8]) -> anyhow::Result<MediaId> {
+        let h = hash_from_data(data);
+        let cache = self.cache.read().expect("Failed to lock cache");
+        if let Some(media_id) = cache.get(&h) {
+            println!("Loading cached media from data");
+            return Ok(*media_id);
+        }
+        drop(cache);
+
+        let media_id = match media_type {
+            MediaType::Svg => {
+                let svg_tree = match usvg::Tree::from_data(data, &usvg::Options::default()) {
+                    Ok(tree) => tree,
+                    Err(_) => {
+                        return Err(anyhow::anyhow!("Failed to parse SVG data"));
+                    }
+                };
+
+                let media = Media::svg("gosub://data/svg", Svg::new(svg_tree));
+                let media_id = *self.next_id.read().expect("Failed to lock next media ID");
+                *self.next_id.write().expect("Failed to lock next media ID") += 1;
+
+                let mut entries = self.entries.write().expect("Failed to lock entries");
+                entries.insert(media_id, Arc::new(media));
+
+                let mut cache = self.cache.write().expect("Failed to lock cache");
+                cache.insert(h, media_id);
+
+                media_id
+            }
+            MediaType::Image => {
+                let img = match image::load_from_memory(data) {
+                    Ok(img) => img,
+                    Err(_) => {
+                        return Err(anyhow::anyhow!("Failed to parse image data"));
+                    }
+                };
+
+                let media = Media::image("gosub://data/image", img.to_rgba8());
+                let media_id = *self.next_id.read().expect("Failed to lock next media ID");
+                *self.next_id.write().expect("Failed to lock next media ID") += 1;
+
+                let mut entries = self.entries.write().expect("Failed to lock entries");
+                entries.insert(media_id, Arc::new(media));
+
+                let mut cache = self.cache.write().expect("Failed to lock cache");
+                cache.insert(h, media_id);
+
+                media_id
+            }
+        };
+
+        let mut cache = self.cache.write().expect("Failed to lock cache");
+        cache.insert(h, media_id);
+
+        Ok(media_id)
+    }
+
     fn load_media_from_source(&self, src: &str) -> anyhow::Result<MediaId> {
         println!("Loading non-cached media from path: {}", src);
         let Ok((media_type, raw_data)) = self.fetch_resource(src) else {
@@ -121,11 +179,11 @@ impl MediaStore {
 
     /// Returns a media image. If the media is not an image or does not exist, it will return the default media image id
     pub fn get_image(&self, media_id: MediaId) -> Arc<MediaImage> {
-       let media = self.get(media_id, MediaType::Image);
-       match &*media {
+        let media = self.get(media_id, MediaType::Image);
+        match &*media {
             Media::Image(media_image) => media_image.clone(),
             _ => unreachable!("Media is not an image"),
-       }
+        }
     }
 
     /// Returns a media svg. If the media is not an svg or does not exist, it will return the default media svg id
@@ -173,13 +231,11 @@ impl MediaStore {
         let detected_content_type = detect_content_type(
             response.headers().get("content-type").unwrap_or(&HeaderValue::from_static("")).to_str().unwrap_or(""),
         );
-        dbg!(&detected_content_type);
 
 
         // Detect through content bytes
         let raw_bytes = response.bytes().unwrap_or(Bytes::new());
         let detected_file_type = detect_file_type(&raw_bytes);
-        dbg!(&detected_file_type);
 
         if detected_content_type.is_none() && detected_file_type.is_none() {
             anyhow::bail!("Failed to detect media type");

@@ -15,6 +15,11 @@ impl Rect {
         Self { x, y, width, height }
     }
 
+    /// Returns the dimension of the rectangle.
+    pub fn dimension(&self) -> Dimension {
+        Dimension::new(self.width, self.height)
+    }
+
     /// Converts a size and dimension into a rectangle.
     #[allow(unused)]
     pub fn from_coord_dimension(coord: Coordinate, dimension: Dimension) -> Self {
@@ -68,7 +73,7 @@ impl Coordinate {
 
 /// Dimension in width and height. Together with a Dimension it forms a Rect.
 #[allow(unused)]
-#[derive(Clone, Debug, Copy)]
+#[derive(Clone, Debug, Copy, PartialEq)]
 pub struct Dimension {
     pub width: f64,
     pub height: f64,

@@ -162,6 +162,7 @@ pub struct Node {
 }
 
 impl Node {
+
     /// Returns true if the node is a block element
     pub fn is_block_element(&self) -> bool {
         match &self.node_type {

@@ -1,10 +1,6 @@
-#[cfg(not(feature="backend_skia"))]
+#[cfg(not(feature = "backend_skia"))]
 compile_error!("This binary can only be used with the feature 'backend_skia' enabled");
 
-use std::ffi::CString;
-use std::num::NonZeroU32;
-use std::sync::{Arc, RwLock};
-use std::time::Instant;
 use gl::types::*;
 use gl_rs as gl;
 use glutin::{
@@ -18,12 +14,31 @@ use glutin_winit::DisplayBuilder;
 use log::info;
 #[allow(deprecated)]
 use raw_window_handle::HasWindowHandle;
+use std::ffi::CString;
+use std::num::NonZeroU32;
+use std::sync::{Arc, RwLock};
+use std::time::Instant;
 use winit::{
     event::WindowEvent,
     event_loop::{ControlFlow, EventLoop},
-    window::{Window},
+    window::Window,
 };
 
+use poc_pipeline::common;
+use poc_pipeline::common::browser_state::{
+    get_browser_state, init_browser_state, BrowserState, WireframeState,
+};
+use poc_pipeline::common::geo::{Dimension, Rect};
+use poc_pipeline::compositor::skia::{SkiaCompositor, SkiaCompositorConfig};
+use poc_pipeline::compositor::Composable;
+use poc_pipeline::layering::layer::{LayerId, LayerList};
+use poc_pipeline::layouter::taffy::TaffyLayouter;
+use poc_pipeline::layouter::CanLayout;
+use poc_pipeline::painter::Painter;
+use poc_pipeline::rasterizer::skia::SkiaRasterizer;
+use poc_pipeline::rasterizer::Rasterable;
+use poc_pipeline::rendertree_builder::RenderTree;
+use poc_pipeline::tiler::{TileList, TileState};
 use skia_safe::{
     gpu::{self, backend_render_targets, gl::FramebufferInfo, SurfaceOrigin},
     Color, ColorType, Surface,
@@ -34,25 +49,15 @@ use winit::event_loop::ActiveEventLoop;
 use winit::keyboard::KeyCode;
 use winit::keyboard::PhysicalKey::Code;
 use winit::window::{WindowAttributes, WindowId};
-use poc_pipeline::common;
-use poc_pipeline::rendertree_builder::RenderTree;
-use poc_pipeline::common::browser_state::{get_browser_state, init_browser_state, BrowserState, WireframeState};
-use poc_pipeline::common::geo::{Dimension, Rect};
-use poc_pipeline::compositor::Composable;
-use poc_pipeline::compositor::skia::{SkiaCompositor, SkiaCompositorConfig};
-use poc_pipeline::layering::layer::{LayerId, LayerList};
-use poc_pipeline::tiler::{TileList, TileState};
-use poc_pipeline::layouter::taffy::TaffyLayouter;
-use poc_pipeline::layouter::CanLayout;
-use poc_pipeline::painter::Painter;
-use poc_pipeline::rasterizer::Rasterable;
-use poc_pipeline::rasterizer::skia::SkiaRasterizer;
 
-const TILE_DIMENSION : f64 = 256.0;
+const TILE_DIMENSION: f64 = 256.0;
 
 fn main() {
     // let doc = common::document::parser::document_from_json("https://codemusings.nl","cm.json");
-    let doc = common::document::parser::document_from_json("https://news.ycombinator.com", "news.ycombinator.com.json");
+    // let doc = common::document::parser::document_from_json("https://news.ycombinator.com", "news.ycombinator.com.json");
+    // let doc = common::document::parser::document_from_json("https://codemusings.nl", "cm.json");
+    let doc = common::document::parser::document_from_json("https://gosub.io", "svg.json");
+    // let doc = common::document::parser::document_from_json("https://news.ycombinator.com", "news.ycombinator.com.json");
     // let doc = common::document::parser::document_from_json("https://rockylinux.org", "rockylinux.org.json");
     // let doc = common::document::parser::document_from_json("https://almalinux.org", "almalinux.org.json");
     // let mut output = String::new();
@@ -62,14 +67,18 @@ fn main() {
     let window_dimension = Dimension::new(800.0, 600.0);
     let viewport_dimension = Dimension::new(1024.0, 768.0);
 
-
     let browser_state = BrowserState {
         visible_layer_list: vec![true; 10],
         wireframed: WireframeState::None,
         debug_hover: false,
         current_hovered_element: None,
         show_tilegrid: true,
-        viewport: Rect::new(0.0, 0.0, viewport_dimension.width, viewport_dimension.height),
+        viewport: Rect::new(
+            0.0,
+            0.0,
+            viewport_dimension.width,
+            viewport_dimension.height,
+        ),
         document: Arc::new(doc),
         tile_list: None,
     };
@@ -93,7 +102,7 @@ fn reflow() {
     let mut layouter = TaffyLayouter::new();
     let layout_tree = layouter.layout(
         render_tree,
-        Some(Dimension::new(state.viewport.width, state.viewport.height))
+        Some(Dimension::new(state.viewport.width, state.viewport.height)),
     );
 
     let layer_list = LayerList::new(layout_tree);
@@ -167,13 +176,15 @@ impl ApplicationHandler for App {
 
         self.pfs = Instant::now();
         self.frame = 0;
-        self.env = Some(create_window_env(event_loop, &self.window_title, self.window_size));
+        self.env = Some(create_window_env(
+            event_loop,
+            &self.window_title,
+            self.window_size,
+        ));
     }
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
-        let Some(env) = &mut self.env else {
-            return
-        };
+        let Some(env) = &mut self.env else { return };
 
         match event {
             WindowEvent::CloseRequested => {
@@ -229,15 +240,23 @@ impl ApplicationHandler for App {
                     do_rasterize(LayerId::new(1));
                 }
 
-                let canvas =  env.surface.canvas();
-                let _surface = SkiaCompositor::compose(SkiaCompositorConfig{
-                    canvas,
-                });
+                let canvas = env.surface.canvas();
+                let _surface = SkiaCompositor::compose(SkiaCompositorConfig { canvas });
 
                 env.gr_context.flush_and_submit();
                 env.gl_surface.swap_buffers(&env.gl_context).unwrap();
             }
-            WindowEvent::KeyboardInput { event: KeyEvent { physical_key, logical_key, state, repeat, .. }, .. } => {
+            WindowEvent::KeyboardInput {
+                event:
+                    KeyEvent {
+                        physical_key,
+                        logical_key,
+                        state,
+                        repeat,
+                        ..
+                    },
+                ..
+            } => {
                 if !state.is_pressed() || repeat {
                     return;
                 }
@@ -282,7 +301,10 @@ impl ApplicationHandler for App {
                         return;
                     };
 
-                    tile_list.write().expect("Failed to get tile list").invalidate_all();
+                    tile_list
+                        .write()
+                        .expect("Failed to get tile list")
+                        .invalidate_all();
                     env.window.request_redraw();
                 }
 
@@ -308,7 +330,10 @@ impl ApplicationHandler for App {
 }
 
 fn create_window_env(el: &ActiveEventLoop, title: &str, size: Dimension) -> Env {
-    info!("Creating ({}x{}) window with title: {} ", size.width, size.height,  title);
+    info!(
+        "Creating ({}x{}) window with title: {} ",
+        size.width, size.height, title
+    );
 
     // --------------------------------------------------------------------
     // Initialize Skia/OpenGl stuff
@@ -364,7 +389,7 @@ fn create_window_env(el: &ActiveEventLoop, title: &str, size: Dimension) -> Env 
     let attrs = SurfaceAttributesBuilder::<WindowSurface>::new().build(
         raw_window_handle.into(),
         NonZeroU32::new(width).unwrap(),
-        NonZeroU32::new(height).unwrap()
+        NonZeroU32::new(height).unwrap(),
     );
 
     let gl_surface = unsafe {
@@ -390,11 +415,12 @@ fn create_window_env(el: &ActiveEventLoop, title: &str, size: Dimension) -> Env 
         gl_config
             .display()
             .get_proc_address(CString::new(name).unwrap().as_c_str())
-    }).expect("Could not create interface");
+    })
+    .expect("Could not create interface");
 
     #[allow(deprecated)]
-    let mut gr_context = gpu::DirectContext::new_gl(interface, None)
-        .expect("Failed to create GPU context for Skia");
+    let mut gr_context =
+        gpu::DirectContext::new_gl(interface, None).expect("Failed to create GPU context for Skia");
 
     let fb_info = {
         let mut fboid: GLint = 0;
@@ -443,7 +469,8 @@ fn create_surface(
         size.height.try_into().expect("Failed to convert height"),
     );
     info!("Size: {:?}", size);
-    let backend_render_target = backend_render_targets::make_gl(size, num_samples, stencil_size, fb_info);
+    let backend_render_target =
+        backend_render_targets::make_gl(size, num_samples, stencil_size, fb_info);
 
     gpu::surfaces::wrap_backend_render_target(
         gr_context,
@@ -452,7 +479,8 @@ fn create_surface(
         ColorType::RGBA8888,
         None,
         None,
-    ).expect("Failed to create surface")
+    )
+    .expect("Failed to create surface")
 }
 
 fn do_paint(layer_id: LayerId) {
@@ -466,7 +494,10 @@ fn do_paint(layer_id: LayerId) {
 
     let painter = Painter::new(tile_list.read().unwrap().layer_list.clone());
 
-    let tile_ids = tile_list.read().unwrap().get_intersecting_tiles(layer_id, state.viewport);
+    let tile_ids = tile_list
+        .read()
+        .unwrap()
+        .get_intersecting_tiles(layer_id, state.viewport);
     for tile_id in tile_ids {
         // get tile
         let mut binding = tile_list.write().expect("Failed to get tile list");
@@ -496,7 +527,10 @@ fn do_rasterize(layer_id: LayerId) {
         return;
     };
 
-    let tile_ids = tile_list.read().unwrap().get_intersecting_tiles(layer_id, state.viewport);
+    let tile_ids = tile_list
+        .read()
+        .unwrap()
+        .get_intersecting_tiles(layer_id, state.viewport);
     for tile_id in tile_ids {
         // get tile
         let mut binding = tile_list.write().expect("Failed to get tile list");

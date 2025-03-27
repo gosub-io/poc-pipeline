@@ -1,33 +1,34 @@
-#[cfg(not(feature="backend_vello"))]
+#[cfg(not(feature = "backend_vello"))]
 compile_error!("This binary can only be used with the feature 'backend_vello' enabled");
 
+use poc_pipeline::common;
+use poc_pipeline::common::browser_state::{
+    get_browser_state, init_browser_state, BrowserState, WireframeState,
+};
+use poc_pipeline::common::geo::{Dimension, Rect};
+use poc_pipeline::compositor::vello::{VelloCompositor, VelloCompositorConfig};
+use poc_pipeline::compositor::Composable;
+use poc_pipeline::layering::layer::{LayerId, LayerList};
+use poc_pipeline::layouter::taffy::TaffyLayouter;
+use poc_pipeline::layouter::CanLayout;
+use poc_pipeline::painter::Painter;
+use poc_pipeline::rasterizer::vello::VelloRasterizer;
+use poc_pipeline::rasterizer::Rasterable;
+use poc_pipeline::rendertree_builder::RenderTree;
+use poc_pipeline::tiler::{TileList, TileState};
 use std::cell::RefCell;
 use std::sync::Arc;
+use std::sync::RwLock;
 use vello::peniko::color;
 use vello::util::{DeviceHandle, RenderContext, RenderSurface};
 use vello::{wgpu, AaConfig, AaSupport, RenderParams, Renderer, RendererOptions};
 use winit::application::ApplicationHandler;
+use winit::dpi::{PhysicalSize, Size};
 use winit::event::WindowEvent;
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::window::{Window, WindowId};
-use std::sync::RwLock;
-use winit::dpi::{PhysicalSize, Size};
-use poc_pipeline::common;
-use poc_pipeline::rendertree_builder::RenderTree;
-use poc_pipeline::common::browser_state::{get_browser_state, init_browser_state, BrowserState, WireframeState};
-use poc_pipeline::common::geo::{Dimension, Rect};
-use poc_pipeline::compositor::Composable;
-use poc_pipeline::compositor::vello::{VelloCompositor, VelloCompositorConfig};
-use poc_pipeline::layering::layer::{LayerId, LayerList};
-use poc_pipeline::tiler::{TileList, TileState};
-use poc_pipeline::layouter::taffy::TaffyLayouter;
-use poc_pipeline::layouter::CanLayout;
-use poc_pipeline::painter::Painter;
-use poc_pipeline::rasterizer::Rasterable;
-use poc_pipeline::rasterizer::vello::VelloRasterizer;
 
-const TILE_DIMENSION : f64 = 256.0;
-
+const TILE_DIMENSION: f64 = 256.0;
 
 fn main() {
     // --------------------------------------------------------------------
@@ -52,7 +53,10 @@ fn main() {
     let mut layouter = TaffyLayouter::new();
     let layout_tree = layouter.layout(render_tree, None);
     layouter.print_tree();
-    println!("Layout width: {}, height: {}", layout_tree.root_dimension.width, layout_tree.root_dimension.height);
+    println!(
+        "Layout width: {}, height: {}",
+        layout_tree.root_dimension.width, layout_tree.root_dimension.height
+    );
 
     // -------------------------------------------------------------------  -
     // Generate render layers
@@ -74,7 +78,6 @@ fn main() {
     // At this point, we have done everything we can before painting. The rest
     // is completed in the draw function of the UI.
 
-
     let browser_state = BrowserState {
         visible_layer_list: vec![true; 10],
         wireframed: WireframeState::None,
@@ -85,7 +88,6 @@ fn main() {
         viewport: Rect::new(0.0, 0.0, 1024.0, 2600.0),
     };
     init_browser_state(browser_state);
-
 
     let event_loop = EventLoop::new().unwrap();
     event_loop.set_control_flow(ControlFlow::Poll);
@@ -124,9 +126,12 @@ impl ApplicationHandler for App<'_> {
         let window = Arc::new(event_loop.create_window(attribs).unwrap());
 
         let size = window.inner_size();
-        let surface_future =
-            self.render_ctx
-                .create_surface(window.clone(), size.width, size.height, wgpu::PresentMode::AutoVsync);
+        let surface_future = self.render_ctx.create_surface(
+            window.clone(),
+            size.width,
+            size.height,
+            wgpu::PresentMode::AutoVsync,
+        );
         let surface = pollster::block_on(surface_future).expect("Failed to create surface");
 
         let dev_handle = &self.render_ctx.devices[surface.dev_id];
@@ -152,8 +157,11 @@ impl ApplicationHandler for App<'_> {
                 event_loop.exit();
             }
             WindowEvent::Resized(size) => {
-                self.render_ctx
-                    .resize_surface(self.surface.as_mut().unwrap(), size.width, size.height);
+                self.render_ctx.resize_surface(
+                    self.surface.as_mut().unwrap(),
+                    size.width,
+                    size.height,
+                );
             }
             WindowEvent::RedrawRequested => {
                 let surface = self.surface.as_ref().unwrap();
@@ -192,7 +200,7 @@ impl ApplicationHandler for App<'_> {
                     antialiasing_method: AaConfig::Msaa16,
                 };
 
-                let scene = VelloCompositor::compose(VelloCompositorConfig{});
+                let scene = VelloCompositor::compose(VelloCompositorConfig {});
 
                 let binding = self.renderer.clone().unwrap();
                 let mut renderer = binding.borrow_mut();
@@ -217,7 +225,11 @@ fn do_paint(layer_id: LayerId) {
 
     let painter = Painter::new(state.tile_list.read().unwrap().layer_list.clone());
 
-    let tile_ids = state.tile_list.read().unwrap().get_intersecting_tiles(layer_id, state.viewport);
+    let tile_ids = state
+        .tile_list
+        .read()
+        .unwrap()
+        .get_intersecting_tiles(layer_id, state.viewport);
     for tile_id in tile_ids {
         // get tile
         let mut binding = state.tile_list.write().expect("Failed to get tile list");
@@ -238,11 +250,20 @@ fn do_paint(layer_id: LayerId) {
     }
 }
 
-fn do_rasterize(device: &wgpu::Device, queue: &wgpu::Queue, renderer: Arc<RefCell<Renderer>>, layer_id: LayerId) {
+fn do_rasterize(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    renderer: Arc<RefCell<Renderer>>,
+    layer_id: LayerId,
+) {
     let binding = get_browser_state();
     let state = binding.read().unwrap();
 
-    let tile_ids = state.tile_list.read().unwrap().get_intersecting_tiles(layer_id, state.viewport);
+    let tile_ids = state
+        .tile_list
+        .read()
+        .unwrap()
+        .get_intersecting_tiles(layer_id, state.viewport);
     for tile_id in tile_ids {
         // get tile
         let mut binding = state.tile_list.write().expect("Failed to get tile list");

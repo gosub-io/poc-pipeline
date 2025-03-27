@@ -1,17 +1,20 @@
+use crate::common::document::node::{NodeId as DomNodeId, NodeType};
+use crate::common::document::style::{FontWeight, StyleProperty, StyleValue, TextAlign, Unit};
+use crate::common::geo::Coordinate;
+use crate::common::media::{Media, MediaId, MediaType};
+use crate::common::{geo, get_media_store};
+use crate::layouter::css_taffy_converter::CssTaffyConverter;
+use crate::layouter::text::{get_text_layout, Alignment};
+use crate::layouter::{
+    box_model, CanLayout, ElementContext, ElementContextImage, ElementContextSvg,
+    ElementContextText, LayoutElementId, LayoutElementNode, LayoutTree,
+};
+use crate::rendertree_builder::{RenderNodeId, RenderTree};
+use std::borrow::Borrow;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use taffy::prelude::*;
 use taffy::NodeId as TaffyNodeId;
-use crate::rendertree_builder::{RenderTree, RenderNodeId};
-use crate::common::document::node::{NodeType, NodeId as DomNodeId};
-use crate::common::document::style::{FontWeight, StyleProperty, StyleValue, TextAlign, Unit};
-use crate::common::{geo, get_media_store};
-use crate::common::geo::Coordinate;
-use crate::common::media::{Media, MediaId, MediaType};
-use crate::layouter::{LayoutElementNode, LayoutTree, LayoutElementId, CanLayout, ElementContext, box_model, ElementContextText, ElementContextImage, ElementContextSvg};
-use crate::layouter::css_taffy_converter::CssTaffyConverter;
-use crate::layouter::text::{get_text_layout, Alignment};
-use std::borrow::Borrow;
 
 const DEFAULT_FONT_SIZE: f64 = 16.0;
 const DEFAULT_FONT_FAMILY: &str = "Sans";
@@ -35,8 +38,17 @@ pub enum TaffyContext {
 }
 
 impl TaffyContext {
-    fn text(font_family: &str, font_size: f64, font_weight: usize, line_height: f64, alignment: Alignment, text: &str, node_id: DomNodeId, text_offset: Coordinate) -> TaffyContext {
-        TaffyContext::Text(ElementContextText{
+    fn text(
+        font_family: &str,
+        font_size: f64,
+        font_weight: usize,
+        line_height: f64,
+        alignment: Alignment,
+        text: &str,
+        node_id: DomNodeId,
+        text_offset: Coordinate,
+    ) -> TaffyContext {
+        TaffyContext::Text(ElementContextText {
             node_id,
             font_family: font_family.to_string(),
             font_size,
@@ -48,8 +60,13 @@ impl TaffyContext {
         })
     }
 
-    fn image(src: &str, media_id: MediaId, dimension: geo::Dimension, node_id: DomNodeId) -> TaffyContext {
-        TaffyContext::Image(ElementContextImage{
+    fn image(
+        src: &str,
+        media_id: MediaId,
+        dimension: geo::Dimension,
+        node_id: DomNodeId,
+    ) -> TaffyContext {
+        TaffyContext::Image(ElementContextImage {
             node_id,
             src: src.to_string(),
             media_id,
@@ -58,7 +75,7 @@ impl TaffyContext {
     }
 
     fn svg(src: &str, media_id: MediaId, node_id: DomNodeId) -> TaffyContext {
-        TaffyContext::Svg(ElementContextSvg{
+        TaffyContext::Svg(ElementContextSvg {
             node_id,
             src: src.to_string(),
             media_id,
@@ -98,44 +115,46 @@ impl CanLayout for TaffyLayouter {
         };
 
         /// Compute the layout with a measure function
-        self.tree.compute_layout_with_measure(self.root_id, size, |v_kd, v_as, v_ni, v_nc, v_s| {
-            match v_nc {
-                // Calculate text node
-                Some(TaffyContext::Text(text_ctx)) => {
-                    let font_size = text_ctx.font_size;
-                    let font_weight = text_ctx.font_weight;
-                    let font_family = text_ctx.font_family.as_str();
-                    let text = text_ctx.text.as_str();
-                    let line_height = text_ctx.line_height;
-                    let alignment = text_ctx.alignment;
+        self.tree
+            .compute_layout_with_measure(self.root_id, size, |v_kd, v_as, v_ni, v_nc, v_s| {
+                match v_nc {
+                    // Calculate text node
+                    Some(TaffyContext::Text(text_ctx)) => {
+                        let font_size = text_ctx.font_size;
+                        let font_weight = text_ctx.font_weight;
+                        let font_family = text_ctx.font_family.as_str();
+                        let text = text_ctx.text.as_str();
+                        let line_height = text_ctx.line_height;
+                        let alignment = text_ctx.alignment;
 
-                    let max_width = match v_as.width {
-                        AvailableSpace::Definite(width) => width as f64,
-                        AvailableSpace::MaxContent => f64::MAX,
-                        AvailableSpace::MinContent => 0.0,
-                    };
+                        let max_width = match v_as.width {
+                            AvailableSpace::Definite(width) => width as f64,
+                            AvailableSpace::MaxContent => f64::MAX,
+                            AvailableSpace::MinContent => 0.0,
+                        };
 
-                    // Calculate the text layout dimensions and return it to taffy
-                    let text_layout = get_text_layout(
-                        text,
-                        font_family,
-                        font_size,
-                        font_weight,
-                        line_height,
-                        max_width,
-                        alignment,
-                    );
-                    match text_layout {
-                        Ok(text_layout) => Size {
-                            width: text_layout.width as f32,
-                            height: text_layout.height as f32
-                        },
-                        Err(_) => Size::ZERO,
+                        // Calculate the text layout dimensions and return it to taffy
+                        let text_layout = get_text_layout(
+                            text,
+                            font_family,
+                            font_size,
+                            font_weight,
+                            line_height,
+                            max_width,
+                            alignment,
+                        );
+                        match text_layout {
+                            Ok(text_layout) => Size {
+                                width: text_layout.width as f32,
+                                height: text_layout.height as f32,
+                            },
+                            Err(_) => Size::ZERO,
+                        }
                     }
-                },
-                _ => Size::ZERO
-            }
-        }).unwrap();
+                    _ => Size::ZERO,
+                }
+            })
+            .unwrap();
 
         // Since we are not interested in taffy layout after this stage in the pipeline, we convert
         // the taffy layout to a box model layout tree. This makes the rest of the pipeline
@@ -155,7 +174,12 @@ impl CanLayout for TaffyLayouter {
 
 impl TaffyLayouter {
     // Populate the layout tree with the box models that we now can generate
-    fn populate_boxmodel(&self, layout_tree: &mut LayoutTree, layout_node_id: LayoutElementId, offset: Coordinate) {
+    fn populate_boxmodel(
+        &self,
+        layout_tree: &mut LayoutTree,
+        layout_node_id: LayoutElementId,
+        offset: Coordinate,
+    ) {
         let taffy_node_id = self.layout_taffy_mapping.get(&layout_node_id).unwrap();
         let layout = self.tree.layout(*taffy_node_id).unwrap().clone();
 
@@ -164,15 +188,29 @@ impl TaffyLayouter {
         let child_ids = el.children.clone();
 
         for child_id in child_ids {
-            self.populate_boxmodel(layout_tree, child_id, Coordinate::new(
-                offset.x + layout.location.x as f64 + layout.padding.left as f64 + layout.margin.left as f64,
-                offset.y + layout.location.y as f64 + layout.padding.top as f64 + layout.margin.top as f64
-            ));
+            self.populate_boxmodel(
+                layout_tree,
+                child_id,
+                Coordinate::new(
+                    offset.x
+                        + layout.location.x as f64
+                        + layout.padding.left as f64
+                        + layout.margin.left as f64,
+                    offset.y
+                        + layout.location.y as f64
+                        + layout.padding.top as f64
+                        + layout.margin.top as f64,
+                ),
+            );
         }
     }
 
     /// Generate the layout tree from the render tree
-    fn generate_tree(&mut self, render_tree: RenderTree, root_id: RenderNodeId) -> Option<LayoutTree> {
+    fn generate_tree(
+        &mut self,
+        render_tree: RenderTree,
+        root_id: RenderNodeId,
+    ) -> Option<LayoutTree> {
         self.tree = TaffyTree::new();
         self.root_id = TaffyNodeId::new(0); // Will be filled in later
 
@@ -185,7 +223,9 @@ impl TaffyLayouter {
             rstar_tree: rstar::RTree::new(),
         };
 
-        let Some((layout_element_root_id, taffy_root_id)) = self.generate_node(&mut layout_tree, root_id, 0) else {
+        let Some((layout_element_root_id, taffy_root_id)) =
+            self.generate_node(&mut layout_tree, root_id, 0)
+        else {
             return None;
         };
 
@@ -197,12 +237,21 @@ impl TaffyLayouter {
 
     /// inline_element_counter will increase each time an inline element is generated and reset to zero when we reached a block element
     /// This allows us to add a space between inline elements, but not before or after block elements.
-    fn generate_node<'a>(&mut self, layout_tree: &'a mut LayoutTree, render_node_id: RenderNodeId, inline_element_counter: usize) -> Option<(LayoutElementId, TaffyNodeId)> {
+    fn generate_node<'a>(
+        &mut self,
+        layout_tree: &'a mut LayoutTree,
+        render_node_id: RenderNodeId,
+        inline_element_counter: usize,
+    ) -> Option<(LayoutElementId, TaffyNodeId)> {
         // Find render node and dom node from the layout tree
         let Some(render_node) = layout_tree.render_tree.get_node_by_id(render_node_id) else {
             return None;
         };
-        let Some(dom_node) = layout_tree.render_tree.doc.get_node_by_id(DomNodeId::from(render_node.node_id)) else {
+        let Some(dom_node) = layout_tree
+            .render_tree
+            .doc
+            .get_node_by_id(DomNodeId::from(render_node.node_id))
+        else {
             return None;
         };
         let render_node_children = render_node.children.clone();
@@ -242,22 +291,40 @@ impl TaffyLayouter {
                             Some(TaffyContext::svg(src.as_str(), media_id, dom_node.node_id))
                         }
                         Media::Image(media_image) => {
-                            let dimension = geo::Dimension::new(media_image.image.width() as f64, media_image.image.height() as f64);
-                            Some(TaffyContext::image(src.as_str(), media_id, dimension, dom_node.node_id))
+                            let dimension = geo::Dimension::new(
+                                media_image.image.width() as f64,
+                                media_image.image.height() as f64,
+                            );
+                            Some(TaffyContext::image(
+                                src.as_str(),
+                                media_id,
+                                dimension,
+                                dom_node.node_id,
+                            ))
                         }
                     }
                 }
 
                 if data.tag_name.eq_ignore_ascii_case("svg") {
-                    // unimplemented!("Encountered an SVG tag");
-                    // let src = "inline";
-                    // let store = get_media_store();
-                    // let media_id = store.read().unwrap().store_from_path(src);
-                    //
-                    // let media = store.read().unwrap().get_image(media_id);
-                    // let dimension = geo::Dimension::new(media.image.width as f64, media.image.height as f64);
-                    //
-                    // taffy_context = Some(TaffyContext::image(src, media_id, dimension, dom_node.node_id));
+                    let inner_html = layout_tree.render_tree.doc.inner_html(dom_node.node_id);
+
+                    let store = get_media_store();
+                    match store
+                        .read()
+                        .unwrap()
+                        .load_media_from_data(MediaType::Svg, inner_html.into_bytes().as_slice())
+                    {
+                        Ok(media_id) => {
+                            taffy_context = Some(TaffyContext::svg(
+                                "gosub://internal",
+                                media_id,
+                                dom_node.node_id,
+                            ));
+                        }
+                        Err(e) => {
+                            log::info!("Could not load SVG media: {:?}", e);
+                        }
+                    }
                 }
             }
             NodeType::Text(text, node_style) => {
@@ -274,20 +341,18 @@ impl TaffyLayouter {
                 let mut font_family = DEFAULT_FONT_FAMILY.to_string();
 
                 match node_style.get_property(StyleProperty::FontSize) {
-                    Some(StyleValue::Unit(value, unit)) => {
-                        match unit {
-                            Unit::Px => font_size = *value as f64,
-                            Unit::Em => panic!("Don't know how to deal with em units for fonts"),
-                            Unit::Rem => panic!("Don't know how to deal with rem units for fonts"),
-                            _ => panic!("Incorrect font-size property unit"),
-                        }
-                    }
-                    _ => {},
+                    Some(StyleValue::Unit(value, unit)) => match unit {
+                        Unit::Px => font_size = *value as f64,
+                        Unit::Em => panic!("Don't know how to deal with em units for fonts"),
+                        Unit::Rem => panic!("Don't know how to deal with rem units for fonts"),
+                        _ => panic!("Incorrect font-size property unit"),
+                    },
+                    _ => {}
                 }
 
                 match node_style.get_property(StyleProperty::FontFamily) {
                     Some(StyleValue::Keyword(value)) => font_family = value.clone(),
-                    _ => {},
+                    _ => {}
                 }
 
                 let font_weight = match node_style.get_property(StyleProperty::FontWeight) {
@@ -295,9 +360,13 @@ impl TaffyLayouter {
                         FontWeight::Normal => 400.0,
                         FontWeight::Bold => 700.0,
                         FontWeight::Number(value) => *value as f64,
-                        FontWeight::Bolder => { unimplemented!("FontWeight::Bolder is not implemented yet") },
-                        FontWeight::Lighter => { unimplemented!("FontWeight::Lighter is not implemented yet") },
-                    }
+                        FontWeight::Bolder => {
+                            unimplemented!("FontWeight::Bolder is not implemented yet")
+                        }
+                        FontWeight::Lighter => {
+                            unimplemented!("FontWeight::Lighter is not implemented yet")
+                        }
+                    },
                     _ => 400.0,
                 };
 
@@ -309,24 +378,34 @@ impl TaffyLayouter {
                         TextAlign::Justify => Alignment::Justified,
                         TextAlign::Start => Alignment::Start,
                         TextAlign::End => Alignment::Start,
-                        TextAlign::MatchParent => unimplemented!("TextAlign::MatchParent is not implemented yet"),
-                        TextAlign::Initial => unimplemented!("TextAlign::Initial is not implemented yet"),
-                        TextAlign::Inherit => unimplemented!("TextAlign::Inherit is not implemented yet"),
-                        TextAlign::Revert => unimplemented!("TextAlign::Revert is not implemented yet"),
-                        TextAlign::Unset => unimplemented!("TextAlign::Unset is not implemented yet"),
-                    }
+                        TextAlign::MatchParent => {
+                            unimplemented!("TextAlign::MatchParent is not implemented yet")
+                        }
+                        TextAlign::Initial => {
+                            unimplemented!("TextAlign::Initial is not implemented yet")
+                        }
+                        TextAlign::Inherit => {
+                            unimplemented!("TextAlign::Inherit is not implemented yet")
+                        }
+                        TextAlign::Revert => {
+                            unimplemented!("TextAlign::Revert is not implemented yet")
+                        }
+                        TextAlign::Unset => {
+                            unimplemented!("TextAlign::Unset is not implemented yet")
+                        }
+                    },
                     _ => Alignment::Start,
                 };
 
                 let line_height = match node_style.get_property(StyleProperty::LineHeight) {
-                    Some(StyleValue::Unit(value, unit)) => {
-                        match unit {
-                            Unit::Px => *value as f64,
-                            Unit::Em => panic!("Don't know how to deal with em units for line-height"),
-                            Unit::Rem => panic!("Don't know how to deal with rem units for line-height"),
-                            _ => panic!("Incorrect line-height property unit"),
+                    Some(StyleValue::Unit(value, unit)) => match unit {
+                        Unit::Px => *value as f64,
+                        Unit::Em => panic!("Don't know how to deal with em units for line-height"),
+                        Unit::Rem => {
+                            panic!("Don't know how to deal with rem units for line-height")
                         }
-                    }
+                        _ => panic!("Incorrect line-height property unit"),
+                    },
                     _ => font_size,
                 };
 
@@ -361,7 +440,9 @@ impl TaffyLayouter {
         let element_context = to_element_context(taffy_context.as_ref());
 
         let result = match taffy_context {
-            Some(taffy_context) => self.tree.new_leaf_with_context(taffy_style.to_owned(), taffy_context),
+            Some(taffy_context) => self
+                .tree
+                .new_leaf_with_context(taffy_style.to_owned(), taffy_context),
             None => self.tree.new_leaf(taffy_style.to_owned()),
         };
 
@@ -380,7 +461,11 @@ impl TaffyLayouter {
                 let Some(child) = layout_tree.render_tree.get_node_by_id(*child_id) else {
                     return false;
                 };
-                let Some(child_dom_node) = layout_tree.render_tree.doc.get_node_by_id(DomNodeId::from(child.node_id)) else {
+                let Some(child_dom_node) = layout_tree
+                    .render_tree
+                    .doc
+                    .get_node_by_id(DomNodeId::from(child.node_id))
+                else {
                     return false;
                 };
 
@@ -423,12 +508,14 @@ impl TaffyLayouter {
         let mut inline_element_counter = inline_element_counter;
 
         for child_id in render_node_children {
-            if let Some((child_layout_element_id, child_taffy_id)) = self.generate_node(layout_tree, child_id, inline_element_counter) {
+            if let Some((child_layout_element_id, child_taffy_id)) =
+                self.generate_node(layout_tree, child_id, inline_element_counter)
+            {
                 let _ = match inline_container_id {
                     Some(container_id) => {
                         inline_element_counter += 1;
                         self.tree.add_child(container_id, child_taffy_id)
-                    },
+                    }
                     None => self.tree.add_child(leaf_id, child_taffy_id),
                 };
 
@@ -450,18 +537,18 @@ impl TaffyLayouter {
 
 fn to_absolute_url(uri: &str, base_uri: &str) -> String {
     if uri.starts_with("http://") || uri.starts_with("https://") {
-        return uri.to_string()
+        return uri.to_string();
     }
 
     // We have a relative path, so we need to prepend the base URL
     // Make sure we don't have double slashes
     if base_uri.ends_with("/") && uri.starts_with("/") {
-        return format!("{}{}", base_uri, &uri[1..]).to_string()
+        return format!("{}{}", base_uri, &uri[1..]).to_string();
     }
 
     // Neither has a /
     if !base_uri.ends_with("/") && !uri.starts_with("/") {
-        return format!("{}/{}", base_uri, uri).to_string()
+        return format!("{}/{}", base_uri, uri).to_string();
     }
 
     format!("{}{}", base_uri, uri).to_string()
@@ -499,10 +586,14 @@ fn to_element_context(taffy_context: Option<&TaffyContext>) -> ElementContext {
 
 /// Returns true if there is a margin on the rect (basically, if the rect is non-zero)
 fn has_margin(src: Rect<LengthPercentageAuto>) -> bool {
-    let is_zero = (src.top == LengthPercentageAuto::Length(0.0) || src.top == LengthPercentageAuto::Percent(0.0)) &&
-    (src.right == LengthPercentageAuto::Length(0.0) || src.right == LengthPercentageAuto::Percent(0.0)) &&
-    (src.bottom == LengthPercentageAuto::Length(0.0) || src.bottom == LengthPercentageAuto::Percent(0.0)) &&
-    (src.left == LengthPercentageAuto::Length(0.0) || src.left == LengthPercentageAuto::Percent(0.0));
+    let is_zero = (src.top == LengthPercentageAuto::Length(0.0)
+        || src.top == LengthPercentageAuto::Percent(0.0))
+        && (src.right == LengthPercentageAuto::Length(0.0)
+            || src.right == LengthPercentageAuto::Percent(0.0))
+        && (src.bottom == LengthPercentageAuto::Length(0.0)
+            || src.bottom == LengthPercentageAuto::Percent(0.0))
+        && (src.left == LengthPercentageAuto::Length(0.0)
+            || src.left == LengthPercentageAuto::Percent(0.0));
 
     !is_zero
 }
@@ -513,8 +604,12 @@ pub fn taffy_layout_to_boxmodel(layout: &Layout, offset: Coordinate) -> box_mode
         margin_box: geo::Rect {
             x: offset.x + layout.location.x as f64,
             y: offset.y + layout.location.y as f64,
-            width: layout.size.width as f64 + layout.margin.left as f64 + layout.margin.right as f64,
-            height: layout.size.height as f64 + layout.margin.top as f64 + layout.margin.bottom as f64,
+            width: layout.size.width as f64
+                + layout.margin.left as f64
+                + layout.margin.right as f64,
+            height: layout.size.height as f64
+                + layout.margin.top as f64
+                + layout.margin.bottom as f64,
         },
         padding: box_model::Edges {
             top: layout.padding.top as f64,
@@ -533,6 +628,6 @@ pub fn taffy_layout_to_boxmodel(layout: &Layout, offset: Coordinate) -> box_mode
             right: layout.margin.right as f64,
             bottom: layout.margin.bottom as f64,
             left: layout.margin.left as f64,
-        }
+        },
     }
 }

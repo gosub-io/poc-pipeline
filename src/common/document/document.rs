@@ -23,6 +23,39 @@ impl Document {
         }
     }
 
+    /// Returns the inner HTML generated from the document
+    pub fn inner_html(&self, node_id: NodeId) -> String {
+        let node = self.get_node_by_id(node_id).unwrap();
+        match &node.node_type {
+            NodeType::Element(data) => {
+                let mut result = String::new();
+
+                result.push_str(&format!("<{} ", data.tag_name));
+                result.push_str(&data.attributes.to_string());
+
+                if data.is_self_closing() {
+                    result.push_str("/>");
+                } else {
+                    result.push_str(">");
+                }
+
+                for child_id in &node.children {
+                    result.push_str(&self.inner_html(*child_id));
+                }
+
+                if !data.is_self_closing() {
+                    result.push_str(&format!("</{}>", data.tag_name));
+                }
+
+
+                result
+            }
+            NodeType::Text(text, _) => text.clone(),
+            NodeType::Comment(comment) => comment.clone(),
+        }
+    }
+
+
     pub fn new_element(&mut self, parent_id: Option<NodeId>, tag_name: &str, attributes: Option<AttrMap>, self_closing: bool, style: Option<StylePropertyList>) -> NodeId {
         let node = Node::new_element(self, parent_id, tag_name.to_string(), attributes, self_closing, style);
         let node_id = node.node_id.clone();
