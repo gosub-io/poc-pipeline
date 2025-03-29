@@ -1,6 +1,5 @@
 use crate::rasterizer::vello::text::do_paint_text;
 use std::cell::RefCell;
-use image::{ImageBuffer, Rgba};
 use crate::painter::commands::PaintCommand;
 use vello::peniko::{Color, Mix};
 use vello::{AaConfig, Renderer, Scene};
@@ -15,6 +14,7 @@ use crate::tiler::{Tile, TileId};
 mod rectangle;
 mod brush;
 mod text;
+mod svg;
 
 pub struct VelloRasterizer<'a> {
     device: &'a Device,
@@ -54,6 +54,9 @@ impl Rasterable for VelloRasterizer<'_> {
         for element in &tile.elements {
             for command in &element.paint_commands {
                 match command {
+                    PaintCommand::Svg(command) => {
+                        svg::do_paint_svg(&mut scene, command.media_id, &command.rect, affine);
+                    }
                     PaintCommand::Rectangle(command) => {
                         rectangle::do_paint_rectangle(&mut scene, &command, affine);
                     }
@@ -115,7 +118,7 @@ fn create_offscreen_texture(device: &Device, width: u32, height: u32) -> Texture
     })
 }
 
-fn read_texture_to_image(device: &Device, queue: &Queue, texture: &Texture, width: u32, height: u32, id: TileId) -> Vec<u8> {
+fn read_texture_to_image(device: &Device, queue: &Queue, texture: &Texture, width: u32, height: u32, _id: TileId) -> Vec<u8> {
     let buffer_size = (width * height * 4) as vello::wgpu::BufferAddress;
     let buffer = device.create_buffer(&vello::wgpu::BufferDescriptor {
         label: Some("Texture Read Buffer"),
@@ -159,9 +162,9 @@ fn read_texture_to_image(device: &Device, queue: &Queue, texture: &Texture, widt
     drop(data);
     buffer.unmap();
 
-    // write bytes to file
-    let image = ImageBuffer::<Rgba<u8>, _>::from_raw(width, height, result.clone()).unwrap();
-    image.save_with_format(format!("test-{}.png", id), image::ImageFormat::Png).unwrap();
+    // // write bytes to file
+    // let image = ImageBuffer::<Rgba<u8>, _>::from_raw(width, height, result.clone()).unwrap();
+    // image.save_with_format(format!("test-{}.png", id), image::ImageFormat::Png).unwrap();
 
     result
 }

@@ -8,7 +8,7 @@ use crate::common::font::skia::get_skia_paragraph;
 use crate::common::geo::Dimension;
 
 pub fn do_paint_text(scene: &mut Scene, cmd: &Text, tile_size: Dimension, affine: Affine) -> Result<(), Error> {
-    let paragraph = get_skia_paragraph(cmd.text.as_str(), cmd.font_family.as_str(), cmd.font_size, cmd.line_height, cmd.rect.width, cmd.alignment);
+    let paragraph = get_skia_paragraph(cmd.text.as_str(), cmd.font_family.as_str(), cmd.font_size, cmd.line_height, cmd.rect.width, cmd.alignment, None);
 
     // Create a (skia) surface to render onto
     // @TODO: THIS IS CPU, NOT GPU!
