@@ -43,7 +43,8 @@ fn main() {
     let viewport_dimension = Dimension::new(1024.0, 768.0);
 
     let browser_state = BrowserState {
-        visible_layer_list: vec![true; 10],
+        // visible_layer_list: vec![true; 10],
+        visible_layer_list: vec![true, false, false, false, false, false, false, false, false, false],
         wireframed: WireframeState::None,
         debug_hover: false,
         current_hovered_element: None,
@@ -143,6 +144,8 @@ impl ApplicationHandler for App<'_> {
             self.window_title.as_str(),
             self.window_size
         ));
+
+        reflow();
     }
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
@@ -168,7 +171,7 @@ impl ApplicationHandler for App<'_> {
                 state.viewport = Rect::new(0.0, 0.0, width as f64, height as f64);
                 drop(state);
 
-                reflow();
+                // reflow();
             }
             WindowEvent::RedrawRequested => {
                 self.frame += 1;
@@ -186,13 +189,11 @@ impl ApplicationHandler for App<'_> {
 
                 let renderer = &mut env.renderer.as_mut().unwrap();
 
-                if vis_layers[0] {
-                    do_paint(LayerId::new(0));
-                    do_rasterize(device, queue, renderer.clone(), LayerId::new(0));
-                }
-                if vis_layers[1] {
-                    do_paint(LayerId::new(1));
-                    do_rasterize(device, queue, renderer.clone(), LayerId::new(1));
+                for i in 0..10 {
+                    if vis_layers[i] {
+                        do_paint(LayerId::new(i as u64));
+                        do_rasterize(device, queue, renderer.clone(), LayerId::new(i as u64));
+                    }
                 }
 
                 let surface_texture = surface
@@ -200,10 +201,16 @@ impl ApplicationHandler for App<'_> {
                     .get_current_texture()
                     .expect("Failed to get current texture");
 
+
+                let binding = get_browser_state();
+                let state = binding.read().unwrap();
+
                 let render_params = RenderParams {
                     base_color: color::palette::css::DARK_MAGENTA,
-                    width: self.window_size.width as u32,
-                    height: self.window_size.height as u32,
+                    width: state.viewport.width as u32,
+                    height: state.viewport.height as u32,
+                    // width: self.window_size.width as u32,
+                    // height: self.window_size.height as u32,
                     antialiasing_method: AaConfig::Msaa16,
                 };
 
@@ -410,7 +417,7 @@ fn do_rasterize(
         .unwrap()
         .get_intersecting_tiles(layer_id, state.viewport);
     for tile_id in tile_ids {
-        // get til
+        // get tile
         let mut binding = tile_list.write().expect("Failed to get tile list");
         let Some(tile) = binding.get_tile(tile_id) else {
             log::warn!("Tile not found: {:?}", tile_id);

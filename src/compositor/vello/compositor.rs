@@ -24,7 +24,6 @@ pub fn compose_layer(scene: &mut vello::Scene, layer_id: LayerId) {
     };
 
     let tile_ids = tile_list.read().expect("Failed to get tile list").get_intersecting_tiles(layer_id, state.viewport);
-    // let tile_ids = tile_list.get_intersecting_tiles(layer_id, state.viewport);
     for tile_id in tile_ids {
         let binding = tile_list.write().expect("Failed to get tile list");
         let Some(tile) = binding.get_tile(tile_id) else {

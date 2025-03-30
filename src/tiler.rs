@@ -244,6 +244,7 @@ impl TileList {
         }
     }
 
+    // @TODO: Optimize: remove all tiles that are empty
     pub fn generate(&mut self) {
         let rows = (self.layer_list.layout_tree.root_dimension.height / self.default_tile_dimension.height).ceil() as usize;
         let cols = (self.layer_list.layout_tree.root_dimension.width / self.default_tile_dimension.width).ceil() as usize;
@@ -258,6 +259,7 @@ impl TileList {
             // Generate tiles for this layer
             for y in 0..rows {
                 for x in 0..cols {
+
                     let tile_id = self.next_node_id();
                     let tile = Tile {
                         id: tile_id,
@@ -289,6 +291,7 @@ impl TileList {
                 )
             }).collect();
 
+            // Add all remaining tiles to the tile layer
             let tile_layer = TileLayer {
                 layer_id: *layer_id,
                 tiles: tile_ids.clone(),

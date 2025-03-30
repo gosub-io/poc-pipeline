@@ -18,11 +18,10 @@ impl Composable for VelloCompositor {
         let state = binding.read().expect("Failed to get browser state");
 
         let mut layers = vec![];
-        if state.visible_layer_list[0] {
-            layers.push(LayerId::new(0));
-        }
-        if state.visible_layer_list[1] {
-            layers.push(LayerId::new(1));
+        for i in 0..state.visible_layer_list.len() {
+            if state.visible_layer_list[i] {
+                layers.push(LayerId::new(i as u64));
+            }
         }
 
         // Compose the scene from the different layers we have selected
