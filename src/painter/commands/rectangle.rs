@@ -46,7 +46,13 @@ impl Rectangle {
         Rectangle {
             rect,
             background: None,
-            border: Border::new(0.0, Default::default(), Brush::Solid(Default::default())),
+            border: Border::new(0.0, Default::default(), [
+                Brush::Solid(Default::default()),
+                Brush::Solid(Default::default()),
+                Brush::Solid(Default::default()),
+                Brush::Solid(Default::default()),
+            ]
+            ),
             radius_top: Radius::NONE,
             radius_right: Radius::NONE,
             radius_bottom: Radius::NONE,

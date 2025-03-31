@@ -59,6 +59,23 @@ pub fn compose_layer(canvas: &skia_safe::canvas::Canvas, layer_id: LayerId) {
             (tile.rect.x.round() as f32, tile.rect.y.round() as f32),
             None,
         );
+
+        // Display rectangles around the tiles
+        if state.show_tilegrid {
+            let mut paint = skia_safe::Paint::new(
+                skia_safe::Color4f::new(1.0, 0.0, 0.0, 0.25),
+                None,
+            );
+            paint.set_stroke(true);
+
+            let rect = skia_safe::Rect::from_xywh(
+                tile.rect.x as f32,
+                tile.rect.y as f32,
+                tile.rect.width as f32,
+                tile.rect.height as f32,
+            );
+            canvas.draw_rect(rect, &paint);
+        }
     }
 
 }

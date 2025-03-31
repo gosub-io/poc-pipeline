@@ -7,6 +7,10 @@ impl TextureId {
     pub const fn new(val: u64) -> Self {
         Self(val)
     }
+
+    pub fn as_u64(&self) -> u64 {
+        self.0
+    }
 }
 
 impl AddAssign<i32> for TextureId {

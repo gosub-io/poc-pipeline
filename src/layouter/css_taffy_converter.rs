@@ -134,11 +134,6 @@ impl CssTaffyConverter {
             _ => {},
         }
 
-        // if is_inline {
-        //     ts.text_align = TextAlign::LegacyCenter;
-        //     ts.align_content = Some(AlignContent::Center);
-        // }
-
         ts
     }
 

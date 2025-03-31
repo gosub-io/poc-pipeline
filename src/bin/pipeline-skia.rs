@@ -55,17 +55,17 @@ const TILE_DIMENSION: f64 = 256.0;
 fn main() {
     // let doc = common::document::parser::document_from_json("https://codemusings.nl","cm.json");
     // let doc = common::document::parser::document_from_json("https://news.ycombinator.com", "news.ycombinator.com.json");
-    let doc = common::document::parser::document_from_json("https://codemusings.nl", "cm.json");
+    let doc = common::document::parser::document_from_json("https://gosub.io", "margin2.json");
     // let doc = common::document::parser::document_from_json("https://gosub.io", "svg.json");
     // let doc = common::document::parser::document_from_json("https://news.ycombinator.com", "news.ycombinator.com.json");
     // let doc = common::document::parser::document_from_json("https://rockylinux.org", "rockylinux.org.json");
     // let doc = common::document::parser::document_from_json("https://almalinux.org", "almalinux.org.json");
-    // let mut output = String::new();
-    // doc.print_tree(&mut output).expect("");
-    // println!("{}", output);
+    let mut output = String::new();
+    doc.print_tree(&mut output).expect("");
+    println!("{}", output);
 
     let window_dimension = Dimension::new(800.0, 600.0);
-    let viewport_dimension = Dimension::new(1024.0, 768.0);
+    let viewport_dimension = Dimension::new(1280.0, 1144.0);
 
     let browser_state = BrowserState {
         visible_layer_list: vec![true; 10],
@@ -104,6 +104,8 @@ fn reflow() {
         render_tree,
         Some(Dimension::new(state.viewport.width, state.viewport.height)),
     );
+
+    layouter.print_tree();
 
     let layer_list = LayerList::new(layout_tree);
 
@@ -231,13 +233,11 @@ impl ApplicationHandler for App {
                 let vis_layers = state.visible_layer_list.clone();
                 drop(state);
 
-                if vis_layers[0] {
-                    do_paint(LayerId::new(0));
-                    do_rasterize(LayerId::new(0));
-                }
-                if vis_layers[1] {
-                    do_paint(LayerId::new(1));
-                    do_rasterize(LayerId::new(1));
+                for i in 0..10 {
+                    if vis_layers[i] {
+                        do_paint(LayerId::new(i as u64));
+                        do_rasterize(LayerId::new(i as u64));
+                    }
                 }
 
                 let canvas = env.surface.canvas();

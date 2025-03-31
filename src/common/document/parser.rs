@@ -111,6 +111,10 @@ fn get_style_from_node(node: &DomNode) -> StylePropertyList {
             "border-bottom-right-radius" => style.set_property(StyleProperty::BorderBottomRightRadius, parse_style_value(value)),
             "border-top-left-radius" => style.set_property(StyleProperty::BorderTopLeftRadius, parse_style_value(value)),
             "border-top-right-radius" => style.set_property(StyleProperty::BorderTopRightRadius, parse_style_value(value)),
+            "border-top-color" => style.set_property(StyleProperty::BorderTopColor, StyleValue::Color(Color::Named(value.to_string()))),
+            "border-left-color" => style.set_property(StyleProperty::BorderLeftColor, StyleValue::Color(Color::Named(value.to_string()))),
+            "border-right-color" => style.set_property(StyleProperty::BorderRightColor, StyleValue::Color(Color::Named(value.to_string()))),
+            "border-bottom-color" => style.set_property(StyleProperty::BorderBottomColor, StyleValue::Color(Color::Named(value.to_string()))),
 
             "margin-top" => style.set_property(StyleProperty::MarginTop, parse_style_value(value)),
             "margin-left" => style.set_property(StyleProperty::MarginLeft, parse_style_value(value)),

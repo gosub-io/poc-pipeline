@@ -104,7 +104,12 @@ impl Painter {
     fn generate_wireframe_commands(&self, layout_element: &LayoutElementNode) -> Vec<PaintCommand> {
         let mut commands = Vec::new();
 
-        let border = Border::new(1.0, BorderStyle::Solid, Brush::Solid(Color::RED));
+        let border = Border::new(1.0, BorderStyle::Solid, [
+            Brush::Solid(Color::RED),
+            Brush::Solid(Color::RED),
+            Brush::Solid(Color::RED),
+            Brush::Solid(Color::RED),
+        ]);
         let r = Rectangle::new(layout_element.box_model.border_box()).with_border(border);
         commands.push(PaintCommand::rectangle(r));
 
@@ -188,13 +193,21 @@ impl Painter {
                 let border_left_width = dom_node.get_style_f32(StyleProperty::BorderLeftWidth);
 
                 if (border_top_width != 0.0 || border_right_width != 0.0 || border_bottom_width != 0.0 || border_left_width != 0.0) {
-                    // let border_top_color = self.get_brush(dom_node, StyleProperty::BorderTopColor, Brush::solid(Color::BLACK));
-                    // let border_right_color = self.get_brush(dom_node, StyleProperty::BorderRightColor, Brush::solid(Color::BLACK));
-                    // let border_bottom_color = self.get_brush(dom_node, StyleProperty::BorderBottomColor, Brush::solid(Color::BLACK));
-                    // let border_left_color = self.get_brush(dom_node, StyleProperty::BorderLeftColor, Brush::solid(Color::BLACK));
+                    let border_top_color = self.get_brush(dom_node, StyleProperty::BorderTopColor, Brush::solid(Color::BLACK));
+                    let border_right_color = self.get_brush(dom_node, StyleProperty::BorderRightColor, Brush::solid(Color::BLACK));
+                    let border_bottom_color = self.get_brush(dom_node, StyleProperty::BorderBottomColor, Brush::solid(Color::BLACK));
+                    let border_left_color = self.get_brush(dom_node, StyleProperty::BorderLeftColor, Brush::solid(Color::BLACK));
 
-                    // @TODO: border width is taken from the top, it can be different for each side
-                    let border = Border::new(border_top_width, BorderStyle::Solid, Brush::Solid(Color::BLACK));
+                    let border = Border::new(
+                        border_top_width,
+                        BorderStyle::Solid,
+                        [
+                            border_top_color,
+                            border_right_color,
+                            border_bottom_color,
+                            border_left_color,
+                        ]
+                    );
                     r = r.with_border(border);
                 }
 

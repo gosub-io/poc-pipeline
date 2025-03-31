@@ -10,7 +10,7 @@ pub(crate) fn do_paint_rectangle(canvas: &skia_safe::Canvas, _tile: &Tile, rect:
     // Draw background (if any background brush is defined)
     match rect.background() {
         Some(brush) => {
-            let shape = create_rect_shape(rect);
+            let shape = create_rect_shape(rect, None);
             let mut skia_paint = create_paint(brush);
             skia_paint.paint_mut().set_style(skia_safe::PaintStyle::Fill);
 
@@ -38,7 +38,7 @@ pub(crate) fn do_paint_rectangle(canvas: &skia_safe::Canvas, _tile: &Tile, rect:
 }
 
 fn draw_single_border(canvas: &skia_safe::Canvas, rect: &Rectangle, dashes: Vec<f64>) {
-    let mut skia_paint = create_paint(&rect.border().brush());
+    let mut skia_paint = create_paint(&rect.border().brushes()[0]);
     skia_paint.paint_mut().set_style(skia_safe::PaintStyle::Stroke);
     skia_paint.paint_mut().set_stroke_width(rect.border().width());
     if !dashes.is_empty() {
@@ -46,12 +46,12 @@ fn draw_single_border(canvas: &skia_safe::Canvas, rect: &Rectangle, dashes: Vec<
         skia_paint.paint_mut().set_path_effect(skia_safe::PathEffect::dash(&dashes, 0.0));
     }
 
-    let shape = create_rect_shape(rect);
+    let shape = create_rect_shape(rect, Some(1.0));
     shape.draw(canvas, &skia_paint);
 }
 
 fn draw_double_border(canvas: &skia_safe::Canvas, rect: &Rectangle, dashes: Vec<f64>) {
-    let mut skia_paint = create_paint(&rect.border().brush());
+    let mut skia_paint = create_paint(&rect.border().brushes()[0]);
     skia_paint.paint_mut().set_stroke(true);
     skia_paint.paint_mut().set_stroke_width(rect.border().width());
     skia_paint.paint_mut().set_stroke_cap(skia_safe::PaintCap::Round);
@@ -60,7 +60,7 @@ fn draw_double_border(canvas: &skia_safe::Canvas, rect: &Rectangle, dashes: Vec<
         skia_paint.paint_mut().set_path_effect(skia_safe::PathEffect::dash(&dashes, 0.0));
     }
 
-    let shape = create_rect_shape(rect);
+    let shape = create_rect_shape(rect, None);
 
     if rect.border().width() < 3.0 {
         // When the width is less than 3.0, we just draw a single line as there is no room for
@@ -85,8 +85,8 @@ fn draw_double_border(canvas: &skia_safe::Canvas, rect: &Rectangle, dashes: Vec<
         rect.rect().width - width as f64 - gap_size,
         rect.rect().height - width as f64 - gap_size
     ));
-    let shape = create_rect_shape(&inner_border_rect);
-    let skia_paint = create_paint(&rect.border().brush());
+    let shape = create_rect_shape(&inner_border_rect, None);
+    let skia_paint = create_paint(&rect.border().brushes()[0]);
     shape.draw(canvas, &skia_paint);
 }
 
@@ -161,7 +161,7 @@ impl ShapeEnum {
     }
 }
 
-fn create_rect_shape(rect: &Rectangle) -> ShapeEnum {
+fn create_rect_shape(rect: &Rectangle, _round: Option<f64>) -> ShapeEnum {
     let skia_rect = skia_safe::Rect::new(
         rect.rect().x as f32,
         rect.rect().y as f32,
@@ -174,7 +174,7 @@ fn create_rect_shape(rect: &Rectangle) -> ShapeEnum {
     }
 
     let (r_tl, r_tr, r_br, r_bl) = rect.radius();
-    ShapeEnum::RoundedRect(skia_safe::RRect::new_rect_radii(
+    let skia_rrect = skia_safe::RRect::new_rect_radii(
         skia_rect,
         &[
             Vector::new(r_tl.x as f32, r_tl.y as f32),
@@ -182,5 +182,6 @@ fn create_rect_shape(rect: &Rectangle) -> ShapeEnum {
             Vector::new(r_br.x as f32, r_br.y as f32),
             Vector::new(r_bl.x as f32, r_bl.y as f32)
         ],
-    ))
+    );
+    ShapeEnum::RoundedRect(skia_rrect)
 }

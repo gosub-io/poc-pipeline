@@ -184,6 +184,9 @@ impl TaffyLayouter {
         let layout = self.tree.layout(*taffy_node_id).unwrap().clone();
 
         let el = layout_tree.get_node_by_id_mut(layout_node_id).unwrap();
+        if layout_node_id == LayoutElementId::new(65) {
+            println!("Layout node: {:?}", el);
+        }
         el.box_model = taffy_layout_to_boxmodel(&layout, offset);
         let child_ids = el.children.clone();
 
@@ -602,14 +605,16 @@ fn has_margin(src: Rect<LengthPercentageAuto>) -> bool {
 pub fn taffy_layout_to_boxmodel(layout: &Layout, offset: Coordinate) -> box_model::BoxModel {
     box_model::BoxModel {
         margin_box: geo::Rect {
-            x: offset.x + layout.location.x as f64,
-            y: offset.y + layout.location.y as f64,
+            // x: offset.x + layout.location.x as f64,
+            // y: offset.y + layout.location.y as f64,
+            x: offset.x + layout.location.x as f64 - layout.margin.left as f64,
+            y: offset.y + layout.location.y as f64 - layout.margin.top as f64,
             width: layout.size.width as f64
-                + layout.margin.left as f64
-                + layout.margin.right as f64,
+                - layout.margin.left as f64
+                - layout.margin.right as f64,
             height: layout.size.height as f64
-                + layout.margin.top as f64
-                + layout.margin.bottom as f64,
+                - layout.margin.top as f64
+                - layout.margin.bottom as f64,
         },
         padding: box_model::Edges {
             top: layout.padding.top as f64,

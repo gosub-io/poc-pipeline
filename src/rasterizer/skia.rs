@@ -62,6 +62,8 @@ impl Rasterable for SkiaRasterizer {
         let mut texture_store = binding.write().expect("Failed to get texture store");
         let texture_id = texture_store.add(width as usize, height as usize, pixels);
 
+        // _ = texture_store.save_to_disk(texture_id);
+
         texture_id
     }
 }

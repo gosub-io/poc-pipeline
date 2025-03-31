@@ -34,16 +34,16 @@ pub enum BorderRadius {
 pub struct Border {
     width: f32,
     style: BorderStyle,
-    brush: Brush,
+    brushes: [Brush; 4],
     radius: Option<Trbl<BorderRadius>>,
 }
 
 impl Border {
-    pub fn new(width: f32, style: BorderStyle, brush: Brush) -> Self {
+    pub fn new(width: f32, style: BorderStyle, brushes: [Brush; 4]) -> Self {
         Border {
             width,
             style,
-            brush,
+            brushes,
             radius: None,
         }
     }
@@ -71,8 +71,8 @@ impl Border {
         self.style.clone()
     }
 
-    pub fn brush(&self) -> Brush {
-        self.brush.clone()
+    pub fn brushes(&self) -> [Brush; 4] {
+        self.brushes.clone()
     }
 
     pub fn radius(&self) -> Option<Trbl<BorderRadius>> {

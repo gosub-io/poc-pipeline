@@ -10,7 +10,7 @@ pub struct Edges {
 }
 
 /// Represents a boxmodel of an element. It contains the margin, border and padding of the element.
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy)]
 pub struct BoxModel {
     /// Rectangle of the margin box, the outer box of the element.
     pub margin_box: geo::Rect,
@@ -32,10 +32,15 @@ impl BoxModel {
 
     pub fn border_box(&self) -> geo::Rect {
         geo::Rect {
-            x: self.margin_box.x + self.margin.left,
-            y: self.margin_box.y + self.margin.top,
-            width: self.margin_box.width - (self.margin.left + self.margin.right),
-            height: self.margin_box.height - (self.margin.top + self.margin.bottom),
+            x: self.margin_box.x,
+            y: self.margin_box.y,
+            width: self.margin_box.width,
+            height: self.margin_box.height,
+
+            // x: self.margin_box.x + self.margin.left,
+            // y: self.margin_box.y + self.margin.top,
+            // width: self.margin_box.width - (self.margin.left + self.margin.right),
+            // height: self.margin_box.height - (self.margin.top + self.margin.bottom),
         }
     }
 
@@ -57,5 +62,27 @@ impl BoxModel {
             width: padding_box.width - (self.padding.left + self.padding.right),
             height: padding_box.height - (self.padding.top + self.padding.bottom),
         }
+    }
+}
+
+impl std::fmt::Debug for BoxModel {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let m = &self.margin;
+        let b = &self.border;
+        let p = &self.padding;
+        let mb = self.margin_box;
+        let cb = self.content_box();
+        let pb = self.padding_box();
+        let bb = self.border_box();
+
+        f.debug_struct("BoxModel")
+            .field("margin", &format_args!("[top={}, right={}, bottom={}, left={}]", m.top, m.right, m.bottom, m.left))
+            .field("border", &format_args!("[top={}, right={}, bottom={}, left={}]", b.top, b.right, b.bottom, b.left))
+            .field("padding", &format_args!("[top={}, right={}, bottom={}, left={}]", p.top, p.right, p.bottom, p.left))
+            .field("margin_box", &format_args!("[{}, {}, {}, {}]", mb.x, mb.y, mb.width, mb.height))
+            .field("content_box", &format_args!("[{}, {}, {}, {}]", cb.x, cb.y, cb.width, cb.height))
+            .field("padding_box", &format_args!("[{}, {}, {}, {}]", pb.x, pb.y, pb.width, pb.height))
+            .field("border_box", &format_args!("[{}, {}, {}, {}]", bb.x, bb.y, bb.width, bb.height))
+            .finish()
     }
 }

@@ -321,7 +321,6 @@ impl TileList {
                 let matching_tile_ids = tile_layer.intersects_with(margin_box);
                 for tile_id in &matching_tile_ids {
                     let tile = self.arena.get_mut(&tile_id).unwrap();
-
                     let position = Coordinate::new(
                         tile.rect.x.max(margin_box.x) - margin_box.x,
                         tile.rect.y.max(margin_box.y) - margin_box.y
@@ -344,6 +343,14 @@ impl TileList {
                     tile.elements.push(tiled_element);
                 }
             }
+        }
+
+
+        let tile = self.arena.get_mut(&TileId::new(9)).unwrap();
+        for element in tile.elements.iter() {
+            let layout_element = self.layer_list.layout_tree.get_node_by_id(element.id);
+            dbg!(&layout_element);
+            dbg!(&element);
         }
     }
 
