@@ -15,6 +15,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use taffy::prelude::*;
 use taffy::NodeId as TaffyNodeId;
+use crate::common::font::{FontAlignment, FontInfo};
 
 const DEFAULT_FONT_SIZE: f64 = 16.0;
 const DEFAULT_FONT_FAMILY: &str = "Sans";
@@ -39,24 +40,16 @@ pub enum TaffyContext {
 
 impl TaffyContext {
     fn text(
-        font_family: &str,
-        font_size: f64,
-        font_weight: usize,
-        line_height: f64,
-        alignment: Alignment,
         text: &str,
+        font_info: FontInfo,
         node_id: DomNodeId,
         text_offset: Coordinate,
     ) -> TaffyContext {
         TaffyContext::Text(ElementContextText {
             node_id,
-            font_family: font_family.to_string(),
-            font_size,
-            font_weight,
-            line_height,
+            font_info,
             text: text.to_string(),
             text_offset,
-            alignment,
         })
     }
 
@@ -120,13 +113,6 @@ impl CanLayout for TaffyLayouter {
                 match v_nc {
                     // Calculate text node
                     Some(TaffyContext::Text(text_ctx)) => {
-                        let font_size = text_ctx.font_size;
-                        let font_weight = text_ctx.font_weight;
-                        let font_family = text_ctx.font_family.as_str();
-                        let text = text_ctx.text.as_str();
-                        let line_height = text_ctx.line_height;
-                        let alignment = text_ctx.alignment;
-
                         let max_width = match v_as.width {
                             AvailableSpace::Definite(width) => width as f64,
                             AvailableSpace::MaxContent => f64::MAX,
@@ -134,15 +120,7 @@ impl CanLayout for TaffyLayouter {
                         };
 
                         // Calculate the text layout dimensions and return it to taffy
-                        let text_layout = get_text_layout(
-                            text,
-                            font_family,
-                            font_size,
-                            font_weight,
-                            line_height,
-                            max_width,
-                            alignment,
-                        );
+                        let text_layout = get_text_layout(text_ctx.text.as_str(), &text_ctx.font_info, max_width);
                         match text_layout {
                             Ok(text_layout) => Size {
                                 width: text_layout.width as f32,
@@ -421,13 +399,19 @@ impl TaffyLayouter {
                     text = format!(" {}", text).clone()
                 }
 
-                taffy_context = Some(TaffyContext::text(
-                    font_family.as_str(),
-                    font_size,
-                    font_weight as usize,
+                let font_info = FontInfo {
+                    family: font_family,
+                    size: font_size,
+                    weight: font_weight as i32,
+                    width: 100, // 100%, normal
+                    slant: 0,
                     line_height,
-                    alignment,
+                    alignment: FontAlignment::Left,
+                };
+
+                taffy_context = Some(TaffyContext::text(
                     text.as_str(),
+                    font_info,
                     dom_node.node_id,
                     text_offset,
                 ));
@@ -562,12 +546,8 @@ fn to_absolute_url(uri: &str, base_uri: &str) -> String {
 fn to_element_context(taffy_context: Option<&TaffyContext>) -> ElementContext {
     match taffy_context {
         Some(TaffyContext::Text(text_ctx)) => ElementContext::text(
-            text_ctx.font_family.as_str(),
-            text_ctx.font_size,
-            text_ctx.font_weight,
-            text_ctx.line_height,
-            text_ctx.alignment,
             text_ctx.text.as_str(),
+            text_ctx.font_info.clone(),
             text_ctx.node_id,
             text_ctx.text_offset,
         ),

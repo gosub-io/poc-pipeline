@@ -5,6 +5,7 @@ use rstar::primitives::GeomWithData;
 use crate::layouter::box_model::BoxModel;
 use crate::rendertree_builder::{RenderTree, RenderNodeId};
 use crate::common::document::node::{NodeId as DomNodeId, NodeId};
+use crate::common::font::FontInfo;
 use crate::common::geo::{Coordinate, Dimension};
 use crate::common::media::MediaId;
 use crate::layouter::text::Alignment;
@@ -41,19 +42,10 @@ impl std::fmt::Display for LayoutElementId {
 pub struct ElementContextText {
     /// Node ID of the text in the DOM
     pub node_id: DomNodeId,
-    /// Font family (can be comma separated)
-    pub font_family: String,
-    /// Size of the font in pixels
-    pub font_size: f64,
-    /// Weight (100-700) of the font
-    pub font_weight: usize,
-    /// Line height of the text. Most likely not needed anymore since we already calculated the text_offset
-    pub line_height: f64,
+    pub font_info: FontInfo,
     pub text: String,
     /// Additional offset for the text. This can happen when we have a lineheight and the text needs to be centered in the block
     pub text_offset: Coordinate,
-    /// Alignment of font
-    pub alignment: Alignment,
 }
 
 #[derive(Debug, Clone)]
@@ -91,15 +83,11 @@ pub enum ElementContext {
 }
 
 impl ElementContext {
-    pub(crate) fn text(font_family: &str, font_size: f64, font_weight: usize, line_height: f64, alignment: Alignment, text: &str, node_id: DomNodeId, text_offset: Coordinate) -> ElementContext {
+    pub(crate) fn text(text: &str, font_info: FontInfo, node_id: DomNodeId, text_offset: Coordinate) -> ElementContext {
         Self::Text(ElementContextText{
-            node_id,
-            font_family: font_family.to_string(),
-            font_size,
-            font_weight,
-            line_height,
-            alignment,
             text: text.to_string(),
+            font_info,
+            node_id,
             text_offset,
         })
     }

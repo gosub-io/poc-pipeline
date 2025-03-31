@@ -346,12 +346,12 @@ impl TileList {
         }
 
 
-        let tile = self.arena.get_mut(&TileId::new(9)).unwrap();
-        for element in tile.elements.iter() {
-            let layout_element = self.layer_list.layout_tree.get_node_by_id(element.id);
-            dbg!(&layout_element);
-            dbg!(&element);
-        }
+        // let tile = self.arena.get_mut(&TileId::new(9)).unwrap();
+        // for element in tile.elements.iter() {
+        //     let layout_element = self.layer_list.layout_tree.get_node_by_id(element.id);
+        //     // dbg!(&layout_element);
+        //     // dbg!(&element);
+        // }
     }
 
     pub fn print_list(&self) {

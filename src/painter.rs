@@ -143,18 +143,17 @@ impl Painter {
             ElementContext::Text(ctx) => {
                 let brush = self.get_parent_brush(dom_node, StyleProperty::Color, Brush::solid(Color::BLACK));
 
-                let r = layout_element.box_model.content_box().shift(ctx.text_offset);
+                dbg!(&ctx.text);
+                dbg!(&layout_element.box_model);
+
+                // let r = layout_element.box_model.content_box().shift(ctx.text_offset);
                 let r = layout_element.box_model.content_box();
                 // let brush = Brush::solid(Color::from_rgb8(130, 130, 130));
                 let t = Text::new(
                     r,
                     &ctx.text,
-                    &ctx.font_family,
-                    ctx.font_size,
-                    ctx.font_weight,
-                    ctx.line_height,
+                    &ctx.font_info,
                     brush,
-                    ctx.alignment,
                 );
                 commands.push(PaintCommand::text(t));
 
