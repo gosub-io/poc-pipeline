@@ -182,8 +182,7 @@ impl Painter {
                 // brush.
 
                 let brush = self.get_brush(dom_node, StyleProperty::BackgroundColor, Brush::solid(Color::TRANSPARENT));
-                // let border = Border::new(3.0, BorderStyle::None, Brush::Solid(Color::RED));
-                let mut r = Rectangle::new(layout_element.box_model.border_box()).with_background(brush);
+                let mut r = Rectangle::new(layout_element.box_model.margin_box).with_background(brush);
 
                 // Get border
                 let border_top_width = dom_node.get_style_f32(StyleProperty::BorderTopWidth);

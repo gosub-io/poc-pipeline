@@ -17,16 +17,16 @@ pub mod skia;
 #[cfg(feature = "text_skia")]
 pub use crate::layouter::text::skia::get_text_layout;
 
-
-/// Text alignment
-#[derive(Clone, Debug, Copy)]
-pub enum Alignment {
-    /// Alignment of text is at the start (depends on LTR)
-    Start,
-    /// Alignment of text is at the end (depends on LTR)
-    End,
-    /// Alignment is centered
-    Middle,
-    /// alignment is justified (full column width)
-    Justified,
-}
+//
+// /// Text alignment
+// #[derive(Clone, Debug, Copy)]
+// pub enum Alignment {
+//     /// Alignment of text is at the start (depends on LTR)
+//     Start,
+//     /// Alignment of text is at the end (depends on LTR)
+//     End,
+//     /// Alignment is centered
+//     Middle,
+//     /// alignment is justified (full column width)
+//     Justified,
+// }

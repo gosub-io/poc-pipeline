@@ -4,7 +4,7 @@ use crate::common::geo::Coordinate;
 use crate::common::media::{Media, MediaId, MediaType};
 use crate::common::{geo, get_media_store};
 use crate::layouter::css_taffy_converter::CssTaffyConverter;
-use crate::layouter::text::{get_text_layout, Alignment};
+use crate::layouter::text::get_text_layout;
 use crate::layouter::{
     box_model, CanLayout, ElementContext, ElementContextImage, ElementContextSvg,
     ElementContextText, LayoutElementId, LayoutElementNode, LayoutTree,
@@ -174,13 +174,13 @@ impl TaffyLayouter {
                 child_id,
                 Coordinate::new(
                     offset.x
-                        + layout.location.x as f64
-                        + layout.padding.left as f64
-                        + layout.margin.left as f64,
+                        + layout.location.x as f64,
+                        // + layout.padding.left as f64
+                        // + layout.margin.left as f64,
                     offset.y
-                        + layout.location.y as f64
-                        + layout.padding.top as f64
-                        + layout.margin.top as f64,
+                        + layout.location.y as f64,
+                        // + layout.padding.top as f64
+                        // + layout.margin.top as f64,
                 ),
             );
         }
@@ -353,12 +353,12 @@ impl TaffyLayouter {
 
                 let alignment = match node_style.get_property(StyleProperty::TextAlign) {
                     Some(StyleValue::TextAlign(value)) => match value {
-                        TextAlign::Center => Alignment::Middle,
-                        TextAlign::Right => Alignment::Start,
-                        TextAlign::Left => Alignment::End,
-                        TextAlign::Justify => Alignment::Justified,
-                        TextAlign::Start => Alignment::Start,
-                        TextAlign::End => Alignment::Start,
+                        TextAlign::Center => FontAlignment::Center,
+                        TextAlign::Right => FontAlignment::Start,
+                        TextAlign::Left => FontAlignment::End,
+                        TextAlign::Justify => FontAlignment::Justify,
+                        TextAlign::Start => FontAlignment::Start,
+                        TextAlign::End => FontAlignment::End,
                         TextAlign::MatchParent => {
                             unimplemented!("TextAlign::MatchParent is not implemented yet")
                         }
@@ -375,7 +375,7 @@ impl TaffyLayouter {
                             unimplemented!("TextAlign::Unset is not implemented yet")
                         }
                     },
-                    _ => Alignment::Start,
+                    _ => FontAlignment::Start,
                 };
 
                 let line_height = match node_style.get_property(StyleProperty::LineHeight) {
@@ -406,7 +406,7 @@ impl TaffyLayouter {
                     width: 100, // 100%, normal
                     slant: 0,
                     line_height,
-                    alignment: FontAlignment::Left,
+                    alignment: FontAlignment::Start,
                 };
 
                 taffy_context = Some(TaffyContext::text(
@@ -583,18 +583,22 @@ fn has_margin(src: Rect<LengthPercentageAuto>) -> bool {
 
 /// Converts a taffy layout to our own BoxModel structure
 pub fn taffy_layout_to_boxmodel(layout: &Layout, offset: Coordinate) -> box_model::BoxModel {
+    // Taffy already calculates the margin inside the x,y,w,h coordinates, so we need to adjust
+    // them to get the correct margin box.
     box_model::BoxModel {
         margin_box: geo::Rect {
-            // x: offset.x + layout.location.x as f64,
-            // y: offset.y + layout.location.y as f64,
             x: offset.x + layout.location.x as f64 - layout.margin.left as f64,
             y: offset.y + layout.location.y as f64 - layout.margin.top as f64,
+            // width: layout.size.width as f64,
+            // height: layout.size.height as f64,
+            // x: offset.x + layout.location.x as f64 - layout.margin.left as f64,
+            // y: offset.y + layout.location.y as f64 - layout.margin.top as f64,
             width: layout.size.width as f64
-                - layout.margin.left as f64
-                - layout.margin.right as f64,
+                + layout.margin.left as f64
+                + layout.margin.right as f64,
             height: layout.size.height as f64
-                - layout.margin.top as f64
-                - layout.margin.bottom as f64,
+                + layout.margin.top as f64
+                + layout.margin.bottom as f64,
         },
         padding: box_model::Edges {
             top: layout.padding.top as f64,

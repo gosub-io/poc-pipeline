@@ -32,15 +32,15 @@ impl BoxModel {
 
     pub fn border_box(&self) -> geo::Rect {
         geo::Rect {
-            x: self.margin_box.x,
-            y: self.margin_box.y,
-            width: self.margin_box.width,
-            height: self.margin_box.height,
+            // x: self.margin_box.x,
+            // y: self.margin_box.y,
+            // width: self.margin_box.width,
+            // height: self.margin_box.height,
 
-            // x: self.margin_box.x + self.margin.left,
-            // y: self.margin_box.y + self.margin.top,
-            // width: self.margin_box.width - (self.margin.left + self.margin.right),
-            // height: self.margin_box.height - (self.margin.top + self.margin.bottom),
+            x: self.margin_box.x + self.margin.left,
+            y: self.margin_box.y + self.margin.top,
+            width: self.margin_box.width - (self.margin.left + self.margin.right),
+            height: self.margin_box.height - (self.margin.top + self.margin.bottom),
         }
     }
 

@@ -1,6 +1,5 @@
 use crate::common::font::FontInfo;
 use crate::common::geo::Rect;
-use crate::layouter::text::Alignment;
 use crate::painter::commands::brush::Brush;
 
 #[derive(Clone, Debug)]

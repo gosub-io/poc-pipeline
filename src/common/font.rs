@@ -10,9 +10,9 @@ pub mod skia;
 
 #[derive(Debug, Clone)]
 pub enum FontAlignment {
-    Left,
+    Start,
     Center,
-    Right,
+    End,
     Justify,
 }
 

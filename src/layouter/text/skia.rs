@@ -1,4 +1,3 @@
-use crate::layouter::text::Alignment;
 use std::fmt::Error;
 use crate::common::font::FontInfo;
 use crate::common::font::skia::get_skia_paragraph;

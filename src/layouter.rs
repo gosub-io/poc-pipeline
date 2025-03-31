@@ -8,7 +8,6 @@ use crate::common::document::node::{NodeId as DomNodeId, NodeId};
 use crate::common::font::FontInfo;
 use crate::common::geo::{Coordinate, Dimension};
 use crate::common::media::MediaId;
-use crate::layouter::text::Alignment;
 
 pub mod taffy;
 pub mod text;
