@@ -19,7 +19,7 @@ use poc_pipeline::compositor::cairo::{CairoCompositor, CairoCompositorConfig};
 use poc_pipeline::compositor::Composable;
 use poc_pipeline::layering::layer::{LayerId, LayerList};
 use poc_pipeline::layouter::taffy::TaffyLayouter;
-use poc_pipeline::layouter::CanLayout;
+use poc_pipeline::layouter::{CanLayout, LayoutElementId};
 use poc_pipeline::painter::Painter;
 use poc_pipeline::rasterizer::cairo::CairoRasterizer;
 use poc_pipeline::rasterizer::Rasterable;

@@ -107,10 +107,11 @@ impl LayerList {
                 let layout_element = self.layout_tree.get_node_by_id(*element_id).expect("Failed to get layout element");
                 let box_model = &layout_element.box_model;
 
-                if x >= box_model.margin_box.x &&
-                    x < box_model.margin_box.x + box_model.margin_box.width &&
-                    y >= box_model.margin_box.y &&
-                    y < box_model.margin_box.y + box_model.margin_box.height
+                // @TODO: use rtree for this
+                if x >= box_model.margin_box().x &&
+                    x < box_model.margin_box().x + box_model.margin_box().width &&
+                    y >= box_model.margin_box().y &&
+                    y < box_model.margin_box().y + box_model.margin_box().height
                 {
                     return Some(*element_id);
                 }

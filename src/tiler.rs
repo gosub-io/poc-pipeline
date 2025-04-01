@@ -315,7 +315,7 @@ impl TileList {
                     log::warn!("Warning: Element {:?} not found in layout tree!", element_id);
                     continue;
                 };
-                let margin_box = element.box_model.margin_box;
+                let margin_box = element.box_model.margin_box();
 
                 // Find all tile_ids that contain this element
                 let matching_tile_ids = tile_layer.intersects_with(margin_box);
@@ -344,14 +344,6 @@ impl TileList {
                 }
             }
         }
-
-
-        // let tile = self.arena.get_mut(&TileId::new(9)).unwrap();
-        // for element in tile.elements.iter() {
-        //     let layout_element = self.layer_list.layout_tree.get_node_by_id(element.id);
-        //     // dbg!(&layout_element);
-        //     // dbg!(&element);
-        // }
     }
 
     pub fn print_list(&self) {

@@ -33,7 +33,7 @@ use poc_pipeline::compositor::skia::{SkiaCompositor, SkiaCompositorConfig};
 use poc_pipeline::compositor::Composable;
 use poc_pipeline::layering::layer::{LayerId, LayerList};
 use poc_pipeline::layouter::taffy::TaffyLayouter;
-use poc_pipeline::layouter::CanLayout;
+use poc_pipeline::layouter::{CanLayout, LayoutElementId};
 use poc_pipeline::painter::Painter;
 use poc_pipeline::rasterizer::skia::SkiaRasterizer;
 use poc_pipeline::rasterizer::Rasterable;
@@ -71,7 +71,7 @@ fn main() {
         visible_layer_list: vec![true; 10],
         wireframed: WireframeState::None,
         debug_hover: false,
-        current_hovered_element: None,
+        current_hovered_element: Some(LayoutElementId::new(2)),
         show_tilegrid: true,
         viewport: Rect::new(
             0.0,

@@ -120,11 +120,11 @@ impl Painter {
     fn generate_boxmodel_commands(&self, layout_element: &LayoutElementNode) -> Vec<PaintCommand> {
         let mut commands = Vec::new();
 
-        let brush = Brush::Solid(Color::GREEN);
-        let r = Rectangle::new(layout_element.box_model.margin_box).with_background(brush);
+        let brush = Brush::Solid(Color::YELLOW);
+        let r = Rectangle::new(layout_element.box_model.margin_box()).with_background(brush);
         commands.push(PaintCommand::rectangle(r));
 
-        let brush = Brush::Solid(Color::YELLOW);
+        let brush = Brush::Solid(Color::GREEN);
         let r = Rectangle::new(layout_element.box_model.padding_box()).with_background(brush);
         commands.push(PaintCommand::rectangle(r));
 
@@ -142,9 +142,6 @@ impl Painter {
         match &layout_element.context {
             ElementContext::Text(ctx) => {
                 let brush = self.get_parent_brush(dom_node, StyleProperty::Color, Brush::solid(Color::BLACK));
-
-                dbg!(&ctx.text);
-                dbg!(&layout_element.box_model);
 
                 // let r = layout_element.box_model.content_box().shift(ctx.text_offset);
                 let r = layout_element.box_model.content_box();
@@ -182,7 +179,7 @@ impl Painter {
                 // brush.
 
                 let brush = self.get_brush(dom_node, StyleProperty::BackgroundColor, Brush::solid(Color::TRANSPARENT));
-                let mut r = Rectangle::new(layout_element.box_model.margin_box).with_background(brush);
+                let mut r = Rectangle::new(layout_element.box_model.content_box()).with_background(brush);
 
                 // Get border
                 let border_top_width = dom_node.get_style_f32(StyleProperty::BorderTopWidth);

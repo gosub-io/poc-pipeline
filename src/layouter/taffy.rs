@@ -16,6 +16,7 @@ use std::sync::{Arc, RwLock};
 use taffy::prelude::*;
 use taffy::NodeId as TaffyNodeId;
 use crate::common::font::{FontAlignment, FontInfo};
+use crate::layouter::box_model::Edges;
 
 const DEFAULT_FONT_SIZE: f64 = 16.0;
 const DEFAULT_FONT_FAMILY: &str = "Sans";
@@ -93,7 +94,8 @@ impl TaffyLayouter {
 
 impl CanLayout for TaffyLayouter {
     fn layout(&mut self, render_tree: RenderTree, viewport: Option<geo::Dimension>) -> LayoutTree {
-        let root_id = render_tree.root_id.unwrap();
+        // let root_id = render_tree.root_id.unwrap();
+        let root_id = RenderNodeId::new(2);
         let Some(mut layout_tree) = self.generate_tree(render_tree, root_id) else {
             panic!("Failed to generate root node render tree");
         };
@@ -115,17 +117,15 @@ impl CanLayout for TaffyLayouter {
                     Some(TaffyContext::Text(text_ctx)) => {
                         let max_width = match v_as.width {
                             AvailableSpace::Definite(width) => width as f64,
-                            AvailableSpace::MaxContent => f64::MAX,
+                            AvailableSpace::MaxContent => 1_000_000_000.0,      // f64::MAX doesn't work. Seems some kind of overflow. Same goes for f32::MAX
                             AvailableSpace::MinContent => 0.0,
                         };
 
                         // Calculate the text layout dimensions and return it to taffy
                         let text_layout = get_text_layout(text_ctx.text.as_str(), &text_ctx.font_info, max_width);
-                        dbg!(&text_layout);
-                        dbg!(&text_ctx);
                         match text_layout {
                             Ok(text_layout) => Size {
-                                width: text_layout.width as f32,
+                                width: text_layout.width as f32,        // Note that we cast width down to 32bits.. we might need to take care of overflows
                                 height: text_layout.height as f32,
                             },
                             Err(_) => Size::ZERO,
@@ -144,8 +144,8 @@ impl CanLayout for TaffyLayouter {
 
         // get dimension of the root node
         let root = layout_tree.get_node_by_id(root_id).unwrap();
-        let w = root.box_model.margin_box.width as f32;
-        let h = root.box_model.margin_box.height as f32;
+        let w = root.box_model.margin_box().width as f32;
+        let h = root.box_model.margin_box().height as f32;
         layout_tree.root_dimension = geo::Dimension::new(w as f64, h as f64);
 
         layout_tree
@@ -165,21 +165,23 @@ impl TaffyLayouter {
 
         let el = layout_tree.get_node_by_id_mut(layout_node_id).unwrap();
         el.box_model = taffy_layout_to_boxmodel(&layout, offset);
+        // dbg!(&taffy_node_id);
+        // dbg!(&layout_node_id);
+        // dbg!(&el.box_model);
         let child_ids = el.children.clone();
+
+        let content_x = el.box_model.content_box().x;
+        let content_y = el.box_model.content_box().y;
 
         for child_id in child_ids {
             self.populate_boxmodel(
                 layout_tree,
                 child_id,
                 Coordinate::new(
-                    offset.x
-                        + layout.location.x as f64,
-                        // + layout.padding.left as f64
-                        // + layout.margin.left as f64,
-                    offset.y
-                        + layout.location.y as f64,
-                        // + layout.padding.top as f64
-                        // + layout.margin.top as f64,
+                    offset.x + layout.location.x as f64,
+                    offset.y + layout.location.y as f64,
+                    // offset.x + content_x,
+                    // offset.y + content_y,
                 ),
             );
         }
@@ -223,7 +225,6 @@ impl TaffyLayouter {
         render_node_id: RenderNodeId,
         inline_element_counter: usize,
     ) -> Option<(LayoutElementId, TaffyNodeId)> {
-        println!("Generating node: {}", render_node_id);
         // Find render node and dom node from the layout tree
         let Some(render_node) = layout_tree.render_tree.get_node_by_id(render_node_id) else {
             return None;
@@ -316,8 +317,6 @@ impl TaffyLayouter {
                 if parent_node.is_none() {
                     return None;
                 }
-
-                println!("Doing text on node {}, parent node is {}", dom_node.node_id, parent_node?.node_id);
 
                 // Default font
                 let mut font_size = DEFAULT_FONT_SIZE;
@@ -443,7 +442,7 @@ impl TaffyLayouter {
         // Our inline container ID (if any is defined)
         let mut inline_container_id = None;
 
-        // If the node is a block element, and it has inline children, we need to create a flex container
+        // If the node is a block element, and it has inline children, we need to create an anonymous container to keep all the inline children inside it
         if dom_node.is_block_element() {
             // Check if the node actually has inline children
             let has_inline_children = render_node_children.iter().any(|child_id| {
@@ -462,19 +461,10 @@ impl TaffyLayouter {
             });
 
             if has_inline_children {
-                // Create our (anonymous) container and add to the taffy tree
+                // Create an anonymous container and add to the taffy tree
                 let Ok(taffy_container_id) = self.tree.new_leaf(Style {
                     display: Display::Block,
-                    // flex_direction: FlexDirection::Row,
-                    // flex_wrap: FlexWrap::Wrap,
-                    // size: Size{width: Dimension::Length(200.0), height: Dimension::Length(100.0)},
-                    // min_size: Size{width: Dimension::Percent(1.0), height: Dimension::Percent(1.0)},
-                    // max_size: Size{width: Dimension::Percent(1.0), height: Dimension::Percent(1.0)},
-                    // text_align: taffy::style::TextAlign::LegacyRight,
-                    // align_items: Some(AlignItems::Center),
-                    // justify_items: Some(JustifyItems::Center),
-                    // align_content: Some(AlignContent::Center),
-                    ..Style::default()
+                    ..taffy_style.to_owned()
                 }) else {
                     return None;
                 };
@@ -573,38 +563,66 @@ fn to_element_context(taffy_context: Option<&TaffyContext>) -> ElementContext {
 pub fn taffy_layout_to_boxmodel(layout: &Layout, offset: Coordinate) -> box_model::BoxModel {
     // Taffy already calculates the margin inside the x,y,w,h coordinates, so we need to adjust
     // them to get the correct margin box.
-    box_model::BoxModel {
-        margin_box: geo::Rect {
-            x: offset.x + layout.location.x as f64 - layout.margin.left as f64,
-            y: offset.y + layout.location.y as f64 - layout.margin.top as f64,
-            // width: layout.size.width as f64,
-            // height: layout.size.height as f64,
-            // x: offset.x + layout.location.x as f64 - layout.margin.left as f64,
-            // y: offset.y + layout.location.y as f64 - layout.margin.top as f64,
-            width: layout.size.width as f64
-                + layout.margin.left as f64
-                + layout.margin.right as f64,
-            height: layout.size.height as f64
-                + layout.margin.top as f64
-                + layout.margin.bottom as f64,
-        },
-        padding: box_model::Edges {
+    box_model::BoxModel::new(
+        // Content box
+        geo::Rect::new(
+            offset.x + layout.location.x as f64,
+            offset.y + layout.location.y as f64,
+            layout.size.width as f64,
+            layout.size.height as f64,
+        ),
+        Edges {
             top: layout.padding.top as f64,
             right: layout.padding.right as f64,
             bottom: layout.padding.bottom as f64,
             left: layout.padding.left as f64,
         },
-        border: box_model::Edges {
+        Edges {
             top: layout.border.top as f64,
             right: layout.border.right as f64,
             bottom: layout.border.bottom as f64,
             left: layout.border.left as f64,
         },
-        margin: box_model::Edges {
+        Edges {
             top: layout.margin.top as f64,
             right: layout.margin.right as f64,
             bottom: layout.margin.bottom as f64,
             left: layout.margin.left as f64,
         },
-    }
+    )
+
+    // {
+    //     margin_box: geo::Rect {
+    //         x: offset.x + layout.location.x as f64 - layout.margin.left as f64,
+    //         y: offset.y + layout.location.y as f64 - layout.margin.top as f64,
+    //         // width: layout.size.width as f64,
+    //         // height: layout.size.height as f64,
+    //         // x: offset.x + layout.location.x as f64 - layout.margin.left as f64,
+    //         // y: offset.y + layout.location.y as f64 - layout.margin.top as f64,
+    //         width: layout.size.width as f64
+    //             + layout.margin.left as f64
+    //             + layout.margin.right as f64,
+    //         height: layout.size.height as f64
+    //             + layout.margin.top as f64
+    //             + layout.margin.bottom as f64,
+    //     },
+    //     padding: box_model::Edges {
+    //         top: layout.padding.top as f64,
+    //         right: layout.padding.right as f64,
+    //         bottom: layout.padding.bottom as f64,
+    //         left: layout.padding.left as f64,
+    //     },
+    //     border: box_model::Edges {
+    //         top: layout.border.top as f64,
+    //         right: layout.border.right as f64,
+    //         bottom: layout.border.bottom as f64,
+    //         left: layout.border.left as f64,
+    //     },
+    //     margin: box_model::Edges {
+    //         top: layout.margin.top as f64,
+    //         right: layout.margin.right as f64,
+    //         bottom: layout.margin.bottom as f64,
+    //         left: layout.margin.left as f64,
+    //     },
+    // }
 }
