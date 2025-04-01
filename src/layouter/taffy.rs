@@ -121,6 +121,8 @@ impl CanLayout for TaffyLayouter {
 
                         // Calculate the text layout dimensions and return it to taffy
                         let text_layout = get_text_layout(text_ctx.text.as_str(), &text_ctx.font_info, max_width);
+                        dbg!(&text_layout);
+                        dbg!(&text_ctx);
                         match text_layout {
                             Ok(text_layout) => Size {
                                 width: text_layout.width as f32,
@@ -162,9 +164,6 @@ impl TaffyLayouter {
         let layout = self.tree.layout(*taffy_node_id).unwrap().clone();
 
         let el = layout_tree.get_node_by_id_mut(layout_node_id).unwrap();
-        if layout_node_id == LayoutElementId::new(65) {
-            println!("Layout node: {:?}", el);
-        }
         el.box_model = taffy_layout_to_boxmodel(&layout, offset);
         let child_ids = el.children.clone();
 
@@ -224,6 +223,7 @@ impl TaffyLayouter {
         render_node_id: RenderNodeId,
         inline_element_counter: usize,
     ) -> Option<(LayoutElementId, TaffyNodeId)> {
+        println!("Generating node: {}", render_node_id);
         // Find render node and dom node from the layout tree
         let Some(render_node) = layout_tree.render_tree.get_node_by_id(render_node_id) else {
             return None;
@@ -316,6 +316,8 @@ impl TaffyLayouter {
                 if parent_node.is_none() {
                     return None;
                 }
+
+                println!("Doing text on node {}, parent node is {}", dom_node.node_id, parent_node?.node_id);
 
                 // Default font
                 let mut font_size = DEFAULT_FONT_SIZE;
@@ -565,20 +567,6 @@ fn to_element_context(taffy_context: Option<&TaffyContext>) -> ElementContext {
         ),
         None => ElementContext::None,
     }
-}
-
-/// Returns true if there is a margin on the rect (basically, if the rect is non-zero)
-fn has_margin(src: Rect<LengthPercentageAuto>) -> bool {
-    let is_zero = (src.top == LengthPercentageAuto::Length(0.0)
-        || src.top == LengthPercentageAuto::Percent(0.0))
-        && (src.right == LengthPercentageAuto::Length(0.0)
-            || src.right == LengthPercentageAuto::Percent(0.0))
-        && (src.bottom == LengthPercentageAuto::Length(0.0)
-            || src.bottom == LengthPercentageAuto::Percent(0.0))
-        && (src.left == LengthPercentageAuto::Length(0.0)
-            || src.left == LengthPercentageAuto::Percent(0.0));
-
-    !is_zero
 }
 
 /// Converts a taffy layout to our own BoxModel structure

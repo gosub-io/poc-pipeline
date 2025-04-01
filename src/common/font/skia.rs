@@ -21,7 +21,7 @@ pub fn get_skia_paragraph(text: &str, font_info: &FontInfo, max_width: f64, pain
 
     let mut ts = TextStyle::new();
     ts.set_foreground_paint(&paint);
-    ts.set_font_size(font_info.size as f32 * 1.25);
+    ts.set_font_size(font_info.size as f32);
     ts.set_font_families(&[font_info.family.clone()]);
     ts.set_height(font_info.line_height as f32);
     ts.set_font_style(FontStyle::new(font_info.weight.into(), font_info.width.into(), to_slant(font_info.slant)));
