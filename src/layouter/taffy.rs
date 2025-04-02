@@ -144,8 +144,8 @@ impl CanLayout for TaffyLayouter {
 
         // get dimension of the root node
         let root = layout_tree.get_node_by_id(root_id).unwrap();
-        let w = root.box_model.margin_box().width as f32;
-        let h = root.box_model.margin_box().height as f32;
+        let w = root.box_model.margin_box.width as f32 + 100.0;
+        let h = root.box_model.margin_box.height as f32 + 100.0;
         layout_tree.root_dimension = geo::Dimension::new(w as f64, h as f64);
 
         self.tree.print_tree(self.root_id);
@@ -167,13 +167,8 @@ impl TaffyLayouter {
 
         let el = layout_tree.get_node_by_id_mut(layout_node_id).unwrap();
         el.box_model = taffy_layout_to_boxmodel(&layout, offset);
-        // dbg!(&taffy_node_id);
-        // dbg!(&layout_node_id);
-        // dbg!(&el.box_model);
+        dbg!(&el.box_model);
         let child_ids = el.children.clone();
-
-        let content_x = el.box_model.content_box().x;
-        let content_y = el.box_model.content_box().y;
 
         for child_id in child_ids {
             self.populate_boxmodel(
@@ -182,8 +177,6 @@ impl TaffyLayouter {
                 Coordinate::new(
                     offset.x + layout.location.x as f64,
                     offset.y + layout.location.y as f64,
-                    // offset.x + content_x,
-                    // offset.y + content_y,
                 ),
             );
         }
@@ -569,10 +562,8 @@ fn dpi(value: f64) -> f64 {
 
 /// Converts a taffy layout to our own BoxModel structure
 pub fn taffy_layout_to_boxmodel(layout: &Layout, offset: Coordinate) -> box_model::BoxModel {
-    // Taffy already calculates the margin inside the x,y,w,h coordinates, so we need to adjust
-    // them to get the correct margin box.
     box_model::BoxModel::new(
-        // Content box
+        // Border box
         geo::Rect::new(
             offset.x + layout.location.x as f64,
             offset.y + layout.location.y as f64,

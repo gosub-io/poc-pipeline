@@ -315,7 +315,7 @@ impl TileList {
                     log::warn!("Warning: Element {:?} not found in layout tree!", element_id);
                     continue;
                 };
-                let margin_box = element.box_model.margin_box();
+                let margin_box = element.box_model.margin_box;
 
                 // Find all tile_ids that contain this element
                 let matching_tile_ids = tile_layer.intersects_with(margin_box);

@@ -10,7 +10,7 @@ thread_local! {
     };
 }
 
-pub fn get_skia_paragraph(text: &str, font_info: &FontInfo, max_width: f64, paint: Option<&Paint>, dpi_scale_factor: f32) -> Paragraph {
+pub fn get_skia_paragraph(text: &str, font_info: &FontInfo, max_width: f64, paint: Option<&Paint>, _dpi_scale_factor: f32) -> Paragraph {
     let paragraph_style = ParagraphStyle::new();
     let mut paragraph_builder = ParagraphBuilder::new(&paragraph_style, FC.with(|fc| fc.clone()));
 
@@ -19,11 +19,17 @@ pub fn get_skia_paragraph(text: &str, font_info: &FontInfo, max_width: f64, pain
         None => Paint::default(),
     };
 
+    let font_size_px = font_info.size;
+    let line_height_px = 1.2 * font_size_px;
+
+    // println!("Searching for font family: {}", font_info.family);
+
     let mut ts = TextStyle::new();
     ts.set_foreground_paint(&paint);
-    ts.set_font_size(font_info.size as f32 * dpi_scale_factor);
-    ts.set_font_families(&[font_info.family.clone()]);
-    ts.set_height(font_info.line_height as f32 * dpi_scale_factor);
+    ts.set_font_size(font_size_px as f32);
+    ts.set_height(line_height_px as f32);
+    // ts.set_font_families(&[font_info.family.clone()]);
+    ts.set_font_families(&["Liberation Sans".to_string()]);
     ts.set_font_style(FontStyle::new(font_info.weight.into(), font_info.width.into(), to_slant(font_info.slant)));
     paragraph_builder.push_style(&ts);
 

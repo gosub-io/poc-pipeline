@@ -110,7 +110,7 @@ impl Painter {
             Brush::Solid(Color::RED),
             Brush::Solid(Color::RED),
         ]);
-        let r = Rectangle::new(layout_element.box_model.border_box()).with_border(border);
+        let r = Rectangle::new(layout_element.box_model.border_box).with_border(border);
         commands.push(PaintCommand::rectangle(r));
 
         commands
@@ -121,15 +121,15 @@ impl Painter {
         let mut commands = Vec::new();
 
         let brush = Brush::Solid(Color::YELLOW);
-        let r = Rectangle::new(layout_element.box_model.margin_box()).with_background(brush);
+        let r = Rectangle::new(layout_element.box_model.margin_box).with_background(brush);
         commands.push(PaintCommand::rectangle(r));
 
         let brush = Brush::Solid(Color::GREEN);
-        let r = Rectangle::new(layout_element.box_model.padding_box()).with_background(brush);
+        let r = Rectangle::new(layout_element.box_model.padding_box).with_background(brush);
         commands.push(PaintCommand::rectangle(r));
 
         let brush = Brush::Solid(Color::CYAN);
-        let r = Rectangle::new(layout_element.box_model.content_box()).with_background(brush);
+        let r = Rectangle::new(layout_element.box_model.content_box).with_background(brush);
         commands.push(PaintCommand::rectangle(r));
 
         commands
@@ -144,7 +144,7 @@ impl Painter {
                 let brush = self.get_parent_brush(dom_node, StyleProperty::Color, Brush::solid(Color::BLACK));
 
                 // let r = layout_element.box_model.content_box().shift(ctx.text_offset);
-                let r = layout_element.box_model.content_box();
+                let r = layout_element.box_model.padding_box;
                 // let brush = Brush::solid(Color::from_rgb8(130, 130, 130));
                 let t = Text::new(
                     r,
@@ -165,12 +165,12 @@ impl Painter {
                 // let svg = svg_store.get(svg_ctx.svg_id).unwrap();
 
                 let brush = Brush::solid(Color::from_rgb8(130, 130, 130));
-                let r = Rectangle::new(layout_element.box_model.border_box()).with_background(brush);
+                let r = Rectangle::new(layout_element.box_model.border_box).with_background(brush);
                 commands.push(PaintCommand::svg(svg_ctx.media_id, r));
             }
             ElementContext::Image(image_ctx) => {
                 let brush = Brush::image(image_ctx.media_id);
-                let r = Rectangle::new(layout_element.box_model.border_box()).with_background(brush);
+                let r = Rectangle::new(layout_element.box_model.border_box).with_background(brush);
                 commands.push(PaintCommand::rectangle(r));
             }
             ElementContext::None => {
@@ -179,7 +179,7 @@ impl Painter {
                 // brush.
 
                 let brush = self.get_brush(dom_node, StyleProperty::BackgroundColor, Brush::solid(Color::TRANSPARENT));
-                let mut r = Rectangle::new(layout_element.box_model.content_box()).with_background(brush);
+                let mut r = Rectangle::new(layout_element.box_model.border_box).with_background(brush);
 
                 // Get border
                 let border_top_width = dom_node.get_style_f32(StyleProperty::BorderTopWidth);

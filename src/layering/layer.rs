@@ -100,7 +100,7 @@ impl LayerList {
         for layer_id in self.layer_ids.read().expect("Failed to lock layer IDs").iter().rev() {
             let binding = self.layers.read().expect("Failed to lock layers");
             let Some(layer) = binding.get(layer_id) else {
-              continue;
+                continue;
             };
 
             for element_id in layer.elements.iter().rev() {
@@ -108,10 +108,10 @@ impl LayerList {
                 let box_model = &layout_element.box_model;
 
                 // @TODO: use rtree for this
-                if x >= box_model.margin_box().x &&
-                    x < box_model.margin_box().x + box_model.margin_box().width &&
-                    y >= box_model.margin_box().y &&
-                    y < box_model.margin_box().y + box_model.margin_box().height
+                if x >= box_model.margin_box.x &&
+                    x < box_model.margin_box.x + box_model.margin_box.width &&
+                    y >= box_model.margin_box.y &&
+                    y < box_model.margin_box.y + box_model.margin_box.height
                 {
                     return Some(*element_id);
                 }
