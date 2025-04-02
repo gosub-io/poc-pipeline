@@ -10,11 +10,15 @@ mod paint;
 mod text;
 mod svg;
 
-pub struct SkiaRasterizer;
+pub struct SkiaRasterizer {
+    dpi_scale_factor: f32,
+}
 
 impl SkiaRasterizer {
-    pub fn new() -> Self {
-        Self {}
+    pub fn new(dpi_scale_factor: f32) -> Self {
+        Self {
+            dpi_scale_factor,
+        }
     }
 }
 
@@ -44,7 +48,7 @@ impl Rasterable for SkiaRasterizer {
                         rectangle::do_paint_rectangle(canvas, &tile, &command);
                     }
                     PaintCommand::Text(command) => {
-                        match text::do_paint_text(canvas, &tile, &command) {
+                        match text::do_paint_text(canvas, &tile, &command, self.dpi_scale_factor) {
                             Ok(_) => {}
                             Err(e) => {
                                 println!("Failed to paint text: {:?}", e);

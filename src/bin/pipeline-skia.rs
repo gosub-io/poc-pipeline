@@ -60,9 +60,9 @@ fn main() {
     // let doc = common::document::parser::document_from_json("https://news.ycombinator.com", "news.ycombinator.com.json");
     // let doc = common::document::parser::document_from_json("https://rockylinux.org", "rockylinux.org.json");
     // let doc = common::document::parser::document_from_json("https://almalinux.org", "almalinux.org.json");
-    let mut output = String::new();
-    doc.print_tree(&mut output).expect("");
-    println!("{}", output);
+    // let mut output = String::new();
+    // doc.print_tree(&mut output).expect("");
+    // println!("{}", output);
 
     let window_dimension = Dimension::new(800.0, 600.0);
     let viewport_dimension = Dimension::new(1280.0, 1144.0);
@@ -81,6 +81,7 @@ fn main() {
         ),
         document: Arc::new(doc),
         tile_list: None,
+        dpi_scale_factor: 1.0,
     };
     init_browser_state(browser_state);
 
@@ -103,9 +104,9 @@ fn reflow() {
     let layout_tree = layouter.layout(
         render_tree,
         Some(Dimension::new(state.viewport.width, state.viewport.height)),
+        state.dpi_scale_factor,
     );
-
-    layouter.print_tree();
+    // layouter.print_tree();
 
     let layer_list = LayerList::new(layout_tree);
 
@@ -191,6 +192,19 @@ impl ApplicationHandler for App {
         match event {
             WindowEvent::CloseRequested => {
                 event_loop.exit();
+            }
+            WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
+                let binding = get_browser_state();
+                let state = binding.read().unwrap();
+                println!("Scale factor changed from {} to {}", state.dpi_scale_factor, scale_factor);
+                drop(state);
+
+                let mut state = binding.write().unwrap();
+                state.dpi_scale_factor = scale_factor as f32;
+                drop(state);
+
+                // env.window.set_inner_size(winit::dpi::PhysicalSize::new(width, height));
+                env.window.request_redraw();
             }
             WindowEvent::Resized(physical_size) => {
                 println!("Resized to {:?}", physical_size);
@@ -545,7 +559,7 @@ fn do_rasterize(layer_id: LayerId) {
         }
 
         // Rasterize the tile into a texture
-        let rasterizer = SkiaRasterizer::new();
+        let rasterizer = SkiaRasterizer::new(/*state.dpi_scale_factor*/ 1.0);
         let texture_id = rasterizer.rasterize(tile);
 
         let Some(tile) = binding.get_tile_mut(tile_id) else {

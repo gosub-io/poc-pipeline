@@ -170,5 +170,5 @@ impl std::fmt::Debug for LayoutTree {
 
 /// A layout engine should implement this trait and return a layout tree
 pub trait CanLayout {
-    fn layout(&mut self, render_tree: RenderTree, viewport: Option<Dimension>) -> LayoutTree;
+    fn layout(&mut self, render_tree: RenderTree, viewport: Option<Dimension>, dpi_scale_factor: f32) -> LayoutTree;
 }

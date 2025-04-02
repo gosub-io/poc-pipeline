@@ -93,9 +93,9 @@ impl TaffyLayouter {
 }
 
 impl CanLayout for TaffyLayouter {
-    fn layout(&mut self, render_tree: RenderTree, viewport: Option<geo::Dimension>) -> LayoutTree {
-        // let root_id = render_tree.root_id.unwrap();
-        let root_id = RenderNodeId::new(2);
+    fn layout(&mut self, render_tree: RenderTree, viewport: Option<geo::Dimension>, dpi_scale_factor: f32) -> LayoutTree {
+        let root_id = render_tree.root_id.unwrap();
+        // let root_id = RenderNodeId::new(2);
         let Some(mut layout_tree) = self.generate_tree(render_tree, root_id) else {
             panic!("Failed to generate root node render tree");
         };
@@ -122,7 +122,7 @@ impl CanLayout for TaffyLayouter {
                         };
 
                         // Calculate the text layout dimensions and return it to taffy
-                        let text_layout = get_text_layout(text_ctx.text.as_str(), &text_ctx.font_info, max_width);
+                        let text_layout = get_text_layout(text_ctx.text.as_str(), &text_ctx.font_info, max_width, dpi_scale_factor);
                         match text_layout {
                             Ok(text_layout) => Size {
                                 width: text_layout.width as f32,        // Note that we cast width down to 32bits.. we might need to take care of overflows
@@ -147,6 +147,8 @@ impl CanLayout for TaffyLayouter {
         let w = root.box_model.margin_box().width as f32;
         let h = root.box_model.margin_box().height as f32;
         layout_tree.root_dimension = geo::Dimension::new(w as f64, h as f64);
+
+        self.tree.print_tree(self.root_id);
 
         layout_tree
     }
@@ -559,6 +561,12 @@ fn to_element_context(taffy_context: Option<&TaffyContext>) -> ElementContext {
     }
 }
 
+#[inline(always)]
+fn dpi(value: f64) -> f64 {
+    let dpi_scale_factor = 3.0;
+    value * dpi_scale_factor
+}
+
 /// Converts a taffy layout to our own BoxModel structure
 pub fn taffy_layout_to_boxmodel(layout: &Layout, offset: Coordinate) -> box_model::BoxModel {
     // Taffy already calculates the margin inside the x,y,w,h coordinates, so we need to adjust
@@ -590,39 +598,4 @@ pub fn taffy_layout_to_boxmodel(layout: &Layout, offset: Coordinate) -> box_mode
             left: layout.margin.left as f64,
         },
     )
-
-    // {
-    //     margin_box: geo::Rect {
-    //         x: offset.x + layout.location.x as f64 - layout.margin.left as f64,
-    //         y: offset.y + layout.location.y as f64 - layout.margin.top as f64,
-    //         // width: layout.size.width as f64,
-    //         // height: layout.size.height as f64,
-    //         // x: offset.x + layout.location.x as f64 - layout.margin.left as f64,
-    //         // y: offset.y + layout.location.y as f64 - layout.margin.top as f64,
-    //         width: layout.size.width as f64
-    //             + layout.margin.left as f64
-    //             + layout.margin.right as f64,
-    //         height: layout.size.height as f64
-    //             + layout.margin.top as f64
-    //             + layout.margin.bottom as f64,
-    //     },
-    //     padding: box_model::Edges {
-    //         top: layout.padding.top as f64,
-    //         right: layout.padding.right as f64,
-    //         bottom: layout.padding.bottom as f64,
-    //         left: layout.padding.left as f64,
-    //     },
-    //     border: box_model::Edges {
-    //         top: layout.border.top as f64,
-    //         right: layout.border.right as f64,
-    //         bottom: layout.border.bottom as f64,
-    //         left: layout.border.left as f64,
-    //     },
-    //     margin: box_model::Edges {
-    //         top: layout.margin.top as f64,
-    //         right: layout.margin.right as f64,
-    //         bottom: layout.margin.bottom as f64,
-    //         left: layout.margin.left as f64,
-    //     },
-    // }
 }

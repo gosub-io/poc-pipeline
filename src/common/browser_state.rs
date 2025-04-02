@@ -31,6 +31,8 @@ pub struct BrowserState {
     pub document: Arc<Document>,
     /// LayerList that is currently being rendered
     pub tile_list: Option<RwLock<TileList>>,
+    /// Scale factor for DPI
+    pub dpi_scale_factor: f32,
 }
 
 impl Debug for BrowserState {
@@ -42,6 +44,7 @@ impl Debug for BrowserState {
             .field("show_tilegrid", &self.show_tilegrid)
             .field("current_hovered_element", &self.current_hovered_element)
             .field("viewport", &self.viewport)
+            .field("dpi_scale_factor", &self.dpi_scale_factor)
             .finish()
     }
 }
