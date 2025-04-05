@@ -1,6 +1,6 @@
 use skia_safe::{FontStyle, Paint};
 use skia_safe::textlayout::{Paragraph, ParagraphBuilder, ParagraphStyle, TextStyle};
-use crate::common::font::FontInfo;
+use crate::common::font::{FontAlignment, FontInfo};
 
 thread_local! {
     static FC: skia_safe::textlayout::FontCollection = {
@@ -11,7 +11,15 @@ thread_local! {
 }
 
 pub fn get_skia_paragraph(text: &str, font_info: &FontInfo, max_width: f64, paint: Option<&Paint>, _dpi_scale_factor: f32) -> Paragraph {
-    let paragraph_style = ParagraphStyle::new();
+    let mut paragraph_style = ParagraphStyle::new();
+    paragraph_style.set_text_align(match font_info.alignment {
+        FontAlignment::Start => skia_safe::textlayout::TextAlign::Start,
+        FontAlignment::Center => skia_safe::textlayout::TextAlign::Center,
+        FontAlignment::End => skia_safe::textlayout::TextAlign::End,
+        FontAlignment::Justify => skia_safe::textlayout::TextAlign::Justify,
+    });
+    paragraph_style.set_text_direction(skia_safe::textlayout::TextDirection::LTR);
+
     let mut paragraph_builder = ParagraphBuilder::new(&paragraph_style, FC.with(|fc| fc.clone()));
 
     let paint = match paint {
@@ -22,14 +30,11 @@ pub fn get_skia_paragraph(text: &str, font_info: &FontInfo, max_width: f64, pain
     let font_size_px = font_info.size;
     let line_height_px = 1.2 * font_size_px;
 
-    // println!("Searching for font family: {}", font_info.family);
-
     let mut ts = TextStyle::new();
     ts.set_foreground_paint(&paint);
     ts.set_font_size(font_size_px as f32);
     ts.set_height(line_height_px as f32);
-    // ts.set_font_families(&[font_info.family.clone()]);
-    ts.set_font_families(&["Liberation Sans".to_string()]);
+    ts.set_font_families(&[font_info.family.clone()]);
     ts.set_font_style(FontStyle::new(font_info.weight.into(), font_info.width.into(), to_slant(font_info.slant)));
     paragraph_builder.push_style(&ts);
 

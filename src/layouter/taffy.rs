@@ -402,7 +402,7 @@ impl TaffyLayouter {
                     width: 100, // 100%, normal
                     slant: 0,
                     line_height,
-                    alignment: FontAlignment::Start,
+                    alignment,
                 };
 
                 taffy_context = Some(TaffyContext::text(
