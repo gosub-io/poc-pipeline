@@ -41,8 +41,15 @@ impl Rasterable for SkiaRasterizer {
 
         // Clear the canvas if the tile is on layer 0, this is the background layer
         if tile.layer_id == LayerId::new(0) {
-            clear_canvas(canvas, (width as i32, height as i32));
-            // canvas.clear(skia_safe::Color4f::new(0x17 as f32 /255.0, 0x23 as f32 /255.0, 0xa5 as f32 /255.0, 1.0));
+            if tile.bgcolor.is_some() {
+                // We have detected a background color in a root element (html or body)
+                let bgcolor = tile.bgcolor.unwrap();
+                canvas.clear(skia_safe::Color4f::new(bgcolor.0, bgcolor.1, bgcolor.2, bgcolor.3));
+            } else {
+                // No color detected. Use our own checkered background as the default useragent style
+                // clear_canvas(canvas, (width as i32, height as i32));
+                canvas.clear(skia_safe::Color4f::new(1.0, 1.0, 1.0, 1.0));
+            }
         }
 
         canvas.clip_rect(
@@ -81,12 +88,15 @@ impl Rasterable for SkiaRasterizer {
     }
 }
 
+#[allow(unused)]
 const CHECKERED_COLOR_1: skia_safe::Color4f = skia_safe::Color4f::new(1.0, 1.0, 1.0, 1.0);
+#[allow(unused)]
 const CHECKERED_COLOR_2: skia_safe::Color4f = skia_safe::Color4f::new(1.0, 0.7, 0.7, 1.0);
 // const CHECKERED_COLOR_2: skia_safe::Color4f = skia_safe::Color4f::new(0x17 as f32 /255.0, 0x23 as f32 /255.0, 0xa5 as f32 /255.0, 1.0);
 
 // This creates a checkerboard pattern for the canvas background. It's a simple way to display the
 // actual page from the background that may or may not have rendered (ie: margins on body)
+#[allow(unused)]
 fn clear_canvas(canvas: &Canvas, size: (i32, i32)) {
     let tile_size = 8.0;
 

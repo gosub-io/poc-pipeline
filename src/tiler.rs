@@ -1,9 +1,14 @@
+use crate::painter::commands::color::Color;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::ops::AddAssign;
 use std::sync::{Arc, RwLock};
 use rstar::AABB;
 use rstar::primitives::GeomWithData;
+use crate::common::document::document::Document;
+use crate::common::document::node::{NodeId, NodeType};
+use crate::common::document::style::{Color as StyleColor, StyleProperty, StyleValue};
+use crate::common::document::style::StyleProperty::BackgroundColor;
 use crate::common::geo::{Coordinate, Dimension, Rect};
 use crate::layering::layer::{LayerId, LayerList};
 use crate::layouter::{LayoutElementId, LayoutElementNode};
@@ -136,6 +141,8 @@ pub struct Tile {
     pub state: TileState,
     // Position and dimension of the tile in the layer
     pub rect: Rect,
+    // Background color of the tile (actually, the background color of the whole canvas). We should use a different way to deal with this I think.
+    pub bgcolor: Option<(f32, f32, f32, f32)>,
 }
 
 /// Each layer has a list of tiles. Each tile has a list of elements that are laid out in that tile.
@@ -251,6 +258,15 @@ impl TileList {
         let rows = (self.layer_list.layout_tree.root_dimension.height / self.default_tile_dimension.height).ceil() as usize;
         let cols = (self.layer_list.layout_tree.root_dimension.width / self.default_tile_dimension.width).ceil() as usize;
 
+        dbg!(&self.layer_list.layout_tree.render_tree.doc.html_node_id);
+        dbg!(&self.layer_list.layout_tree.render_tree.doc.body_node_id);
+        let mut bgcolor = None;
+        bgcolor = get_background_color_from_node(self.layer_list.layout_tree.render_tree.doc.html_node_id, &self.layer_list.layout_tree.render_tree.doc);
+        if bgcolor.is_none() {
+            bgcolor = get_background_color_from_node(self.layer_list.layout_tree.render_tree.doc.body_node_id, &self.layer_list.layout_tree.render_tree.doc);
+        }
+        println!("Background color: {:?}", bgcolor);
+
         let mut layer_list = self.layer_list.layers.read().unwrap();
 
         // iterate each layer
@@ -275,6 +291,7 @@ impl TileList {
                             self.default_tile_dimension.width,
                             self.default_tile_dimension.height,
                         ),
+                        bgcolor,
                     };
 
                     self.arena.insert(tile_id, tile);
@@ -364,6 +381,55 @@ impl TileList {
         let id = *nid;
         *nid += 1;
         id
+    }
+}
+
+fn get_background_color_from_node(node_id: Option<NodeId>, doc: &Document) -> Option<(f32, f32, f32, f32)> {
+    let node_id = match node_id {
+        Some(node_id) => node_id,
+        None => {
+            return None;
+        }
+    };
+
+    let Some(node) = doc.get_node_by_id(node_id) else {
+        return None;
+    };
+
+    let NodeType::Element(data) = &node.node_type else {
+        return None;
+    };
+
+    data.styles.get_property(BackgroundColor).map(|value| {
+        if let StyleValue::Color(color) = value {
+            return convert_color(color);
+        }
+        None
+    });
+
+    None
+}
+
+fn convert_color(color: &StyleColor) -> Option<(f32, f32, f32, f32)> {
+    let c = match color {
+        StyleColor::Rgb(r, g, b) => Some((*r as f32 / 255.0, *g as f32 / 255.0, *b as f32 / 255.0, 1.0)),
+        StyleColor::Rgba(r, g, b, a) => Some((*r as f32 / 255.0, *g as f32 / 255.0, *b as f32 / 255.0, *a as f32 / 255.0)),
+        StyleColor::Named(name) => {
+            let c = Color::from_css(name.as_str());
+            Some((c.r(), c.g(), c.b(), c.a()))
+        },
+    };
+
+    // Check if the color is transparent. If so, we return None
+    match c {
+        Some((r, g, b, a)) => {
+            if a > 0.0 {
+                Some((r, g, b, a))
+            } else {
+                None
+            }
+        },
+        None => None,
     }
 }
 

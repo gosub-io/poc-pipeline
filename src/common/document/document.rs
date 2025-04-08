@@ -9,7 +9,8 @@ pub struct Document {
     pub arena: HashMap<NodeId, Node>,
     next_node_id: Arc<RwLock<NodeId>>,
     pub root_id: Option<NodeId>,
-
+    pub html_node_id: Option<NodeId>,
+    pub body_node_id: Option<NodeId>,
     pub base_url: String,
 }
 
@@ -18,6 +19,8 @@ impl Document {
         Document {
             arena: HashMap::new(),
             root_id: None,
+            html_node_id: None,
+            body_node_id: None,
             next_node_id: Arc::new(RwLock::new(NodeId::new(1))),
             base_url: base_url.to_string(),
         }
@@ -60,6 +63,14 @@ impl Document {
         let node = Node::new_element(self, parent_id, tag_name.to_string(), attributes, self_closing, style);
         let node_id = node.node_id.clone();
         self.arena.insert(node_id.clone(), node);
+
+        // We will be needing the html and body tags later on for background color purposes. Save them so we can do quick lookups.
+        if tag_name == "html" && self.html_node_id.is_none() {
+            self.html_node_id = Some(node_id.clone());
+        } else if tag_name == "body" && self.body_node_id.is_none() {
+            self.body_node_id = Some(node_id.clone());
+        }
+
         node_id
     }
 
