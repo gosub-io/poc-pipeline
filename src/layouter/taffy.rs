@@ -144,12 +144,11 @@ impl CanLayout for TaffyLayouter {
 
         // get dimension of the root node
         let root = layout_tree.get_node_by_id(root_id).unwrap();
-        let w = root.box_model.margin_box.width as f32 + 100.0;
-        let h = root.box_model.margin_box.height as f32 + 100.0;
+        let w = root.box_model.margin_box.width as f32; // + 100.0;
+        let h = root.box_model.margin_box.height as f32; // + 100.0;
         layout_tree.root_dimension = geo::Dimension::new(w as f64, h as f64);
 
-        self.tree.print_tree(self.root_id);
-
+        // self.tree.print_tree(self.root_id);
         layout_tree
     }
 }
@@ -167,7 +166,6 @@ impl TaffyLayouter {
 
         let el = layout_tree.get_node_by_id_mut(layout_node_id).unwrap();
         el.box_model = taffy_layout_to_boxmodel(&layout, offset);
-        dbg!(&el.box_model);
         let child_ids = el.children.clone();
 
         for child_id in child_ids {
@@ -214,9 +212,9 @@ impl TaffyLayouter {
 
     /// inline_element_counter will increase each time an inline element is generated and reset to zero when we reached a block element
     /// This allows us to add a space between inline elements, but not before or after block elements.
-    fn generate_node<'a>(
+    fn generate_node(
         &mut self,
-        layout_tree: &'a mut LayoutTree,
+        layout_tree: &mut LayoutTree,
         render_node_id: RenderNodeId,
         inline_element_counter: usize,
     ) -> Option<(LayoutElementId, TaffyNodeId)> {

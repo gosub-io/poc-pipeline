@@ -37,7 +37,8 @@ const TILE_DIMENSION: f64 = 256.0;
 fn main() {
     // --------------------------------------------------------------------
     // Generate a DOM tree
-    let doc = common::document::parser::document_from_json("https://codemusings.nl", "cm.json");
+    // let doc = common::document::parser::document_from_json("https://codemusings.nl", "cm.json");
+    let doc = common::document::parser::document_from_json("https://brettgfitzgerald.com", "brett.json");
 
     let window_dimension = Dimension::new(800.0, 600.0);
     let viewport_dimension = Dimension::new(1024.0, 768.0);
@@ -57,6 +58,7 @@ fn main() {
         ),
         document: Arc::new(doc),
         tile_list: None,
+        dpi_scale_factor: 1.0,
     };
     init_browser_state(browser_state);
 
@@ -80,6 +82,7 @@ fn reflow() {
     let layout_tree = layouter.layout(
         render_tree,
         Some(Dimension::new(state.viewport.width, state.viewport.height)),
+        state.dpi_scale_factor,
     );
 
     let layer_list = LayerList::new(layout_tree);
@@ -387,7 +390,7 @@ fn do_paint(layer_id: LayerId) {
         };
 
         // if not dirty, no need to render and continue
-        if tile.state == TileState::Clean {
+        if tile.state == TileState::Clean || tile.state == TileState::Empty {
             continue;
         }
 
@@ -425,20 +428,26 @@ fn do_rasterize(
         };
 
         // if not dirty, no need to render and continue
-        if tile.state == TileState::Clean {
+        if tile.state == TileState::Clean || tile.state == TileState::Empty {
             continue;
         }
 
-        // Rasterize the tile into a texture
-        let rasterizer = VelloRasterizer::new(device, queue, &renderer);
-        let texture_id = rasterizer.rasterize(tile);
 
         let Some(tile) = binding.get_tile_mut(tile_id) else {
             log::warn!("Tile not found: {:?}", tile_id);
             continue;
         };
 
-        tile.texture_id = Some(texture_id);
-        tile.state = TileState::Clean;
+        // Rasterize the tile into a texture
+        let rasterizer = VelloRasterizer::new(device, queue, &renderer);
+        match rasterizer.rasterize(tile) {
+            Some(texture_id) => {
+                tile.texture_id = Some(texture_id);
+                tile.state = TileState::Clean;
+            }
+            None => {
+                tile.state = TileState::Empty;
+            }
+        }
     }
 }

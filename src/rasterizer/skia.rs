@@ -3,6 +3,7 @@ use crate::painter::commands::PaintCommand;
 use crate::rasterizer::Rasterable;
 use crate::common::texture::TextureId;
 use crate::common::get_texture_store;
+use crate::layering::layer::LayerId;
 use crate::tiler::Tile;
 
 mod rectangle;
@@ -23,17 +24,26 @@ impl SkiaRasterizer {
 }
 
 impl Rasterable for SkiaRasterizer {
-    fn rasterize(&self, tile: &Tile) -> TextureId {
+    fn rasterize(&self, tile: &Tile) -> Option<TextureId> {
         let width = tile.rect.width as u32;
         let height = tile.rect.height as u32;
+
+        if tile.layer_id != LayerId::new(0) && tile.elements.is_empty() {
+            // If the tile is not on layer 0 and is empty, we don't need to rasterize it
+            return None;
+        }
 
         let mut surface = skia_safe::surfaces::raster_n32_premul(
             skia_safe::ISize::new(width as i32, height as i32),
         ).unwrap();
 
         let canvas = surface.canvas();
-        clear_canvas(canvas, (width as i32, height as i32));
-        // canvas.clear(skia_safe::Color4f::new(0x17 as f32 /255.0, 0x23 as f32 /255.0, 0xa5 as f32 /255.0, 1.0));
+
+        // Clear the canvas if the tile is on layer 0, this is the background layer
+        if tile.layer_id == LayerId::new(0) {
+            clear_canvas(canvas, (width as i32, height as i32));
+            // canvas.clear(skia_safe::Color4f::new(0x17 as f32 /255.0, 0x23 as f32 /255.0, 0xa5 as f32 /255.0, 1.0));
+        }
 
         canvas.clip_rect(
             Rect::new(0.0, 0.0, width as f32, height as f32),
@@ -49,12 +59,7 @@ impl Rasterable for SkiaRasterizer {
                         rectangle::do_paint_rectangle(canvas, &tile, &command);
                     }
                     PaintCommand::Text(command) => {
-                        match text::do_paint_text(canvas, &tile, &command, self.dpi_scale_factor) {
-                            Ok(_) => {}
-                            Err(e) => {
-                                println!("Failed to paint text: {:?}", e);
-                            }
-                        }
+                        let _ = text::do_paint_text(canvas, &tile, &command, self.dpi_scale_factor);
                     }
                     PaintCommand::Svg(command) => {
                         svg::do_paint_svg(canvas, &tile, command.media_id, &command.rect);
@@ -72,7 +77,7 @@ impl Rasterable for SkiaRasterizer {
 
         // _ = texture_store.save_to_disk(texture_id);
 
-        texture_id
+        Some(texture_id)
     }
 }
 

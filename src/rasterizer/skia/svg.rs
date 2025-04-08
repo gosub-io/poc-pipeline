@@ -18,7 +18,6 @@ pub(crate) fn do_paint_svg(
     media_id: MediaId,
     rect: &Rectangle,
 ) {
-    println!("Painting SVG: {:?}", media_id);
     let binding = get_media_store().read().unwrap();
     let media = binding.get_svg(media_id);
 
@@ -56,10 +55,15 @@ pub(crate) fn do_paint_svg(
     let svg_rendered_data = media.svg.rendered_data.read().unwrap();
     let data = Data::new_copy(svg_rendered_data.as_slice());
 
-    let skia_image = images::raster_from_data(&img_info, data, svg_dimension.width as usize * 4).unwrap();
-    canvas.draw_image(
-        &skia_image,
-        (rect.rect().x as f32, rect.rect().y as f32),
-        None,
-    );
+    match images::raster_from_data(&img_info, data, svg_dimension.width as usize * 4) {
+        Some(skia_image) => {
+            canvas.draw_image(
+                &skia_image,
+                (rect.rect().x as f32, rect.rect().y as f32),
+                None);
+        }
+        None => {
+            println!("Error rendering SVG");
+        }
+    }
 }

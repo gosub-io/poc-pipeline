@@ -114,6 +114,8 @@ pub enum TileState {
     Dirty,
     /// Tile texture cannot be rendered by this backend
     Unrenderable,
+    /// Tile is clean, but it does not contain anything (ie: no texture needed)
+    Empty,
 }
 
 /// Single tile in the tile list. It contains a list of elements that are laid out in the tile and

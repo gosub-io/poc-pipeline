@@ -33,7 +33,7 @@ use poc_pipeline::compositor::skia::{SkiaCompositor, SkiaCompositorConfig};
 use poc_pipeline::compositor::Composable;
 use poc_pipeline::layering::layer::{LayerId, LayerList};
 use poc_pipeline::layouter::taffy::TaffyLayouter;
-use poc_pipeline::layouter::{CanLayout, LayoutElementId};
+use poc_pipeline::layouter::CanLayout;
 use poc_pipeline::painter::Painter;
 use poc_pipeline::rasterizer::skia::SkiaRasterizer;
 use poc_pipeline::rasterizer::Rasterable;
@@ -53,12 +53,13 @@ use winit::window::{WindowAttributes, WindowId};
 const TILE_DIMENSION: f64 = 256.0;
 
 fn main() {
-    // let doc = common::document::parser::document_from_json("https://codemusings.nl","cm2.json");
+    // let doc = common::document::parser::document_from_json("https://codemusings.nl","cm.json");
     // let doc = common::document::parser::document_from_json("https://news.ycombinator.com", "news.ycombinator.com.json");
-    let doc = common::document::parser::document_from_json("https://gosub.io", "margin2.json");
+    // let doc = common::document::parser::document_from_json("https://gosub.io", "margin2.json");
     // let doc = common::document::parser::document_from_json("https://gosub.io", "svg.json");
-    // let doc = common::document::parser::document_from_json("https://news.ycombinator.com", "news.ycombinator.com.json");
+    let doc = common::document::parser::document_from_json("https://news.ycombinator.com", "news.ycombinator.com.json");
     // let doc = common::document::parser::document_from_json("https://rockylinux.org", "rockylinux.org.json");
+    // let doc = common::document::parser::document_from_json("https://brettgfitzgerald.com", "brett.json");
     // let doc = common::document::parser::document_from_json("https://almalinux.org", "almalinux.org.json");
     // let mut output = String::new();
     // doc.print_tree(&mut output).expect("");
@@ -71,8 +72,8 @@ fn main() {
         visible_layer_list: vec![true; 10],
         wireframed: WireframeState::None,
         debug_hover: false,
-        current_hovered_element: Some(LayoutElementId::new(2)),
-        show_tilegrid: true,
+        current_hovered_element: None,
+        show_tilegrid: false,
         viewport: Rect::new(
             0.0,
             0.0,
@@ -112,6 +113,8 @@ fn reflow() {
 
     let mut tile_list = TileList::new(layer_list, Dimension::new(TILE_DIMENSION, TILE_DIMENSION));
     tile_list.generate();
+
+    // tile_list.print_list();
 
     drop(state);
 
@@ -203,7 +206,6 @@ impl ApplicationHandler for App {
                 state.dpi_scale_factor = scale_factor as f32;
                 drop(state);
 
-                // env.window.set_inner_size(winit::dpi::PhysicalSize::new(width, height));
                 env.window.request_redraw();
             }
             WindowEvent::Resized(physical_size) => {
@@ -521,7 +523,7 @@ fn do_paint(layer_id: LayerId) {
         };
 
         // if not dirty, no need to render and continue
-        if tile.state == TileState::Clean {
+        if tile.state == TileState::Clean || tile.state == TileState::Empty {
             continue;
         }
 
@@ -554,20 +556,26 @@ fn do_rasterize(layer_id: LayerId) {
         };
 
         // if not dirty, no need to render and continue
-        if tile.state == TileState::Clean {
+        if tile.state == TileState::Clean || tile.state == TileState::Empty {
             continue;
         }
-
-        // Rasterize the tile into a texture
-        let rasterizer = SkiaRasterizer::new(/*state.dpi_scale_factor*/ 1.0);
-        let texture_id = rasterizer.rasterize(tile);
 
         let Some(tile) = binding.get_tile_mut(tile_id) else {
             log::warn!("Tile not found: {:?}", tile_id);
             continue;
         };
 
-        tile.texture_id = Some(texture_id);
-        tile.state = TileState::Clean;
+        // Rasterize the tile into a texture
+        let rasterizer = SkiaRasterizer::new(/*state.dpi_scale_factor*/ 1.0);
+        match rasterizer.rasterize(tile) {
+            Some(texture_id) => {
+                tile.texture_id = Some(texture_id);
+                tile.state = TileState::Clean;
+            }
+            None => {
+                log::warn!("Tile not rasterized. Seems empty {:?}", tile_id);
+                tile.state = TileState::Empty;
+            }
+        }
     }
 }

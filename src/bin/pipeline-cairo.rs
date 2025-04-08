@@ -370,7 +370,7 @@ fn do_paint(layer_id: LayerId) {
         };
 
         // if not dirty, no need to render and continue
-        if tile.state == TileState::Clean {
+        if tile.state == TileState::Clean || tile.state == TileState::Empty {
             continue;
         }
 
@@ -399,22 +399,27 @@ fn do_rasterize(layer_id: LayerId) {
         };
 
         // if not dirty, no need to render and continue
-        if tile.state == TileState::Clean {
+        if tile.state == TileState::Clean || tile.state == TileState::Empty {
             continue;
         }
 
         // Rasterize the tile into a texture
         // println!("Generating painting commands for tile");
-        let rasterizer = CairoRasterizer::new();
-        let texture_id = rasterizer.rasterize(tile);
-
         let Some(tile) = binding.get_tile_mut(tile_id) else {
             log::warn!("Tile not found: {:?}", tile_id);
             continue;
         };
 
-        tile.texture_id = Some(texture_id);
-        tile.state = TileState::Clean;
+        let rasterizer = CairoRasterizer::new();
+        match rasterizer.rasterize(tile) {
+            Some(texture_id) => {
+                tile.texture_id = Some(texture_id);
+                tile.state = TileState::Clean;
+            }
+            None => {
+                tile.state = TileState::Empty;
+            }
+        }
     }
 }
 

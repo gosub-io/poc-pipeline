@@ -15,5 +15,5 @@ pub mod vello;
 pub mod skia;
 
 pub trait Rasterable {
-    fn rasterize(&self, tile: &Tile) -> TextureId;
+    fn rasterize(&self, tile: &Tile) -> Option<TextureId>;
 }

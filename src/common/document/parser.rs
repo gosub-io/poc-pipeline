@@ -70,7 +70,6 @@ fn create_dom_from_json(doc: &mut Document, node: &DomNode, parent_id: Option<No
         return None;
     };
 
-
     let style = get_style_from_node(node);
     let node_id = doc.new_element(parent_id, &tag, Some(attrs), node.self_closing, Some(style.clone()));
 
