@@ -178,13 +178,27 @@ impl Node {
         }
     }
 
+    pub fn is_inline_block_element(&self) -> bool {
+        match &self.node_type {
+            NodeType::Element(data) => {
+                match data.get_style(StyleProperty::Display) {
+                    Some(StyleValue::Display(display)) => {
+                        *display == Display::InlineBlock
+                    }
+                    _ => false,
+                }
+            }
+            _ => false,
+        }
+    }
+
     /// Returns true if the node is an element node and is inline
     pub fn is_inline_element(&self) -> bool {
         match &self.node_type {
             NodeType::Element(data) => {
                 match data.get_style(StyleProperty::Display) {
                     Some(StyleValue::Display(display)) => {
-                        *display == Display::Inline || *display == Display::InlineBlock
+                        *display == Display::Inline
                     }
                     _ => false,
                 }
