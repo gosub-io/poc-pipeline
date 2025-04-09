@@ -56,7 +56,7 @@ fn main() {
     // let doc = common::document::parser::document_from_json("https://codemusings.nl","cm.json");
     // let doc = common::document::parser::document_from_json("https://news.ycombinator.com", "news.ycombinator.com.json");
     // let doc = common::document::parser::document_from_json("https://gosub.io", "margin2.json");
-    let doc = common::document::parser::document_from_json("https://gosub.io", "inline3.json");
+    let doc = common::document::parser::document_from_json("https://gosub.io", "inline2.json");
     // let doc = common::document::parser::document_from_json("https://gosub.io", "svg.json");
     // let doc = common::document::parser::document_from_json("https://news.ycombinator.com", "news.ycombinator.com.json");
     // let doc = common::document::parser::document_from_json("https://rockylinux.org", "rockylinux.org.json");

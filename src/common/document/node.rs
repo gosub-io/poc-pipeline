@@ -90,6 +90,24 @@ impl ElementData {
     pub fn is_self_closing(&self) -> bool {
         self.self_closing
     }
+
+    pub fn is_inline_element(&self) -> bool {
+        match self.get_style(StyleProperty::Display) {
+            Some(StyleValue::Display(display)) => {
+                *display == Display::Inline
+            }
+            _ => false,
+        }
+    }
+
+    pub fn is_inline_block_element(&self) -> bool {
+        match self.get_style(StyleProperty::Display) {
+            Some(StyleValue::Display(display)) => {
+                *display == Display::InlineBlock
+            }
+            _ => false,
+        }
+    }
 }
 
 #[derive(Clone, Debug)]

@@ -31,7 +31,7 @@ pub struct TaffyLayouter {
     layout_taffy_mapping: HashMap<LayoutElementId, TaffyNodeId>,
 }
 
-/// Context structures to pass to taffy measure functions so we can calculate the size of the text or image.
+/// Context structures to pass to taffy measure functions so we can calculate the size of the text or images.
 #[derive(Clone, Debug)]
 pub enum TaffyContext {
     Text(ElementContextText),
@@ -148,17 +148,11 @@ impl CanLayout for TaffyLayouter {
         let h = root.box_model.margin_box.height as f32; // + 100.0;
         layout_tree.root_dimension = geo::Dimension::new(w as f64, h as f64);
 
+        self.tree.print_tree(self.root_id);
+
         // self.tree.print_tree(self.root_id);
         layout_tree
     }
-}
-
-// Taffy classification. It looks a bit like CSS's display property, but it's not exactly the same (why not, i don't know yet)
-#[derive(PartialEq)]
-enum Classification {
-    Block,
-    Inline,
-    InlineBlock,
 }
 
 impl TaffyLayouter {
@@ -207,7 +201,7 @@ impl TaffyLayouter {
         };
 
         let Some((layout_element_root_id, taffy_root_id)) =
-            self.generate_taffy_element(&mut layout_tree, root_id, 0)
+            self.generate_taffy_element(&mut layout_tree, root_id)
         else {
             return None;
         };
@@ -218,13 +212,56 @@ impl TaffyLayouter {
         Some(layout_tree)
     }
 
-    // Process node and turn it into a taffy node
-    fn generate_taffy_element(
+
+    // Process inline elements by adding them to the taffy tree and element_node children vec. It will
+    // automatically create an anonymous taffy block element to store multiple inline elements.
+    fn process_inlines(
         &mut self,
-        layout_tree: &mut LayoutTree,
-        render_node_id: RenderNodeId,
-        inline_element_counter: usize,
-    ) -> Option<(LayoutElementId, TaffyNodeId)> {
+        current_inline_group: &Vec<(LayoutElementId, TaffyNodeId)>,
+        element_node: &mut LayoutElementNode,
+        leaf_id: TaffyNodeId,
+    ) {
+        // No inline elements to process
+        if current_inline_group.is_empty() {
+            return;
+        }
+
+        // We only have one inline element in the queue so we can add it directly to the taffy node
+        if current_inline_group.len() == 1 {
+            if let Some((inline_layout_element_id, inline_taffy_node_id)) = current_inline_group.first() {
+                self.tree.add_child(leaf_id, *inline_taffy_node_id).unwrap();
+                element_node.children.push(*inline_layout_element_id);
+            }
+            return;
+        }
+
+        // Multiple inline elements are found. We need to wrap them in an anonymous taffy block element
+        let Ok(taffy_container_id) = self.tree.new_leaf(Style {
+            display: Display::Flex,
+            flex_direction: FlexDirection::Row,
+            flex_wrap: FlexWrap::Wrap,
+            align_self: Some(AlignSelf::FlexStart),
+            gap: Size {
+                width: LengthPercentage::Length(0.0),
+                height: LengthPercentage::Length(0.0),
+            },
+            .. Default::default()
+        }) else {
+            return;
+        };
+        self.tree.add_child(leaf_id, taffy_container_id).unwrap();
+
+        // and add all the inline elements to the anonymous element
+        for (inline_layout_element_id, inline_taffy_node_id) in current_inline_group {
+            self.tree.add_child(taffy_container_id, *inline_taffy_node_id);
+            element_node.children.push(*inline_layout_element_id);
+        }
+    }
+
+
+    // Process node and turn it into a taffy node. It will recursively process any children and takes care to wrap any multiple inline elements
+    // into an anonymous taffy block element. This way we can sort of emulate inline elements within taffy.
+    fn generate_taffy_element(&mut self, layout_tree: &mut LayoutTree, render_node_id: RenderNodeId) -> Option<(LayoutElementId, TaffyNodeId)> {
         // Find render node and dom node from the layout tree
         let Some(render_node) = layout_tree.render_tree.get_node_by_id(render_node_id) else {
             return None;
@@ -237,9 +274,8 @@ impl TaffyLayouter {
             return None;
         };
 
-
         // Extract taffy data from the DOM node
-        let Some((taffy_context, taffy_style, taffy_classification)) = self.extract_taffy_data(
+        let Some((taffy_context, taffy_style)) = self.extract_taffy_data(
             &layout_tree,
             &dom_node,
         ) else {
@@ -266,60 +302,6 @@ impl TaffyLayouter {
             return None;
         };
 
-
-        // Node is added to taffy. Now we need to check children. Note that we need to take into account inline elements at this point.
-
-
-
-
-        // by default, we assume that we do not have an inline container which we need to add our elements, but we
-        // can add them directly to the "leaf_id".
-        let mut inline_container_leaf_id = None;
-
-
-
-
-        let render_node_children = render_node.children.clone();
-
-        if taffy_classification == Classification::Block {
-            // First, count the consecutive inline children
-            let mut inline_count = 0;
-            while inline_count < render_node_children.len() {
-                let child_id = render_node_children[inline_count];
-                let Some(child) = layout_tree.render_tree.get_node_by_id(child_id) else {
-                    continue;
-                };
-
-                if ! child.is_inline_element() {
-                    break;
-                }
-                inline_count += 1;
-            }
-
-            if inline_count == 0 {
-                // No inline children, so we can skip this step
-            } else if inline_count == 1 {
-                // A single inline element here. No need to group into an anonymous container
-            } else {
-                // Multiple inline elements found. We need to group them into an anonymous container
-                let Ok(taffy_container_id) = self.tree.new_leaf(Style {
-                    display: Display::Block,
-                    ..taffy_style.to_owned()
-                }) else {
-                    return None;
-                };
-
-                self.tree.add_child(leaf_id, taffy_container_id).unwrap();
-                inline_container_leaf_id = Some(taffy_container_id);
-            }
-        }
-
-
-
-
-
-
-
         // Create the element node in our layout tree
         let mut element_node = LayoutElementNode {
             id: layout_tree.next_node_id(),
@@ -330,25 +312,44 @@ impl TaffyLayouter {
             context: element_context,
         };
 
-        let mut inline_element_counter = inline_element_counter;
+        // Now we iterate the children, and add them to both taffy and the element_node's children vec.
 
-        for child_id in render_node_children {
-            if let Some((child_layout_element_id, child_taffy_id)) =
-                self.generate_taffy_element(layout_tree, child_id, inline_element_counter)
-            {
-                let _ = match inline_container_leaf_id {
-                    Some(container_id) => {
-                        inline_element_counter += 1;
-                        self.tree.add_child(container_id, child_taffy_id)
-                    }
-                    None => self.tree.add_child(leaf_id, child_taffy_id),
-                };
+        let mut current_inline_group = Vec::new();
+        let render_node_children = render_node.children.clone();
+        for child_id in render_node_children.iter() {
+            let Some((child_layout_element_id, child_taffy_id)) =
+                self.generate_taffy_element(layout_tree, *child_id)
+            else {
+                continue;
+            };
 
-                // Add child to layout element
-                element_node.children.push(child_layout_element_id);
+            let Some(child_node) = layout_tree.render_tree.get_document_node_by_render_id(*child_id) else {
+                continue;
+            };
+
+            // Don't add inline elements to the taffy tree yet. We need to group them first and possibly wrap inside a block
+            if child_node.is_inline_element() {
+                current_inline_group.push((child_layout_element_id, child_taffy_id));
+                continue;
             }
+
+            self.process_inlines(
+                &mut current_inline_group,
+                &mut element_node,
+                leaf_id,
+            );
+            current_inline_group = Vec::new();
+
+            // Add this child
+            self.tree.add_child(leaf_id, child_taffy_id).unwrap();
         }
 
+        // Deal with any remaining inline elements in the current inline group
+        self.process_inlines(
+            &mut current_inline_group,
+            &mut element_node,
+            leaf_id,
+        );
 
         // Finally, we can insert the generated element also in the layout-tree. This is the ultimate
         // structure we must return to the rest of the pipeline. Taffy itself will stay internal to this
@@ -366,11 +367,10 @@ impl TaffyLayouter {
     }
 
     /// Extracts taffy variables based the DOM node. It will generate the taffy style based on the node CSS properties,
-    /// any context that might be needed (images, svg, text), and a classification of the node (block, inline, inline-block).
-    fn extract_taffy_data(&self, layout_tree: &LayoutTree, dom_node: &&Node) -> Option<(Option<TaffyContext>, Style, Classification)> {
+    /// any context that might be needed (images, svg, text).
+    fn extract_taffy_data(&self, layout_tree: &LayoutTree, dom_node: &&Node) -> Option<(Option<TaffyContext>, Style)> {
         let mut taffy_context = None;
         let mut taffy_style = Style::default();
-        let mut taffy_classification = Classification::Block;
 
         match &dom_node.node_type {
             // Node is an element node (like a div, span, etc.)
@@ -378,14 +378,6 @@ impl TaffyLayouter {
                 // Create the taffy style from our CSS and push it into the stack
                 let conv = CssTaffyConverter::new(&data.styles);
                 taffy_style = conv.convert(dom_node.node_id, false);
-
-                if data.is_inline_element() {
-                    taffy_classification = Classification::Inline;
-                } else if data.is_inline_block_element() {
-                    taffy_classification = Classification::InlineBlock;
-                } else {
-                    taffy_classification = Classification::Block;
-                }
 
                 // Check if element type is an image, if so, set the taffy context
                 if data.tag_name.eq_ignore_ascii_case("img") {
@@ -447,9 +439,6 @@ impl TaffyLayouter {
                 }
             }
             NodeType::Text(text, node_style) => {
-                // Text is always inline
-                taffy_classification = Classification::Inline;
-
                 let parent_node = match dom_node.parent_id {
                     Some(parent_id) => layout_tree.render_tree.doc.get_node_by_id(parent_id),
                     None => None,
@@ -567,7 +556,6 @@ impl TaffyLayouter {
         Some((
             taffy_context,
             taffy_style,
-            taffy_classification,
         ))
     }
 }

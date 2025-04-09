@@ -258,14 +258,12 @@ impl TileList {
         let rows = (self.layer_list.layout_tree.root_dimension.height / self.default_tile_dimension.height).ceil() as usize;
         let cols = (self.layer_list.layout_tree.root_dimension.width / self.default_tile_dimension.width).ceil() as usize;
 
-        dbg!(&self.layer_list.layout_tree.render_tree.doc.html_node_id);
-        dbg!(&self.layer_list.layout_tree.render_tree.doc.body_node_id);
+        // Detect canvas color. We paint the whole canvas with the background color from either the html or body nodes.
         let mut bgcolor = None;
         bgcolor = get_background_color_from_node(self.layer_list.layout_tree.render_tree.doc.html_node_id, &self.layer_list.layout_tree.render_tree.doc);
         if bgcolor.is_none() {
             bgcolor = get_background_color_from_node(self.layer_list.layout_tree.render_tree.doc.body_node_id, &self.layer_list.layout_tree.render_tree.doc);
         }
-        println!("Background color: {:?}", bgcolor);
 
         let mut layer_list = self.layer_list.layers.read().unwrap();
 

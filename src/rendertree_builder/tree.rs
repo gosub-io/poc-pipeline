@@ -89,6 +89,18 @@ impl RenderTree {
             self.print_node(*child_id, level + 1);
         }
     }
+
+    pub(crate) fn get_document_node_by_render_id(&self, render_node_id: RenderNodeId) -> Option<&Node> {
+        let Some(node) = self.arena.get(&render_node_id) else {
+            return None;
+        };
+
+        let Some(doc_node) = self.doc.get_node_by_id(NodeId::new(node.node_id.to_u64())) else {
+            return None;
+        };
+
+        Some(doc_node)
+    }
 }
 
 const INVISIBLE_ELEMENTS: [&str; 6] = [ "head",  "style",  "script",  "meta",  "link",  "title" ];
