@@ -62,9 +62,9 @@ fn main() {
     // let doc = common::document::parser::document_from_json("https://rockylinux.org", "rockylinux.org.json");
     // let doc = common::document::parser::document_from_json("https://brettgfitzgerald.com", "brett.json");
     // let doc = common::document::parser::document_from_json("https://almalinux.org", "almalinux.org.json");
-    // let mut output = String::new();
-    // doc.print_tree(&mut output).expect("");
-    // println!("{}", output);
+    let mut output = String::new();
+    doc.print_tree(&mut output).expect("");
+    println!("{}", output);
 
     let window_dimension = Dimension::new(800.0, 600.0);
     let viewport_dimension = Dimension::new(1280.0, 1144.0);

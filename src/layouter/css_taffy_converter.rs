@@ -131,7 +131,9 @@ impl CssTaffyConverter {
                 ts.flex_wrap = FlexWrap::Wrap;
                 ts.align_items = Some(AlignItems::Baseline);
             },
-            _ => {},
+            _ => {
+                // dbg!("Unmatched display value: {}", self.data.get_property(StyleProperty::Display).unwrap_or(&StyleValue::None));
+            },
         }
 
         ts

@@ -149,8 +149,6 @@ impl CanLayout for TaffyLayouter {
         layout_tree.root_dimension = geo::Dimension::new(w as f64, h as f64);
 
         self.tree.print_tree(self.root_id);
-
-        // self.tree.print_tree(self.root_id);
         layout_tree
     }
 }
@@ -221,6 +219,8 @@ impl TaffyLayouter {
         element_node: &mut LayoutElementNode,
         leaf_id: TaffyNodeId,
     ) {
+        println!("Processing inline elements: {:?}", current_inline_group.len());
+
         // No inline elements to process
         if current_inline_group.is_empty() {
             return;
@@ -244,6 +244,10 @@ impl TaffyLayouter {
             gap: Size {
                 width: LengthPercentage::Length(0.0),
                 height: LengthPercentage::Length(0.0),
+            },
+            size: Size {
+                width: Dimension::Auto,
+                height: Dimension::Auto,
             },
             .. Default::default()
         }) else {
@@ -328,10 +332,13 @@ impl TaffyLayouter {
             };
 
             // Don't add inline elements to the taffy tree yet. We need to group them first and possibly wrap inside a block
-            if child_node.is_inline_element() {
+            if child_node.is_inline_element() || child_node.is_text() {
+                println!("Pushing element as inline: {:?}", child_node.node_id);
                 current_inline_group.push((child_layout_element_id, child_taffy_id));
                 continue;
             }
+
+            println!("Element {:?} is not an inline", child_node.node_id);
 
             self.process_inlines(
                 &mut current_inline_group,
@@ -342,6 +349,7 @@ impl TaffyLayouter {
 
             // Add this child
             self.tree.add_child(leaf_id, child_taffy_id).unwrap();
+            element_node.children.push(child_layout_element_id);
         }
 
         // Deal with any remaining inline elements in the current inline group
